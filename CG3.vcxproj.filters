@@ -41,11 +41,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Object3d.PS.hlsl" />
-    <FxCompile Include="Object3d.VS.hlsl" />
-    <FxCompile Include="Object3D_NoUV.PS.hlsl" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="externals\imgui\imconfig.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
@@ -72,9 +67,14 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Object3d.hlsli" />
+    <Text Include="externals\imgui\LICENSE.txt" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="externals\imgui\LICENSE.txt" />
+    <None Include="Resources\shaders\Object3d.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Resources\shaders\Object3d.PS.hlsl" />
+    <FxCompile Include="Resources\shaders\Object3d.VS.hlsl" />
+    <FxCompile Include="Resources\shaders\Object3D_NoUV.PS.hlsl" />
   </ItemGroup>
 </Project>
