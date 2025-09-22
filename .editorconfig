@@ -1,0 +1,35 @@
+# ルート設定
+root = true
+
+# すべてのファイルに適用
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C++ ファイル用設定
+[*.{h,hpp,c,cpp}]
+indent_style = space
+indent_size = 4
+tab_width = 4
+max_line_length = 120
+
+# 改行やスペースのルール
+# if, for, while, switch などの後にスペースを入れる
+csharp_space_after_keywords_in_control_flow_statements = true
+
+# 波括弧のスタイル（オープンブレースを改行せずに書く）
+csharp_new_line_before_open_brace = none
+
+# 末尾カンマの禁止（配列など）
+dotnet_style_allow_trailing_comma = false:suggestion
+
+# usingディレクティブの順序
+dotnet_sort_system_directives_first = true
+
+# ファイルエンコーディングを強制
+charset = utf-8-bom
+
+# コメントスタイル
+insert_space_after_comment_start = true
