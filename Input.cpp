@@ -4,9 +4,12 @@
 #pragma comment(lib, "dinput8.lib")
 #pragma comment(lib, "dxgi.lib")
 
-void Input::Initialize(HINSTANCE hInstance, HWND hwnd) {
+void Input::Initialize(WinApp *winApp) {
+  // 借りてきたインスタンスを記録
+  winApp_ = winApp;
+
   HRESULT hr = DirectInput8Create(
-      hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
+      winApp_->GetHInstance(), DIRECTINPUT_VERSION, IID_IDirectInput8,
       reinterpret_cast<void **>(di_.GetAddressOf()), nullptr);
   assert(SUCCEEDED(hr));
 
@@ -16,18 +19,17 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd) {
   hr = keyboard_->SetDataFormat(&c_dfDIKeyboard);
   assert(SUCCEEDED(hr));
 
-  hr = keyboard_->SetCooperativeLevel(
-      hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+  hr = keyboard_->SetCooperativeLevel(winApp_->GetHwnd(),
+                                      DISCL_FOREGROUND | DISCL_NONEXCLUSIVE |
+                                          DISCL_NOWINKEY);
   assert(SUCCEEDED(hr));
 }
 
 void Input::Update() {
-  // 前フレーム保存
-  std::memcpy(m_prev, m_now, sizeof(m_now));
+  std::memcpy(prev_, now_, sizeof(now_));
 
-  // キーボードの状態取得（フォーカス外などで失敗したら無視）
   if (FAILED(keyboard_->Acquire()))
     return;
 
-  keyboard_->GetDeviceState(sizeof(m_now), m_now);
+  keyboard_->GetDeviceState(sizeof(now_), now_);
 }

@@ -1,6 +1,4 @@
 #define _USE_MATH_DEFINES
-#include <cmath>
-#define DIRECTINPUT_VERSION 0x0800 // DirectInputのバージョン指定
 #include "Input.h"
 #include "WinApp.h"
 #include "externals/DirectXTex/DirectXTex.h"
@@ -8,6 +6,7 @@
 #include "externals/imgui/imgui_impl_dx12.h"
 #include "externals/imgui/imgui_impl_win32.h"
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <d3d12.h>
 #include <dxcapi.h>
@@ -921,13 +920,13 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
 // Windowsアプリでのエントリーポイント (main関数)
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
-
+  // Windowsアプリの基礎部分の初期化を行う
   WinApp *winApp = new WinApp();
   winApp->Initialize();
 
-  // ==== 入力の初期化（跡地）====
+  // 入力の初期化
   Input *input = new Input();
-  input->Initialize(winApp->GetHInstance(), winApp->GetHwnd());
+  input->Initialize(winApp);
 
 #ifdef _DEBUG
   ID3D12Debug1 *debugController = nullptr;
@@ -2046,7 +2045,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #ifdef _DEBUG
   debugController->Release();
 #endif
-  DestroyWindow(winApp->GetHwnd());
   vertexResource->Release();
   graphicsPipelineState->Release();
   signatureBlob->Release();
@@ -2083,8 +2081,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   suzanneVB->Release();
   wvpSuzanne->Release();
   suzannePipelineState->Release();
-  delete input; // ==== 入力の解放（跡地）====
+  delete input;
   input = nullptr;
+
+  winApp->Finalize();
+  delete winApp;
+  winApp = nullptr;
+
   if (masterVoice) {
     masterVoice->DestroyVoice();
     masterVoice = nullptr;
@@ -2097,8 +2100,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   ImGui_ImplDX12_Shutdown();
   ImGui_ImplWin32_Shutdown();
   ImGui::DestroyContext();
-
-  CoUninitialize();
 
   // リソースリークチェック
   IDXGIDebug1 *debug;
