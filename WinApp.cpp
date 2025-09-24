@@ -37,15 +37,12 @@ void WinApp::Initialize() {
   ShowWindow(hwnd_, SW_SHOW);
 }
 
-void WinApp::Update() {
-  // 今は特に処理なし
-}
-
 void WinApp::Finalize() {
   if (hwnd_) {
     DestroyWindow(hwnd_);
     hwnd_ = nullptr;
   }
+
   UnregisterClass(wc_.lpszClassName, wc_.hInstance);
   CoUninitialize();
 }
@@ -64,4 +61,18 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
   }
 
   return DefWindowProc(hwnd, msg, wparam, lparam);
+}
+
+bool WinApp::ProcessMessage() {
+  MSG msg{};
+  if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+    TranslateMessage(&msg);
+    DispatchMessage(&msg);
+
+    if (msg.message == WM_QUIT) {
+      return true; // アプリ終了
+    }
+  }
+
+  return false;
 }
