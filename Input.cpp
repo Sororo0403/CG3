@@ -1,8 +1,6 @@
 #include "Input.h"
 #include <cassert>
 #include <cstring>
-#pragma comment(lib, "dinput8.lib")
-#pragma comment(lib, "dxgi.lib")
 
 void Input::Initialize(WinApp *winApp) {
   // 借りてきたインスタンスを記録
