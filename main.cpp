@@ -1714,319 +1714,311 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
   MSG msg{};
   while (msg.message != WM_QUIT) {
-    if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
-      TranslateMessage(&msg);
-      DispatchMessage(&msg);
-    } else {
-      ImGui_ImplDX12_NewFrame();
-      ImGui_ImplWin32_NewFrame();
-      ImGui::NewFrame();
+    if (winApp->ProcessMessage()) {
+      break; // 終了メッセージを受け取ったらループを抜ける
+    }
+    ImGui_ImplDX12_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
 
-      // =======================
-      // ImGui UI
-      // =======================
-      ImGui::Begin("Settings");
-      ImGui::Text("Camera");
-      ImGui::DragFloat3("Camera Translate", &cameraTransform.translate.x,
-                        0.05f);
-      ImGui::DragFloat3("Camera Rotate", &cameraTransform.rotate.x, 0.01f);
-      ImGui::DragFloat3("Camera Scale", &cameraTransform.scale.x, 0.01f);
+    // =======================
+    // ImGui UI
+    // =======================
+    ImGui::Begin("Settings");
+    ImGui::Text("Camera");
+    ImGui::DragFloat3("Camera Translate", &cameraTransform.translate.x, 0.05f);
+    ImGui::DragFloat3("Camera Rotate", &cameraTransform.rotate.x, 0.01f);
+    ImGui::DragFloat3("Camera Scale", &cameraTransform.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("Sphere");
-      ImGui::DragFloat3("Sphere Translate", &transformSphere.translate.x,
-                        0.05f);
-      ImGui::DragFloat3("Sphere Rotate", &transformSphere.rotate.x, 0.01f);
-      ImGui::DragFloat3("Sphere Scale", &transformSphere.scale.x, 0.01f);
+    ImGui::Text("Sphere");
+    ImGui::DragFloat3("Sphere Translate", &transformSphere.translate.x, 0.05f);
+    ImGui::DragFloat3("Sphere Rotate", &transformSphere.rotate.x, 0.01f);
+    ImGui::DragFloat3("Sphere Scale", &transformSphere.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("OBJ");
-      ImGui::DragFloat3("OBJ Translate", &transformObj.translate.x, 0.05f);
-      ImGui::DragFloat3("OBJ Rotate", &transformObj.rotate.x, 0.01f);
-      ImGui::DragFloat3("OBJ Scale", &transformObj.scale.x, 0.01f);
+    ImGui::Text("OBJ");
+    ImGui::DragFloat3("OBJ Translate", &transformObj.translate.x, 0.05f);
+    ImGui::DragFloat3("OBJ Rotate", &transformObj.rotate.x, 0.01f);
+    ImGui::DragFloat3("OBJ Scale", &transformObj.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("Teapot");
-      ImGui::DragFloat3("Teapot Translate", &transformTeapot.translate.x,
-                        0.05f);
-      ImGui::DragFloat3("Teapot Rotate", &transformTeapot.rotate.x, 0.01f);
-      ImGui::DragFloat3("Teapot Scale", &transformTeapot.scale.x, 0.01f);
+    ImGui::Text("Teapot");
+    ImGui::DragFloat3("Teapot Translate", &transformTeapot.translate.x, 0.05f);
+    ImGui::DragFloat3("Teapot Rotate", &transformTeapot.rotate.x, 0.01f);
+    ImGui::DragFloat3("Teapot Scale", &transformTeapot.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("Bunny");
-      ImGui::DragFloat3("Bunny Translate", &transformBunny.translate.x, 0.05f);
-      ImGui::DragFloat3("Bunny Rotate", &transformBunny.rotate.x, 0.01f);
-      ImGui::DragFloat3("Bunny Scale", &transformBunny.scale.x, 0.01f);
+    ImGui::Text("Bunny");
+    ImGui::DragFloat3("Bunny Translate", &transformBunny.translate.x, 0.05f);
+    ImGui::DragFloat3("Bunny Rotate", &transformBunny.rotate.x, 0.01f);
+    ImGui::DragFloat3("Bunny Scale", &transformBunny.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("Suzanne");
-      ImGui::DragFloat3("Suzanne Translate", &transformSuzanne.translate.x,
-                        0.1f);
-      ImGui::DragFloat3("Suzanne Rotate", &transformSuzanne.rotate.x, 0.01f);
-      ImGui::DragFloat3("Suzanne Scale", &transformSuzanne.scale.x, 0.01f);
+    ImGui::Text("Suzanne");
+    ImGui::DragFloat3("Suzanne Translate", &transformSuzanne.translate.x, 0.1f);
+    ImGui::DragFloat3("Suzanne Rotate", &transformSuzanne.rotate.x, 0.01f);
+    ImGui::DragFloat3("Suzanne Scale", &transformSuzanne.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("Sprite");
-      ImGui::DragFloat3("Sprite Translate", &transformSprite.translate.x, 1.0f);
-      ImGui::DragFloat3("Sprite Rotate", &transformSprite.rotate.x, 0.01f);
-      ImGui::DragFloat3("Sprite Scale", &transformSprite.scale.x, 0.01f);
+    ImGui::Text("Sprite");
+    ImGui::DragFloat3("Sprite Translate", &transformSprite.translate.x, 1.0f);
+    ImGui::DragFloat3("Sprite Rotate", &transformSprite.rotate.x, 0.01f);
+    ImGui::DragFloat3("Sprite Scale", &transformSprite.scale.x, 0.01f);
 
-      ImGui::Separator();
+    ImGui::Separator();
 
-      ImGui::Text("Directional Light");
-      ImGui::ColorEdit3("Light Color", &lightData->color.x);
-      ImGui::DragFloat3("Light Direction", &lightData->direction.x, 0.01f,
-                        -1.0f, 1.0f);
-      ImGui::DragFloat("Light Intensity", &lightData->intensity, 0.01f, 0.0f,
-                       10.0f);
-      const char *lightingModes[] = {"No Lighting", "Lambert", "Half Lambert"};
-      ImGui::Combo("Lighting Mode", &lightData->mode, lightingModes,
-                   IM_ARRAYSIZE(lightingModes));
-      ImGui::End();
+    ImGui::Text("Directional Light");
+    ImGui::ColorEdit3("Light Color", &lightData->color.x);
+    ImGui::DragFloat3("Light Direction", &lightData->direction.x, 0.01f, -1.0f,
+                      1.0f);
+    ImGui::DragFloat("Light Intensity", &lightData->intensity, 0.01f, 0.0f,
+                     10.0f);
+    const char *lightingModes[] = {"No Lighting", "Lambert", "Half Lambert"};
+    ImGui::Combo("Lighting Mode", &lightData->mode, lightingModes,
+                 IM_ARRAYSIZE(lightingModes));
+    ImGui::End();
 
-      float len = sqrtf(lightData->direction.x * lightData->direction.x +
-                        lightData->direction.y * lightData->direction.y +
-                        lightData->direction.z * lightData->direction.z);
-      if (len > 0.0001f) {
-        lightData->direction.x /= len;
-        lightData->direction.y /= len;
-        lightData->direction.z /= len;
-      }
+    float len = sqrtf(lightData->direction.x * lightData->direction.x +
+                      lightData->direction.y * lightData->direction.y +
+                      lightData->direction.z * lightData->direction.z);
+    if (len > 0.0001f) {
+      lightData->direction.x /= len;
+      lightData->direction.y /= len;
+      lightData->direction.z /= len;
+    }
 
-      // =======================
-      // カメラ
-      // =======================
-      Matrix4x4 cameraMatrix =
-          MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate,
-                           cameraTransform.translate);
-      Matrix4x4 viewMatrix = Inverse(cameraMatrix);
-      Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
-          0.45f, float(WinApp::kClientWidth) / float(WinApp::kClientHeight),
-          0.1f, 100.0f);
+    // =======================
+    // カメラ
+    // =======================
+    Matrix4x4 cameraMatrix =
+        MakeAffineMatrix(cameraTransform.scale, cameraTransform.rotate,
+                         cameraTransform.translate);
+    Matrix4x4 viewMatrix = Inverse(cameraMatrix);
+    Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(
+        0.45f, float(WinApp::kClientWidth) / float(WinApp::kClientHeight), 0.1f,
+        100.0f);
 
-      // =======================
-      // Sprite用WVP
-      // =======================
-      Matrix4x4 worldMatrixSprite =
-          MakeAffineMatrix(transformSprite.scale, transformSprite.rotate,
-                           transformSprite.translate);
-      Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
-      Matrix4x4 projectionMatrixSprite =
-          MakeOrthographicMatrix(0.0f, 0.0f, float(WinApp::kClientWidth),
-                                 float(WinApp::kClientHeight), 0.0f, 100.0f);
-      transformationMatrixDataSprite->World = worldMatrixSprite;
-      transformationMatrixDataSprite->WVP =
-          Multiply(worldMatrixSprite,
-                   Multiply(viewMatrixSprite, projectionMatrixSprite));
+    // =======================
+    // Sprite用WVP
+    // =======================
+    Matrix4x4 worldMatrixSprite =
+        MakeAffineMatrix(transformSprite.scale, transformSprite.rotate,
+                         transformSprite.translate);
+    Matrix4x4 viewMatrixSprite = MakeIdentity4x4();
+    Matrix4x4 projectionMatrixSprite =
+        MakeOrthographicMatrix(0.0f, 0.0f, float(WinApp::kClientWidth),
+                               float(WinApp::kClientHeight), 0.0f, 100.0f);
+    transformationMatrixDataSprite->World = worldMatrixSprite;
+    transformationMatrixDataSprite->WVP = Multiply(
+        worldMatrixSprite, Multiply(viewMatrixSprite, projectionMatrixSprite));
 
-      // UV変換
-      Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
-      uvTransformMatrix = Multiply(
-          uvTransformMatrix, MakeRotateZMatrix(uvTransformSprite.rotate.z));
-      uvTransformMatrix = Multiply(
-          uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
-      materialDataSprite->uvTransform = uvTransformMatrix;
+    // UV変換
+    Matrix4x4 uvTransformMatrix = MakeScaleMatrix(uvTransformSprite.scale);
+    uvTransformMatrix = Multiply(uvTransformMatrix,
+                                 MakeRotateZMatrix(uvTransformSprite.rotate.z));
+    uvTransformMatrix = Multiply(
+        uvTransformMatrix, MakeTranslateMatrix(uvTransformSprite.translate));
+    materialDataSprite->uvTransform = uvTransformMatrix;
 
-      // ==== 入力の更新（毎フレーム）====
-      input->Update();
+    // ==== 入力の更新（毎フレーム）====
+    input->Update();
 
-      // 例: 0キーが押されている間
-      if (input->IsKeyDown(DIK_0)) {
-        OutputDebugStringA("Hit 0\n");
-      }
-      // 例: ESC を離した瞬間
-      if (input->IsKeyReleased(DIK_ESCAPE)) {
-        PostQuitMessage(0);
-      }
+    // 例: 0キーが押されている間
+    if (input->IsKeyDown(DIK_0)) {
+      OutputDebugStringA("Hit 0\n");
+    }
+    // 例: ESC を離した瞬間
+    if (input->IsKeyReleased(DIK_ESCAPE)) {
+      PostQuitMessage(0);
+    }
 
-      ImGui::Render();
+    ImGui::Render();
 
-      // =======================
-      // コマンドリスト開始
-      // =======================
-      commandAllocator->Reset();
-      commandList->Reset(commandAllocator, graphicsPipelineState);
+    // =======================
+    // コマンドリスト開始
+    // =======================
+    commandAllocator->Reset();
+    commandList->Reset(commandAllocator, graphicsPipelineState);
 
-      UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
+    UINT backBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
-      D3D12_RESOURCE_BARRIER barrier{};
-      barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-      barrier.Transition.pResource = swapChainResources[backBufferIndex];
-      barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-      barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-      commandList->ResourceBarrier(1, &barrier);
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = swapChainResources[backBufferIndex];
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    commandList->ResourceBarrier(1, &barrier);
 
-      D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
-          dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-      commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false,
-                                      &dsvHandle);
+    D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle =
+        dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+    commandList->OMSetRenderTargets(1, &rtvHandles[backBufferIndex], false,
+                                    &dsvHandle);
 
-      float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
-      commandList->ClearRenderTargetView(rtvHandles[backBufferIndex],
-                                         clearColor, 0, nullptr);
-      commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH,
-                                         1.0f, 0, 0, nullptr);
+    float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
+    commandList->ClearRenderTargetView(rtvHandles[backBufferIndex], clearColor,
+                                       0, nullptr);
+    commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f,
+                                       0, 0, nullptr);
 
-      // 描画用のDescriptorHeap設定
-      ID3D12DescriptorHeap *descriptorHeaps[] = {srvDescriptorHeap};
-      commandList->SetDescriptorHeaps(1, descriptorHeaps);
+    // 描画用のDescriptorHeap設定
+    ID3D12DescriptorHeap *descriptorHeaps[] = {srvDescriptorHeap};
+    commandList->SetDescriptorHeaps(1, descriptorHeaps);
 
-      commandList->RSSetViewports(1, &viewport);
-      commandList->RSSetScissorRects(1, &scissorRect);
-      commandList->SetGraphicsRootSignature(rootSignature);
+    commandList->RSSetViewports(1, &viewport);
+    commandList->RSSetScissorRects(1, &scissorRect);
+    commandList->SetGraphicsRootSignature(rootSignature);
 
-      // =======================
-      // 球体描画
-      // =======================
-      Matrix4x4 worldSphere =
-          MakeAffineMatrix(transformSphere.scale, transformSphere.rotate,
-                           transformSphere.translate);
-      wvpDataSphere->World = worldSphere;
-      wvpDataSphere->WVP =
-          Multiply(worldSphere, Multiply(viewMatrix, projectionMatrix));
+    // =======================
+    // 球体描画
+    // =======================
+    Matrix4x4 worldSphere =
+        MakeAffineMatrix(transformSphere.scale, transformSphere.rotate,
+                         transformSphere.translate);
+    wvpDataSphere->World = worldSphere;
+    wvpDataSphere->WVP =
+        Multiply(worldSphere, Multiply(viewMatrix, projectionMatrix));
 
-      commandList->IASetVertexBuffers(0, 1, &sphereVBV);
-      commandList->IASetIndexBuffer(&sphereIBV);
-      commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      commandList->SetGraphicsRootConstantBufferView(
-          0, materialResource->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          1, wvpResourceSphere->GetGPUVirtualAddress()); // ← 変更
-      commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-      commandList->SetGraphicsRootConstantBufferView(
-          3, lightResource->GetGPUVirtualAddress());
-      commandList->DrawIndexedInstanced(
-          static_cast<UINT>(sphere.indices.size()), 1, 0, 0, 0);
+    commandList->IASetVertexBuffers(0, 1, &sphereVBV);
+    commandList->IASetIndexBuffer(&sphereIBV);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetGraphicsRootConstantBufferView(
+        0, materialResource->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        1, wvpResourceSphere->GetGPUVirtualAddress()); // ← 変更
+    commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+    commandList->SetGraphicsRootConstantBufferView(
+        3, lightResource->GetGPUVirtualAddress());
+    commandList->DrawIndexedInstanced(static_cast<UINT>(sphere.indices.size()),
+                                      1, 0, 0, 0);
 
-      // =======================
-      // OBJ描画
-      // =======================
-      Matrix4x4 worldObj = MakeAffineMatrix(
-          transformObj.scale, transformObj.rotate, transformObj.translate);
-      wvpDataObj->World = worldObj;
-      wvpDataObj->WVP =
-          Multiply(worldObj, Multiply(viewMatrix, projectionMatrix));
+    // =======================
+    // OBJ描画
+    // =======================
+    Matrix4x4 worldObj = MakeAffineMatrix(
+        transformObj.scale, transformObj.rotate, transformObj.translate);
+    wvpDataObj->World = worldObj;
+    wvpDataObj->WVP =
+        Multiply(worldObj, Multiply(viewMatrix, projectionMatrix));
 
-      commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-      commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      commandList->SetGraphicsRootConstantBufferView(
-          0, materialResource->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          1, wvpResourceObj->GetGPUVirtualAddress()); // ← 変更
-      commandList->SetGraphicsRootDescriptorTable(
-          2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
-      commandList->SetGraphicsRootConstantBufferView(
-          3, lightResource->GetGPUVirtualAddress());
-      commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()),
-                                 1, 0, 0);
+    commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetGraphicsRootConstantBufferView(
+        0, materialResource->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        1, wvpResourceObj->GetGPUVirtualAddress()); // ← 変更
+    commandList->SetGraphicsRootDescriptorTable(
+        2, useMonsterBall ? textureSrvHandleGPU2 : textureSrvHandleGPU);
+    commandList->SetGraphicsRootConstantBufferView(
+        3, lightResource->GetGPUVirtualAddress());
+    commandList->DrawInstanced(static_cast<UINT>(modelData.vertices.size()), 1,
+                               0, 0);
 
-      // =======================
-      // Teapot描画
-      // =======================
-      Matrix4x4 worldTeapot =
-          MakeAffineMatrix(transformTeapot.scale, transformTeapot.rotate,
-                           transformTeapot.translate);
-      wvpDataTeapot->World = worldTeapot;
-      wvpDataTeapot->WVP =
-          Multiply(worldTeapot, Multiply(viewMatrix, projectionMatrix));
+    // =======================
+    // Teapot描画
+    // =======================
+    Matrix4x4 worldTeapot =
+        MakeAffineMatrix(transformTeapot.scale, transformTeapot.rotate,
+                         transformTeapot.translate);
+    wvpDataTeapot->World = worldTeapot;
+    wvpDataTeapot->WVP =
+        Multiply(worldTeapot, Multiply(viewMatrix, projectionMatrix));
 
-      commandList->IASetVertexBuffers(0, 1, &teapotVBV);
-      commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      commandList->SetGraphicsRootConstantBufferView(
-          0, materialResource->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          1, wvpResourceTeapot->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
-      commandList->SetGraphicsRootConstantBufferView(
-          3, lightResource->GetGPUVirtualAddress());
-      commandList->DrawInstanced(static_cast<UINT>(teapotData.vertices.size()),
-                                 1, 0, 0);
+    commandList->IASetVertexBuffers(0, 1, &teapotVBV);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetGraphicsRootConstantBufferView(
+        0, materialResource->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        1, wvpResourceTeapot->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU3);
+    commandList->SetGraphicsRootConstantBufferView(
+        3, lightResource->GetGPUVirtualAddress());
+    commandList->DrawInstanced(static_cast<UINT>(teapotData.vertices.size()), 1,
+                               0, 0);
 
-      // =======================
-      // Bunny描画
-      // =======================
-      Matrix4x4 worldBunny =
-          MakeAffineMatrix(transformBunny.scale, transformBunny.rotate,
-                           transformBunny.translate);
-      wvpDataBunny->World = worldBunny;
-      wvpDataBunny->WVP =
-          Multiply(worldBunny, Multiply(viewMatrix, projectionMatrix));
+    // =======================
+    // Bunny描画
+    // =======================
+    Matrix4x4 worldBunny = MakeAffineMatrix(
+        transformBunny.scale, transformBunny.rotate, transformBunny.translate);
+    wvpDataBunny->World = worldBunny;
+    wvpDataBunny->WVP =
+        Multiply(worldBunny, Multiply(viewMatrix, projectionMatrix));
 
-      commandList->IASetVertexBuffers(0, 1, &bunnyVBV);
-      commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      commandList->SetGraphicsRootConstantBufferView(
-          0, materialResource->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          1, wvpResourceBunny->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPUBunny);
-      commandList->SetGraphicsRootConstantBufferView(
-          3, lightResource->GetGPUVirtualAddress());
-      commandList->DrawInstanced(static_cast<UINT>(bunnyData.vertices.size()),
-                                 1, 0, 0);
+    commandList->IASetVertexBuffers(0, 1, &bunnyVBV);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetGraphicsRootConstantBufferView(
+        0, materialResource->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        1, wvpResourceBunny->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPUBunny);
+    commandList->SetGraphicsRootConstantBufferView(
+        3, lightResource->GetGPUVirtualAddress());
+    commandList->DrawInstanced(static_cast<UINT>(bunnyData.vertices.size()), 1,
+                               0, 0);
 
-      Matrix4x4 worldSuzanne =
-          MakeAffineMatrix(transformSuzanne.scale, transformSuzanne.rotate,
-                           transformSuzanne.translate);
-      wvpSuzanneData->World = worldSuzanne;
-      wvpSuzanneData->WVP =
-          Multiply(worldSuzanne, Multiply(viewMatrix, projectionMatrix));
+    Matrix4x4 worldSuzanne =
+        MakeAffineMatrix(transformSuzanne.scale, transformSuzanne.rotate,
+                         transformSuzanne.translate);
+    wvpSuzanneData->World = worldSuzanne;
+    wvpSuzanneData->WVP =
+        Multiply(worldSuzanne, Multiply(viewMatrix, projectionMatrix));
 
-      commandList->SetPipelineState(suzannePipelineState);
+    commandList->SetPipelineState(suzannePipelineState);
 
-      commandList->IASetVertexBuffers(0, 1, &suzanneVBV);
-      commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      commandList->SetGraphicsRootConstantBufferView(
-          0, materialResource->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          1, wvpSuzanne->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          3, lightResource->GetGPUVirtualAddress());
-      commandList->DrawInstanced(static_cast<UINT>(suzanneData.vertices.size()),
-                                 1, 0, 0);
+    commandList->IASetVertexBuffers(0, 1, &suzanneVBV);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetGraphicsRootConstantBufferView(
+        0, materialResource->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        1, wvpSuzanne->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        3, lightResource->GetGPUVirtualAddress());
+    commandList->DrawInstanced(static_cast<UINT>(suzanneData.vertices.size()),
+                               1, 0, 0);
 
-      // PSOを元に戻す
-      commandList->SetPipelineState(graphicsPipelineState);
+    // PSOを元に戻す
+    commandList->SetPipelineState(graphicsPipelineState);
 
-      // =======================
-      // スプライト描画
-      // =======================
-      commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
-      commandList->IASetIndexBuffer(&indexBufferViewSprite);
-      commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      commandList->SetGraphicsRootConstantBufferView(
-          0, materialResourceSprite->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootConstantBufferView(
-          1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
-      commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
-      commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    // =======================
+    // スプライト描画
+    // =======================
+    commandList->IASetVertexBuffers(0, 1, &vertexBufferViewSprite);
+    commandList->IASetIndexBuffer(&indexBufferViewSprite);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->SetGraphicsRootConstantBufferView(
+        0, materialResourceSprite->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootConstantBufferView(
+        1, transformationMatrixResourceSprite->GetGPUVirtualAddress());
+    commandList->SetGraphicsRootDescriptorTable(2, textureSrvHandleGPU);
+    commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
-      // =======================
-      // ImGui描画
-      // =======================
-      ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
+    // =======================
+    // ImGui描画
+    // =======================
+    ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 
-      barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-      barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-      commandList->ResourceBarrier(1, &barrier);
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    commandList->ResourceBarrier(1, &barrier);
 
-      commandList->Close();
-      ID3D12CommandList *cmdLists[] = {commandList};
-      commandQueue->ExecuteCommandLists(1, cmdLists);
+    commandList->Close();
+    ID3D12CommandList *cmdLists[] = {commandList};
+    commandQueue->ExecuteCommandLists(1, cmdLists);
 
-      swapChain->Present(1, 0);
+    swapChain->Present(1, 0);
 
-      fenceValue++;
-      commandQueue->Signal(fence, fenceValue);
-      if (fence->GetCompletedValue() < fenceValue) {
-        fence->SetEventOnCompletion(fenceValue, fenceEvent);
-        WaitForSingleObject(fenceEvent, INFINITE);
-      }
+    fenceValue++;
+    commandQueue->Signal(fence, fenceValue);
+    if (fence->GetCompletedValue() < fenceValue) {
+      fence->SetEventOnCompletion(fenceValue, fenceEvent);
+      WaitForSingleObject(fenceEvent, INFINITE);
     }
   }
 
