@@ -24,19 +24,22 @@ public:
   /// </summary>
   void Update();
 
+  /// <summary>
+  /// 終了処理。ウィンドウ破棄や COM の後始末を行う。
+  /// </summary>
+  void Finalize();
+
   // ==== getter ====
 
   /// <summary>
   /// ウィンドウハンドルを取得する。
   /// </summary>
-  /// <returns>HWND 型のウィンドウハンドル。</returns>
-  HWND GetHwnd() const { return hwnd; }
+  HWND GetHwnd() const { return hwnd_; }
 
   /// <summary>
-  /// ウィンドウクラスに登録された HINSTANCE を取得する。
+  ///ウィンドウクラスに登録された HINSTANCE を取得する。
   /// </summary>
-  /// <returns>アプリケーションインスタンスハンドル。</returns>
-  HINSTANCE GetHInstance() const { return wc.hInstance; }
+  HINSTANCE GetHInstance() const { return wc_.hInstance; }
 
   /// <summary>
   /// ウィンドウプロシージャ。
@@ -47,13 +50,7 @@ public:
                                      LPARAM lparam);
 
 private:
-  /// <summary>
-  /// ウィンドウハンドル。
-  /// </summary>
-  HWND hwnd = nullptr;
-
-  /// <summary>
-  /// ウィンドウクラスの設定構造体。
-  /// </summary>
-  WNDCLASS wc{};
+  // Window
+  HWND hwnd_ = nullptr;
+  WNDCLASS wc_{};
 };
