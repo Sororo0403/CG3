@@ -1,3 +1,4 @@
+#include "D3DResourceLeakChecker.h"
 #include "DirectXCommon.h"
 #include "Input.h"
 #include "WinApp.h"
@@ -5,7 +6,7 @@
 #include <imgui_impl_dx12.h>
 #include <imgui_impl_win32.h>
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
+int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // Windowsアプリ初期化
   WinApp *winApp = new WinApp();
   winApp->Initialize();
@@ -40,6 +41,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
   delete dxCommon;
   winApp->Finalize();
   delete winApp;
+
+  D3DResourceLeakChecker leakChecker;
 
   return 0;
 }
