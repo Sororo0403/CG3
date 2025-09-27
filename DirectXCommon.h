@@ -16,159 +16,63 @@ class WinApp;
 class DirectXCommon {
 public:
   // バックバッファ数
-  static constexpr uint32_t kBufferCount = 2;
+  static constexpr uint32_t kBufferCount = 3;
 
-  /// <summary>
-  /// DirectX12 初期化処理。WinApp への依存あり。
-  /// </summary>
-  /// <param name="winApp">ウィンドウ管理クラスへのポインタ。</param>
+  /// <summary>DirectX12 初期化</summary>
   void Initialize(WinApp *winApp);
 
-  /// <summary>
-  /// DirectX12 の終了処理。フェンス待機や ImGui のシャットダウンも含む。
-  /// </summary>
+  /// <summary>DirectX12 終了（必要時のみ同期）</summary>
   void Finalize();
 
-  /// <summary>
-  /// フレーム開始処理。バックバッファ遷移、RTV/DSV 設定、クリア、ImGui
-  /// フレーム開始など。
-  /// </summary>
-  /// <param name="clearColor">画面クリアカラー (RGBA)。</param>
+  /// <summary>フレーム開始：RTV/DSV 設定・クリア・ImGui NewFrame</summary>
   void PreDraw(const float clearColor[4]);
 
-  /// <summary>
-  /// フレーム終了処理。ImGui 描画、リソース遷移、Present、フェンス同期など。
-  /// </summary>
+  /// <summary>フレーム終了：ImGui 描画、Present、フェンス Signal</summary>
   void PostDraw();
 
   // ==== アクセサ ====
-
-  /// <summary>
-  /// DirectX12 デバイスを取得。
-  /// </summary>
   ID3D12Device *GetDevice() const { return device_.Get(); }
-
-  /// <summary>
-  /// コマンドリストを取得。
-  /// </summary>
   ID3D12GraphicsCommandList *GetCommandList() const {
     return commandList_.Get();
   }
-
-  /// <summary>
-  /// SRV用ディスクリプタヒープを取得。
-  /// </summary>
   ID3D12DescriptorHeap *GetSrvHeap() const { return srvHeap_.Get(); }
-
-  /// <summary>
-  /// 現在のバックバッファの RTV ハンドルを取得。
-  /// </summary>
   D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const {
     return rtvHandles_[currentBackBufferIndex_];
   }
-
-  /// <summary>
-  /// 深度ステンシルビュー (DSV) のハンドルを取得。
-  /// </summary>
   D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const {
     return dsvHeap_->GetCPUDescriptorHandleForHeapStart();
   }
-
-  /// <summary>
-  /// 現在のバックバッファインデックスを取得。
-  /// </summary>
   UINT GetCurrentBackBufferIndex() const { return currentBackBufferIndex_; }
 
 private:
   // ====== 初期化処理 ======
-  /// <summary>
-  /// DXGIファクトリとデバイスの生成。
-  /// </summary>
   void InitializeDevice();
-
-  /// <summary>
-  /// コマンドキュー、アロケータ、リストの生成。
-  /// </summary>
   void InitializeCommand();
-
-  /// 
-  /// <summary>スワップチェーン生成。
-  /// </summary>
   void InitializeSwapChain();
-
-  /// <summary>
-  /// バックバッファの取得。
-  /// </summary>
   void InitializeBackBuffers();
-
-  /// <summary>
-  /// 深度バッファ生成。
-  /// </summary>
   void InitializeDepthBuffer();
-
-  /// <summary>
-  /// 各ディスクリプタヒープ生成 (RTV/DSV/SRV)。
-  /// </summary>
   void InitializeDescriptorHeaps();
-
-  /// <summary>
-  /// RTV の作成。
-  /// </summary>
   void InitializeRenderTargetViews();
-
-  /// <summary>
-  /// DSV の作成。
-  /// </summary>
   void InitializeDepthStencilView();
-
-  /// <summary>
-  /// フェンスとイベントの初期化。
-  /// </summary>
   void InitializeFence();
-
-  /// <summary>
-  /// ビューポート設定。
-  /// </summary>
   void InitializeViewport();
-
-  /// <summary>
-  /// シザー矩形設定。
-  /// </summary>
   void InitializeScissorRect();
-
-  /// <summary>
-  /// DXC (HLSLコンパイラ) の初期化。
-  /// </summary>
   void InitializeDXCCompiler();
-
-  /// <summary>
-  /// ImGui の初期化。
-  /// </summary>
   void InitializeImGui();
 
   // ====== ユーティリティ ======
-  /// <summary>
-  /// ディスクリプタヒープを生成。
-  /// </summary>
   ID3D12DescriptorHeap *CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
                                              UINT numDescriptors,
                                              bool shaderVisible);
-
-  /// <summary>
-  /// CPU ディスクリプタハンドルを計算して返す。
-  /// </summary>
   D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(ID3D12DescriptorHeap *heap,
                                            UINT index) const;
-
-  /// <summary>
-  /// GPU ディスクリプタハンドルを計算して返す。
-  /// </summary>
   D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(ID3D12DescriptorHeap *heap,
                                            UINT index) const;
 
-  /// <summary>
-  /// GPU の処理完了をフェンスで待機する。
-  /// </summary>
+  /// <summary>指定インデックスのフレームリソースが完了していなければ待機</summary>
+  void WaitForFrame(UINT frameIndex);
+
+  /// <summary>「今飛んでいる全仕事」を一度フラッシュして待機（終了時/リサイズ時用）</summary>
   void WaitForGpu();
 
 private:
@@ -182,7 +86,10 @@ private:
 
   // Command
   Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue_;
-  Microsoft::WRL::ComPtr<ID3D12CommandAllocator> commandAllocator_;
+  // ★ フレームごとのアロケータ
+  Microsoft::WRL::ComPtr<ID3D12CommandAllocator>
+      commandAllocators_[kBufferCount];
+  // コマンドリストは 1 本（毎フレーム、該当アロケータで Reset）
   Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList_;
 
   // SwapChain / RenderTargets
@@ -208,7 +115,10 @@ private:
 
   // Fence
   Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
-  uint64_t fenceValue_ = 0;
+  // ★ 次に使うフェンス値（単調増加）
+  uint64_t nextFenceValue_ = 0;
+  // ★ バックバッファごとの「発行済みフェンス値」
+  uint64_t fenceValues_[kBufferCount] = {};
   HANDLE fenceEvent_ = nullptr;
 
   // DXC

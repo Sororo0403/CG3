@@ -10,7 +10,6 @@
 ID3D12DescriptorHeap *
 DirectXCommon::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
                                     UINT numDescriptors, bool shaderVisible) {
-
   D3D12_DESCRIPTOR_HEAP_DESC desc{};
   desc.Type = type;
   desc.NumDescriptors = numDescriptors;
@@ -39,20 +38,27 @@ DirectXCommon::GetGPUHandle(ID3D12DescriptorHeap *heap, UINT index) const {
   return h;
 }
 
-void DirectXCommon::WaitForGpu() {
-  if (!commandQueue_ || !fence_)
-    return;
+// ====== 同期 ======
+void DirectXCommon::WaitForFrame(UINT frameIndex) {
+  const uint64_t fenceValue = fenceValues_[frameIndex];
+  if (fenceValue == 0)
+    return; // まだ一度も投げていなければ何もしない
+  if (fence_->GetCompletedValue() >= fenceValue)
+    return; // もう終わってる
 
-  fenceValue_++;
-  HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
+  HRESULT hr = fence_->SetEventOnCompletion(fenceValue, fenceEvent_);
+  assert(SUCCEEDED(hr));
+  WaitForSingleObject(fenceEvent_, INFINITE);
+}
+
+void DirectXCommon::WaitForGpu() {
+  // 「今出せる最新のフェンス値」を発行して待つ（Flush）
+  const uint64_t fenceToWait = ++nextFenceValue_;
+  HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceToWait);
   assert(SUCCEEDED(hr));
 
-  if (fence_->GetCompletedValue() < fenceValue_) {
-    if (!fenceEvent_) { // 保険としてここでも生成
-      fenceEvent_ = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-      assert(fenceEvent_);
-    }
-    hr = fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
+  if (fence_->GetCompletedValue() < fenceToWait) {
+    hr = fence_->SetEventOnCompletion(fenceToWait, fenceEvent_);
     assert(SUCCEEDED(hr));
     WaitForSingleObject(fenceEvent_, INFINITE);
   }
@@ -64,7 +70,6 @@ void DirectXCommon::Initialize(WinApp *winApp) {
   winApp_ = winApp;
 
 #ifdef _DEBUG
-  // デバッグレイヤ
   Microsoft::WRL::ComPtr<ID3D12Debug1> debugController;
   if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
     debugController->EnableDebugLayer();
@@ -72,7 +77,6 @@ void DirectXCommon::Initialize(WinApp *winApp) {
   }
 #endif
 
-  // スライドの順番どおり
   InitializeDevice();
   InitializeCommand();
   InitializeSwapChain();
@@ -89,7 +93,7 @@ void DirectXCommon::Initialize(WinApp *winApp) {
 }
 
 void DirectXCommon::Finalize() {
-  // フェンス待ち
+  // 必要な場面のみ同期（ここは Flush して安全に終了）
   WaitForGpu();
 
   // ImGui 終了
@@ -104,7 +108,11 @@ void DirectXCommon::Finalize() {
 }
 
 void DirectXCommon::PreDraw(const float clearColor[4]) {
+  // 今回使うバックバッファ
   currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
+
+  // ★ このフレームのアロケータが使えるまで待つ（未完了なら）
+  WaitForFrame(currentBackBufferIndex_);
 
   // Present -> RenderTarget
   D3D12_RESOURCE_BARRIER barrier{};
@@ -112,8 +120,11 @@ void DirectXCommon::PreDraw(const float clearColor[4]) {
   barrier.Transition.pResource = backBuffers_[currentBackBufferIndex_].Get();
   barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
   barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-  commandAllocator_->Reset();
-  commandList_->Reset(commandAllocator_.Get(), nullptr);
+
+  // ★ 今回のフレームのアロケータで Reset
+  auto *allocator = commandAllocators_[currentBackBufferIndex_].Get();
+  allocator->Reset();
+  commandList_->Reset(allocator, nullptr);
   commandList_->ResourceBarrier(1, &barrier);
 
   // RTV/DSV 設定
@@ -160,10 +171,17 @@ void DirectXCommon::PostDraw() {
   ID3D12CommandList *lists[] = {commandList_.Get()};
   commandQueue_->ExecuteCommandLists(1, lists);
 
+  // ★ 今回のフレームに対するフェンス値を発行し、インデックスに記録
+  const uint64_t fenceToSignal = ++nextFenceValue_;
+  HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceToSignal);
+  assert(SUCCEEDED(hr));
+  fenceValues_[currentBackBufferIndex_] = fenceToSignal;
+
+  // Present（垂直同期は 1。必要なら可変）
   swapChain_->Present(1, 0);
 
-  // フェンス
-  WaitForGpu();
+  // ★
+  // ここでは待たない！（次のフレームで該当バッファを再利用するときにだけ待つ）
 }
 
 // ===== Private =====
@@ -208,16 +226,21 @@ void DirectXCommon::InitializeCommand() {
   HRESULT hr{};
   // Queue
   D3D12_COMMAND_QUEUE_DESC qdesc{};
+  qdesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+  qdesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
   hr = device_->CreateCommandQueue(&qdesc, IID_PPV_ARGS(&commandQueue_));
   assert(SUCCEEDED(hr));
 
-  // Allocator / List
-  hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                       IID_PPV_ARGS(&commandAllocator_));
-  assert(SUCCEEDED(hr));
+  // ★ Allocator をバックバッファ数分
+  for (UINT i = 0; i < kBufferCount; ++i) {
+    hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                         IID_PPV_ARGS(&commandAllocators_[i]));
+    assert(SUCCEEDED(hr));
+  }
 
+  // List は 1 本
   hr = device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
-                                  commandAllocator_.Get(), nullptr,
+                                  commandAllocators_[0].Get(), nullptr,
                                   IID_PPV_ARGS(&commandList_));
   assert(SUCCEEDED(hr));
   commandList_->Close();
@@ -225,7 +248,6 @@ void DirectXCommon::InitializeCommand() {
 
 void DirectXCommon::InitializeSwapChain() {
   DXGI_SWAP_CHAIN_DESC1 desc{};
-
   desc.Width = 0;  // 自動
   desc.Height = 0; // 自動
   desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -248,13 +270,10 @@ void DirectXCommon::InitializeDescriptorHeaps() {
   descriptorSizeSRV_ = device_->GetDescriptorHandleIncrementSize(
       D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
-  // RTV: 2
   rtvHeap_.Attach(CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
                                        kBufferCount, false));
-  // DSV: 1
   dsvHeap_.Attach(
       CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false));
-  // SRV: ImGui + アプリ分で十分な数（例: 128）
   srvHeap_.Attach(
       CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true));
 }
@@ -316,20 +335,16 @@ void DirectXCommon::InitializeDepthStencilView() {
 }
 
 void DirectXCommon::InitializeFence() {
-  HRESULT hr = device_->CreateFence(fenceValue_, D3D12_FENCE_FLAG_NONE,
-                                    IID_PPV_ARGS(&fence_));
+  HRESULT hr =
+      device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
   assert(SUCCEEDED(hr));
 
   fenceEvent_ = CreateEvent(nullptr, FALSE, FALSE, nullptr);
   assert(fenceEvent_ != nullptr);
 
-  // 最初の同期
-  fenceValue_++;
-  commandQueue_->Signal(fence_.Get(), fenceValue_);
-  if (fence_->GetCompletedValue() < fenceValue_) {
-    fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
-    WaitForSingleObject(fenceEvent_, INFINITE);
-  }
+  nextFenceValue_ = 0;
+  for (UINT i = 0; i < kBufferCount; ++i)
+    fenceValues_[i] = 0;
 }
 
 void DirectXCommon::InitializeViewport() {
@@ -362,7 +377,6 @@ void DirectXCommon::InitializeImGui() {
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
 
-  // Win32 + DX12
   ImGui_ImplWin32_Init(winApp_->GetHwnd());
   ImGui_ImplDX12_Init(device_.Get(), kBufferCount,
                       DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, srvHeap_.Get(),
