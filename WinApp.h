@@ -1,62 +1,99 @@
 #pragma once
 #include <cstdint>
+#include <functional>
 #include <windows.h>
 
 /// <summary>
-/// Windows アプリケーションの基盤クラス。
-/// ウィンドウの生成、ハンドル取得、メッセージ処理などを担当する。
+/// Windows アプリケーション基盤クラス。<br/>
+/// ウィンドウの生成、メッセージ処理、サイズ変更コールバックなどを管理する。
 /// </summary>
 class WinApp {
 public:
-  // ウィンドウのクライアント領域
+  // ===============================
+  // 定数
+  // ===============================
+
+  // クライアント領域のデフォルト幅（初回のウィンドウ作成用）
   static const int32_t kClientWidth = 1280;
+
+  // クライアント領域のデフォルト高さ（初回のウィンドウ作成用）
   static const int32_t kClientHeight = 720;
 
 public:
+  // ===============================
+  // 基本処理
+  // ===============================
+
   /// <summary>
-  /// アプリケーションの初期化を行い、ウィンドウを生成・表示する。
+  /// ウィンドウを生成・表示し、WinApp を初期化する。
   /// </summary>
   void Initialize();
 
   /// <summary>
-  /// 終了処理。ウィンドウ破棄や COM の後始末を行う。
+  /// メッセージポンプを1回分実行する。<br/>
+  /// WM_QUIT が来た場合は true を返す。
   /// </summary>
-  void Finalize();
-
-  /// <summary>
-  /// ウィンドウプロシージャ。Win32 メッセージを受け取り処理します。
-  /// 必要に応じて ImGui へも転送し、未処理のものは DefWindowProc に委譲します。
-  /// </summary>
-  /// <param name="hwnd">対象ウィンドウのハンドル。</param>
-  /// <param name="msg">メッセージ ID（WM_～）。</param>
-  /// <param name="wparam">追加パラメータ（WPARAM）。</param>
-  /// <param name="lparam">追加パラメータ（LPARAM）。</param>
-  /// <returns>処理結果の LRESULT。</returns>
-  static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
-                                     LPARAM lparam);
-
-  /// <summary>
-  /// メッセージポンプを1回分実行
-  /// </summary>
-  /// <returns> WM_QUITを受信した場合はtrue。それ以外はfalse。</returns>
   bool ProcessMessage();
 
-  // ==== getter ====
+  // ===============================
+  // コールバック設定
+  // ===============================
 
   /// <summary>
-  /// このアプリのウィンドウのハンドルを返します。
+  /// サイズ変更時に呼び出されるコールバックを登録する。<br/>
+  /// state には WM_SIZE の wParam（SIZE_MINIMIZED / SIZE_RESTORED /
+  /// SIZE_MAXIMIZED）が渡される。
   /// </summary>
-  /// <returns>作成済みウィンドウの HWND。</returns>
+  void SetOnResize(
+      std::function<void(uint32_t width, uint32_t height, UINT state)> cb) {
+    onResize_ = std::move(cb);
+  }
+
+  // ===============================
+  // Getter
+  // ===============================
+
+  /// <summary>
+  /// ウィンドウハンドルを取得する。
+  /// </summary>
   HWND GetHwnd() const { return hwnd_; }
 
   /// <summary>
-  /// インスタンスハンドルを返します。
+  /// インスタンスハンドルを取得する。
   /// </summary>
-  /// <returns>アプリケーションの HINSTANCE。</returns>
   HINSTANCE GetHInstance() const { return wc_.hInstance; }
 
+  // ===============================
+  // WindowProc
+  // ===============================
+
+  /// <summary>
+  /// ウィンドウプロシージャ。<br/>
+  /// Windows メッセージを受け取り処理する。<br/>
+  /// WM_SIZE 時に onResize_ が設定されていればコールバックする。
+  /// </summary>
+  static LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
+                                     LPARAM lparam);
+
 private:
-  // Window
-  HWND hwnd_ = nullptr;
-  WNDCLASS wc_{};
+  // ===============================
+  // ヘルパ
+  // ===============================
+
+  /// <summary>
+  /// HWND にぶら下げられた自分自身のポインタを取得する。
+  /// </summary>
+  static WinApp *FromHwnd(HWND hwnd) {
+    return reinterpret_cast<WinApp *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+  }
+
+private:
+  // ===============================
+  // メンバ変数
+  // ===============================
+
+  HWND hwnd_ = nullptr; // ウィンドウハンドル
+  WNDCLASS wc_{};       // ウィンドウクラス構造体
+  std::function<void(uint32_t, uint32_t, UINT)>
+      onResize_; // サイズ変更コールバック
 };

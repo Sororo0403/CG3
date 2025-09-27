@@ -1,48 +1,55 @@
-#include "D3DResourceLeakChecker.h"
 #include "DirectXCommon.h"
-#include "Input.h"
 #include "WinApp.h"
-#include <imgui.h>
-#include <imgui_impl_dx12.h>
-#include <imgui_impl_win32.h>
+#include "externals/imgui/imgui.h"
+#include "externals/imgui/imgui_impl_dx12.h"
+#include "externals/imgui/imgui_impl_win32.h"
 
+// Windowsアプリのエントリポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-  // Windowsアプリ初期化
-  WinApp *winApp = new WinApp();
-  winApp->Initialize();
+  // ===============================
+  // アプリ基盤の初期化
+  // ===============================
+  auto *winApp = new WinApp();
+  winApp->Initialize(); // ウィンドウ生成 & 表示
 
-  // DirectX 初期化
-  DirectXCommon *dxCommon = new DirectXCommon();
-  dxCommon->Initialize(winApp);
+  // ===============================
+  // DirectX12 の初期化
+  // ===============================
+  auto *dx = new DirectXCommon();
+  dx->Initialize(winApp);
 
-  // 入力初期化
-  Input *input = new Input();
-  input->Initialize(winApp);
+  // ===============================
+  // ウィンドウサイズ変更時の処理
+  // ===============================
+  winApp->SetOnResize([dx](uint32_t w, uint32_t h, UINT state) {
+    if (state == SIZE_MINIMIZED) // 最小化時は無視
+      return;
+    dx->Resize(w, h); // バックバッファ等の再生成
+  });
 
+  // ===============================
   // メインループ
+  // ===============================
   MSG msg{};
   while (msg.message != WM_QUIT) {
-    if (winApp->ProcessMessage())
+    if (winApp->ProcessMessage()) // Windowsメッセージ処理
       break;
-
-    input->Update();
 
     // 描画開始
     float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
-    dxCommon->PreDraw(clearColor);
+    dx->PreDraw(clearColor);
 
-    // 描画終了
-    dxCommon->PostDraw();
+    // TODO: ゲームの描画処理をここに追加する
+
+    // 描画終了 & Present
+    dx->PostDraw();
   }
 
+  // ===============================
   // 終了処理
-  delete input;
-  dxCommon->Finalize();
-  delete dxCommon;
-  winApp->Finalize();
+  // ===============================
+  dx->Finalize();
+  delete dx;
   delete winApp;
-
-  D3DResourceLeakChecker leakChecker;
-
   return 0;
 }
