@@ -5,7 +5,7 @@
 #include <wrl.h>
 
 /// <summary>
-/// DirectInput を使ったキーボード入力管理クラス。
+/// DirectInput を使ったキーボード入力管理クラス。<br/>
 /// 毎フレームのキー状態を保持し、押下・離し・トリガー判定を提供する。
 /// </summary>
 class Input {
@@ -13,18 +13,30 @@ private:
   template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
 
 public:
+  /// <summary>
+  /// DirectInput の「キー押下中」を示すビットマスク値。
+  /// </summary>
   static constexpr BYTE KEY_PRESSED_MASK = 0x80;
 
+public:
+  // ===============================
+  // ライフサイクル
+  // ===============================
+
   /// <summary>
-  /// DirectInput の初期化とキーボードデバイスの生成を行う。
-  /// WinApp クラスを借りて、必要な HINSTANCE / HWND を取得する。
+  /// DirectInput を初期化し、キーボードデバイスを生成する。<br/>
+  /// WinApp から HINSTANCE / HWND を取得して利用する。
   /// </summary>
   void Initialize(WinApp *winApp);
 
   /// <summary>
-  /// 毎フレーム呼び出して、前フレームと現在フレームのキー状態を更新する。
+  /// 毎フレーム呼び出し、前フレームと現在フレームのキー状態を更新する。
   /// </summary>
   void Update();
+
+  // ===============================
+  // 入力判定
+  // ===============================
 
   /// <summary>
   /// 指定したキーが押され続けているかを返す。
@@ -46,12 +58,13 @@ public:
   }
 
 private:
-  // WinApp
-  WinApp *winApp_ = nullptr;
+  // ===============================
+  // メンバ変数
+  // ===============================
 
-  // DirectInput
-  ComPtr<IDirectInput8> di_;
-  ComPtr<IDirectInputDevice8> keyboard_;
-  BYTE now_[256] = {};
-  BYTE prev_[256] = {};
+  WinApp *winApp_ = nullptr;             // WinApp への参照
+  ComPtr<IDirectInput8> di_;             // DirectInput 本体
+  ComPtr<IDirectInputDevice8> keyboard_; // キーボードデバイス
+  BYTE now_[256] = {};                   // 今フレームのキー状態
+  BYTE prev_[256] = {};                  // 前フレームのキー状態
 };
