@@ -117,11 +117,14 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <Optimization>Disabled</Optimization>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d12.lib;dxgi.lib;dxguid.lib;d3dcompiler.lib;dxcompiler.lib;dinput8.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <LinkTimeCodeGeneration />
     </Link>
     <PostBuildEvent>
       <Command>copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxcompiler.dll" "$(TargetDir)"
