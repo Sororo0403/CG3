@@ -256,10 +256,20 @@ void DirectXCommon::InitializeSwapChain() {
   desc.BufferCount = kBufferCount;
   desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
+  Microsoft::WRL::ComPtr<IDXGISwapChain1> sc1;
+
   HRESULT hr = dxgiFactory_->CreateSwapChainForHwnd(
       commandQueue_.Get(), winApp_->GetHwnd(), &desc, nullptr, nullptr,
-      reinterpret_cast<IDXGISwapChain1 **>(swapChain_.GetAddressOf()));
+      sc1.GetAddressOf());
   assert(SUCCEEDED(hr));
+
+  // IDXGISwapChain4 へ昇格
+  hr = sc1.As(&swapChain_);
+  assert(SUCCEEDED(hr));
+
+  // Alt+Enter を無効化
+  dxgiFactory_->MakeWindowAssociation(winApp_->GetHwnd(),
+                                      DXGI_MWA_NO_ALT_ENTER);
 }
 
 void DirectXCommon::InitializeDescriptorHeaps() {
