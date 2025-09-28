@@ -1,8 +1,5 @@
 #include "DirectXCommon.h"
 #include "WinApp.h"
-#include "externals/imgui/imgui.h"
-#include "externals/imgui/imgui_impl_dx12.h"
-#include "externals/imgui/imgui_impl_win32.h"
 
 // Windowsアプリのエントリポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
