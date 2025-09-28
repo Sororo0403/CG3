@@ -5,7 +5,7 @@
 *.rsuser
 
 ## ビルド成果物は全部ここにまとまる
-/generated/
+/Generated/
 
 ## その他キャッシュや中間ファイル
 *.pdb
