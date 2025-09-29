@@ -98,6 +98,7 @@ void DirectXCommon::Initialize(WinApp *winApp) {
 #endif
 
   // 初期化シーケンス
+  InitializeFixFPS();
   InitializeDevice();
   InitializeCommand();
   InitializeSwapChain();
@@ -208,7 +209,8 @@ void DirectXCommon::PostDraw() {
   // Present（必要に応じて 0 / tearing に切り替え可）
   swapChain_->Present(1, 0);
 
-  // ここでは待たない（次回使用時に WaitForFrame で同期）
+  // 60FPS 固定のためのスリープ調整
+  UpdateFixFPS();
 }
 
 void DirectXCommon::Resize(uint32_t width, uint32_t height) {
@@ -250,6 +252,10 @@ void DirectXCommon::Resize(uint32_t width, uint32_t height) {
 // =====================================
 // Private 初期化群
 // =====================================
+
+void DirectXCommon::InitializeFixFPS() {
+  fpsReference_ = std::chrono::steady_clock::now();
+}
 
 void DirectXCommon::InitializeDevice() {
   // DXGI ファクトリ作成
@@ -468,4 +474,25 @@ void DirectXCommon::InitializeImGui() {
                       DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, srvHeap_.Get(),
                       srvHeap_->GetCPUDescriptorHandleForHeapStart(),
                       srvHeap_->GetGPUDescriptorHandleForHeapStart());
+}
+
+// ===============================
+// FPS固定
+// ===============================
+void DirectXCommon::UpdateFixFPS() {
+  using clock = std::chrono::steady_clock;
+  using micro = std::chrono::microseconds;
+
+  const micro kMinTime(kTargetFrameMicroSec);
+
+  const clock::time_point now = clock::now();
+  const micro elapsed = std::chrono::duration_cast<micro>(now - fpsReference_);
+
+  if (elapsed < kMinTime) {
+    while (clock::now() - fpsReference_ < kMinTime) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+
+  fpsReference_ += kMinTime;
 }

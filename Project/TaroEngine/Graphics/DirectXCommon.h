@@ -1,9 +1,11 @@
 #pragma once
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <d3d12.h>
 #include <dxcapi.h>
 #include <dxgi1_6.h>
+#include <thread>
 #include <windows.h>
 #include <wrl.h>
 
@@ -23,6 +25,11 @@ public:
   /// バックバッファ数（フレームリソース数）
   /// </summary>
   static constexpr uint32_t kBufferCount = 3;
+
+  /// <summary>
+  /// 目標フレーム時間（60FPSなら約16.666ms）
+  /// </summary>
+  static constexpr int64_t kTargetFrameMicroSec = 1000000 / 60;
 
 public:
   // ===============================
@@ -51,7 +58,8 @@ public:
 
   /// <summary>
   /// フレーム終了処理。<br/>
-  /// ImGui 描画、Present、フェンス Signal を行う。
+  /// ImGui 描画、Present、フェンス Signal を行う。<br/>
+  /// さらに 60FPS 固定のためのスリープ調整を実施する。
   /// </summary>
   void PostDraw();
 
@@ -104,6 +112,8 @@ private:
   // 初期化処理
   // ===============================
 
+  /// <summary> FPS 固定のための初期化。現在時刻を基準として記録する。</summary>
+  void InitializeFixFPS();
   /// <summary>デバイスを初期化する。</summary>
   void InitializeDevice();
   /// <summary>コマンド関連を初期化する。</summary>
@@ -130,6 +140,16 @@ private:
   void InitializeDXCCompiler();
   /// <summary>ImGui を初期化する。</summary>
   void InitializeImGui();
+
+  // ===============================
+  // FPS固定
+  // ===============================
+
+  /// <summary>
+  /// FPS 固定のための更新。<br/>
+  /// 1/60 秒に満たない場合は 1ms スリープを繰り返して調整する。
+  /// </summary>
+  void UpdateFixFPS();
 
   // ===============================
   // ユーティリティ
@@ -216,4 +236,7 @@ private:
   Microsoft::WRL::ComPtr<IDxcUtils> dxcUtils_;
   Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler_;
   Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_;
+
+  // FPS固定用
+  std::chrono::steady_clock::time_point fpsReference_{};
 };

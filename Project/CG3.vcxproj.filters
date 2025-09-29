@@ -1,10 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="ヘッダー ファイル">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
-    </Filter>
     <Filter Include="Source">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -21,17 +17,21 @@
     <Filter Include="Source\Core">
       <UniqueIdentifier>{24535162-fc17-4c76-8802-f2e6bd579cdc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\Graphics">
-      <UniqueIdentifier>{54979f6f-596a-4740-aae4-a10b201ee1d4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\ImGui">
-      <UniqueIdentifier>{9a28578a-7d68-4055-8a9a-334b66bee167}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Core">
-      <UniqueIdentifier>{dcccfdb5-7c2f-4fc2-9625-91fe40c669ff}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shader">
       <UniqueIdentifier>{256aee4d-a107-4aa5-95ed-bcf43d3eed45}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Include\Graphics">
+      <UniqueIdentifier>{54979f6f-596a-4740-aae4-a10b201ee1d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\ImGui">
+      <UniqueIdentifier>{9a28578a-7d68-4055-8a9a-334b66bee167}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Core">
+      <UniqueIdentifier>{dcccfdb5-7c2f-4fc2-9625-91fe40c669ff}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -74,40 +74,40 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_impl_dx12.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_impl_win32.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_internal.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_rectpack.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_textedit.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_truetype.h">
-      <Filter>ヘッダー ファイル\ImGui</Filter>
+      <Filter>Include\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\DirectXCommon.h">
-      <Filter>ヘッダー ファイル\Graphics</Filter>
+      <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\D3DResourceLeakChecker.h">
-      <Filter>ヘッダー ファイル\Graphics</Filter>
+      <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\Input.h">
-      <Filter>ヘッダー ファイル\Core</Filter>
+      <Filter>Include\Core</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\WinApp.h">
-      <Filter>ヘッダー ファイル\Core</Filter>
+      <Filter>Include\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

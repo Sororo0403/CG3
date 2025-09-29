@@ -29,6 +29,9 @@ public:
   /// </summary>
   void Initialize();
 
+
+  void Finalize();
+
   /// <summary>
   /// メッセージポンプを1回分実行する。<br/>
   /// WM_QUIT が来た場合は true を返す。
