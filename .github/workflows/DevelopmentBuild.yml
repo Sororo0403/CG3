@@ -1,0 +1,49 @@
+name: DevelopmentBuild
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+env:
+  SOLUTION_FILE_PATH: Project/CG3.sln
+  CONFIGURATION: Development
+  PLATFORM: x64
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: x64
+
+      - name: Restore NuGet packages
+        run: nuget restore "${{ env.SOLUTION_FILE_PATH }}"
+
+      - name: Build
+        run: >
+          msbuild "${{ env.SOLUTION_FILE_PATH }}"
+          /m
+          /p:Configuration=${{ env.CONFIGURATION }}
+          /p:Platform=${{ env.PLATFORM }}
+          /p:GenerateFullPaths=true
+          /verbosity:minimal
+          /bl:msbuild.binlog
+
+      - name: Upload build artifacts (binlog)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: development-msbuild-logs
+          path: |
+            msbuild.binlog
+            **/*.log
+          if-no-files-found: ignore
