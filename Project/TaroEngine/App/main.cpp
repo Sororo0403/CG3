@@ -46,6 +46,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // 終了処理
   // ===============================
   dx->Finalize();
+  winApp->Finalize();
   delete dx;
   delete winApp;
   return 0;

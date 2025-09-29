@@ -1,7 +1,11 @@
 #include "WinApp.h"
 #include <cassert>
+#include <mmsystem.h>
 
 void WinApp::Initialize() {
+  // 高精度タイマー開始（1ms単位にする）
+  timeBeginPeriod(1);
+
   // ===============================
   // ウィンドウクラス登録
   // ===============================
@@ -29,6 +33,22 @@ void WinApp::Initialize() {
 
   // 表示
   ShowWindow(hwnd_, SW_SHOW);
+}
+
+void WinApp::Finalize() {
+  // ウィンドウを閉じる
+  if (hwnd_) {
+    DestroyWindow(hwnd_);
+    hwnd_ = nullptr;
+  }
+
+  // クラス登録を解除
+  if (wc_.lpszClassName && wc_.hInstance) {
+    UnregisterClass(wc_.lpszClassName, wc_.hInstance);
+  }
+
+  // 1ms タイマー精度を元に戻す
+  timeEndPeriod(1);
 }
 
 bool WinApp::ProcessMessage() {
