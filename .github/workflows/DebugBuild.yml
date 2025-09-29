@@ -6,7 +6,7 @@ on:
   workflow_dispatch:         
 
 env:
-  SOLUTION_FILE_PATH: CG3.sln  
+  SOLUTION_FILE_PATH: Project/CG3.sln
   CONFIGURATION: Debug
   PLATFORM: x64
 
