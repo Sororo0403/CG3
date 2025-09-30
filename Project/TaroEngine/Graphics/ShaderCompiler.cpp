@@ -115,7 +115,6 @@ std::vector<LPCWSTR> ShaderCompiler::BuildArguments(
     if (enableDebug_) {
         args.push_back(L"-Zi");
         args.push_back(L"-Qembed_debug");
-        // 必要に応じて：args.push_back(L"-Qsource-embed"); // ソース埋め込み
     }
 
     switch (optLevel_) {
@@ -128,12 +127,6 @@ std::vector<LPCWSTR> ShaderCompiler::BuildArguments(
 
     // 行優先レイアウト（packoffset の直感性向上）
     args.push_back(L"-Zpr");
-
-    // （任意）言語バージョンを固定したい場合
-    // args.push_back(L"-HV"); args.push_back(L"2021");
-
-    // （任意）警告をエラー化したい場合
-    // args.push_back(L"-WX");
 
     // Defines
     static thread_local std::vector<std::wstring> defineStorage;
@@ -158,10 +151,6 @@ std::vector<LPCWSTR> ShaderCompiler::BuildArguments(
         extraStorage.push_back(a);
         args.push_back(extraStorage.back().c_str());
     }
-
-    // （任意）リリースでサイズを詰めたい場合
-    // args.push_back(L"-Qstrip_debug");
-    // args.push_back(L"-Qstrip_reflect");
 
     return args;
 }

@@ -142,7 +142,7 @@
     <ClInclude Include="TaroEngine\Graphics\Material.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\TransformationMatrix.h">
+    <ClInclude Include="TaroEngine\Graphics\TransformMatrix.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\VertexData.h">
@@ -152,20 +152,18 @@
       <Filter>Include\Math</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\ShaderCompiler.h">
-      <Filter>Include</Filter>
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\BufferUtil.h">
+      <Filter>Include\Graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\Shaders\Object3d.PS.hlsl">
+    <FxCompile Include="Resources\Shaders\SpriteVS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Resources\Shaders\Object3d.VS.hlsl">
+    <FxCompile Include="Resources\Shaders\SpritePS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Shaders\Object3d.hlsli">
-      <Filter>Shader</Filter>
-    </None>
   </ItemGroup>
 </Project>

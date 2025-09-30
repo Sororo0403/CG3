@@ -165,6 +165,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Graphics\SpriteCommon.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Graphics\BufferUtil.h" />
     <ClInclude Include="TaroEngine\Graphics\ShaderCompiler.h" />
     <ClInclude Include="TaroEngine\Graphics\D3DResourceLeakChecker.h" />
     <ClInclude Include="TaroEngine\Graphics\DirectXCommon.h" />
@@ -181,7 +182,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Graphics\Material.h" />
     <ClInclude Include="TaroEngine\Graphics\Sprite.h" />
     <ClInclude Include="TaroEngine\Graphics\SpriteCommon.h" />
-    <ClInclude Include="TaroEngine\Graphics\TransformationMatrix.h" />
+    <ClInclude Include="TaroEngine\Graphics\TransformMatrix.h" />
     <ClInclude Include="TaroEngine\Graphics\VertexData.h" />
     <ClInclude Include="TaroEngine\Math\Matrix4x4.h" />
     <ClInclude Include="TaroEngine\Math\MatrixUtil.h" />
@@ -195,22 +196,21 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Shaders\Object3d.hlsli">
+    <FxCompile Include="Resources\Shaders\SpritePS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Resources\Shaders\Object3d.PS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Resources\Shaders\Object3d.VS.hlsl">
+    <FxCompile Include="Resources\Shaders\SpriteVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

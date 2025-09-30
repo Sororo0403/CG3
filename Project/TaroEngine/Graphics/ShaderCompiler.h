@@ -24,11 +24,11 @@ public:
 	/// コンパイル結果。成功/失敗に関係なくエラーログはここへ。
 	/// </summary>
 	struct Result {
-		Microsoft::WRL::ComPtr<IDxcBlob>       object;     ///< DXC_OUT_OBJECT  (DXIL/CSO 等)
-		Microsoft::WRL::ComPtr<IDxcBlob>       pdb;        ///< DXC_OUT_PDB     (存在すれば)
+		Microsoft::WRL::ComPtr<IDxcBlob> object;     ///< DXC_OUT_OBJECT  (DXIL/CSO 等)
+		Microsoft::WRL::ComPtr<IDxcBlob> pdb;        ///< DXC_OUT_PDB     (存在すれば)
 		std::wstring pdbName;    ///< DXC_OUT_PDB のファイル名（埋め込み名）
-		Microsoft::WRL::ComPtr<IDxcBlobUtf8>   errors;     ///< DXC_OUT_ERRORS  (UTF-8)
-		bool                   succeeded = false; ///< Compile 成否（GetStatus + object 取得で判定）
+		Microsoft::WRL::ComPtr<IDxcBlobUtf8> errors;     ///< DXC_OUT_ERRORS  (UTF-8)
+		bool succeeded = false; ///< Compile 成否（GetStatus + object 取得で判定）
 	};
 
 public:
@@ -60,7 +60,8 @@ public:
 	/// <param name="defines">事前定義マクロ</param>
 	/// <param name="extraArgs">追加引数（-I 等）</param>
 	/// <returns>コンパイル結果</returns>
-	Result CompileFromFile(const std::wstring &filePath,
+	Result CompileFromFile(
+		const std::wstring &filePath,
 		const std::wstring &entry,
 		const std::wstring &profile,
 		const std::vector<Define> &defines = {},
@@ -76,7 +77,8 @@ public:
 	/// <param name="defines">事前定義マクロ</param>
 	/// <param name="extraArgs">追加引数（-I 等）</param>
 	/// <returns>コンパイル結果</returns>
-	Result CompileFromSource(const std::wstring &virtualFileName,
+	Result CompileFromSource(
+		const std::wstring &virtualFileName,
 		const std::string &sourceUtf8,
 		const std::wstring &entry,
 		const std::wstring &profile,
@@ -88,7 +90,8 @@ private:
 	/// DXC に渡す引数配列（LPCWSTR の配列）を組み立てる。
 	/// ※内部で thread_local な wstring バッファに文字を保持し、.c_str() の寿命を担保する。
 	/// </summary>
-	std::vector<LPCWSTR> BuildArguments(const std::wstring &inputName,
+	std::vector<LPCWSTR> BuildArguments(
+		const std::wstring &inputName,
 		const std::wstring &entry,
 		const std::wstring &profile,
 		const std::vector<Define> &defines,
