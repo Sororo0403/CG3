@@ -71,6 +71,12 @@
     <ClCompile Include="TaroEngine\Core\WinApp.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\SpriteCommon.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Sprite.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -108,6 +114,12 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\WinApp.h">
       <Filter>Include\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Sprite.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\SpriteCommon.h">
+      <Filter>Include\Graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

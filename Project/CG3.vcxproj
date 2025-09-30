@@ -160,6 +160,8 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Core\Input.cpp" />
     <ClCompile Include="TaroEngine\App\main.cpp" />
     <ClCompile Include="TaroEngine\Core\WinApp.cpp" />
+    <ClCompile Include="TaroEngine\Graphics\Sprite.cpp" />
+    <ClCompile Include="TaroEngine\Graphics\SpriteCommon.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TaroEngine\Graphics\D3DResourceLeakChecker.h" />
@@ -174,6 +176,8 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="TaroEngine\Core\Input.h" />
     <ClInclude Include="TaroEngine\Core\WinApp.h" />
+    <ClInclude Include="TaroEngine\Graphics\Sprite.h" />
+    <ClInclude Include="TaroEngine\Graphics\SpriteCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

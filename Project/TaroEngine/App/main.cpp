@@ -35,7 +35,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     // 描画開始
     float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
     dx->PreDraw(clearColor);
-
     // TODO: ゲームの描画処理をここに追加する
 
     // 描画終了 & Present
