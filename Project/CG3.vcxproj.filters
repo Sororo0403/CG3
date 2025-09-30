@@ -33,6 +33,9 @@
     <Filter Include="Include\Core">
       <UniqueIdentifier>{dcccfdb5-7c2f-4fc2-9625-91fe40c669ff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Include\Math">
+      <UniqueIdentifier>{f9b842af-17ea-4c57-84a2-1e6e6397ab0f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -75,6 +78,9 @@
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="TaroEngine\Graphics\Sprite.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp">
       <Filter>Source\Graphics</Filter>
     </ClCompile>
   </ItemGroup>
@@ -120,6 +126,33 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\SpriteCommon.h">
       <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\Matrix4x4.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\Vector2.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\Vector3.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\Vector4.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Material.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\TransformationMatrix.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\VertexData.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\MatrixUtil.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\ShaderCompiler.h">
+      <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
