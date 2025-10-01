@@ -92,6 +92,9 @@
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp">
       <Filter>Source\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Scene\SceneManager.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -173,6 +176,9 @@
       <Filter>Include\Scene</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Scene\IScene.h">
+      <Filter>Include\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\SceneManager.h">
       <Filter>Include\Scene</Filter>
     </ClInclude>
   </ItemGroup>

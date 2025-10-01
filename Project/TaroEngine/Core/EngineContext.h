@@ -1,4 +1,5 @@
 #pragma once
+
 #include <d3d12.h>
 class DirectXCommon;
 class SpriteCommon;

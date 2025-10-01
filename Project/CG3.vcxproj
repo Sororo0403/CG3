@@ -148,6 +148,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="TaroEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp" />
     <ClCompile Include="TaroEngine\Graphics\D3DResourceLeakChecker.cpp" />
     <ClCompile Include="TaroEngine\Graphics\DirectXCommon.cpp" />
@@ -166,6 +167,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Scene\SceneManager.h" />
     <ClInclude Include="TaroEngine\Core\EngineContext.h" />
     <ClInclude Include="TaroEngine\Graphics\BufferUtil.h" />
     <ClInclude Include="TaroEngine\Graphics\ShaderCompiler.h" />

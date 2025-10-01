@@ -4,25 +4,41 @@
 #include "ShaderCompiler.h"
 #include "EngineContext.h"
 #include "GameScene.h"
+#include "SceneManager.h"
 
+#include <memory>
+#include <chrono>
+
+/// <summary>
+/// アプリのエントリポイント。
+/// - WinApp / DirectXCommon 初期化
+/// - Sprite 共通パイプラインの生成
+/// - EngineContext 構築
+/// - SceneManager によるシーン駆動ループ
+/// </summary>
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-    // --- 基盤初期化 ---
-    auto *winApp = new WinApp();
+    // ===============================
+    // 基盤初期化（RAII）
+    // ===============================
+    std::unique_ptr<WinApp> winApp = std::make_unique<WinApp>();
     winApp->Initialize();
 
-    auto *dx = new DirectXCommon();
-    dx->Initialize(winApp);
+    std::unique_ptr<DirectXCommon> dx = std::make_unique<DirectXCommon>();
+    dx->Initialize(winApp.get());
 
-    winApp->SetOnResize([dx](uint32_t w, uint32_t h, UINT state) {
+    // リサイズ時の再生成
+    winApp->SetOnResize([rawDx = dx.get()](uint32_t w, uint32_t h, UINT state) {
         if (state == SIZE_MINIMIZED) return;
-        dx->Resize(w, h);
+        rawDx->Resize(w, h);
         });
 
-    // --- Sprite 共通パイプライン（アプリ全体で1回だけ）---
+    // ===============================
+    // Sprite 共通パイプライン（アプリ全体で1回だけ）
+    // ===============================
     ShaderCompiler compiler;
     compiler.Initialize();
 
-    auto *spriteCommon = new SpriteCommon();
+    std::unique_ptr<SpriteCommon> spriteCommon = std::make_unique<SpriteCommon>();
     spriteCommon->Initialize(dx->GetDevice());
 
     SpriteCommon::PipelineFormats formats{};
@@ -38,41 +54,66 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
         formats,
         L"main", L"main");
 
-    // --- DI: EngineContext を用意 ---
+    // ===============================
+    // DI: EngineContext を用意
+    // ===============================
     EngineContext engine{};
-    engine.dx = dx;
+    engine.dx = dx.get();
     engine.device = dx->GetDevice();
-    engine.spriteCommon = spriteCommon;
+    engine.spriteCommon = spriteCommon.get();
 
-    // --- 単独シーンを作って開始 ---
-    GameScene scene;
-    scene.Initialize(engine);
+    // ===============================
+    // シーンマネージャ初期化 & 最初のシーン
+    // ===============================
+    SceneManager sceneMgr;
+    sceneMgr.Initialize(engine);
+    sceneMgr.ChangeSceneT<GameScene>();  // 最初のシーンを予約
 
-    // --- メインループ ---
-    MSG msg{};
-    while (msg.message != WM_QUIT) {
-        if (winApp->ProcessMessage()) break;
+    // ===============================
+    // メインループ
+    // ===============================
+    using clock = std::chrono::high_resolution_clock;
+    auto prev = clock::now();
 
-        scene.Update(1.0f / 60.0f); // 必要なら dt 計測に差し替え
+    const float kDtClampMin = 1.0f / 240.0f; // 低すぎるdtの下限
+    const float kDtClampMax = 1.0f / 15.0f;  // スパイク抑制の上限
 
-        float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
+    bool running = true;
+    while (running) {
+        // Windows メッセージ処理（true が返ったら終了）
+        if (winApp->ProcessMessage()) {
+            break;
+        }
+
+        // --- dt 計測（秒） ---
+        auto now = clock::now();
+        float dt = std::chrono::duration<float>(now - prev).count();
+        prev = now;
+        if (dt < kDtClampMin) dt = kDtClampMin;
+        if (dt > kDtClampMax) dt = kDtClampMax;
+
+        // --- 更新 ---
+        sceneMgr.Update(dt);
+
+        // --- 描画 ---
+        const float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
         dx->PreDraw(clearColor);
 
         RenderContext rc{};
         rc.cmdList = dx->GetCommandList();
 
-        scene.Draw(engine, rc);
+        sceneMgr.Draw(rc);
 
         dx->PostDraw();
     }
 
-    // --- 終了 ---
-    scene.Finalize();
-    dx->Finalize();
-    winApp->Finalize();
+    // ===============================
+    // 終了処理
+    // ===============================
+    sceneMgr.Finalize();       // 現在シーンのFinalize
+    dx->Finalize();            // D3D12 後片付け
+    winApp->Finalize();        // ウィンドウ破棄
 
-    delete spriteCommon;
-    delete dx;
-    delete winApp;
+    // unique_ptr なので delete は不要
     return 0;
 }

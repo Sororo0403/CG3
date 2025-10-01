@@ -1,34 +1,32 @@
 #pragma once
-#include "EngineContext.h"
+#include "IScene.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
 
 /// <summary>
-/// 実ゲーム用の単独シーン。シーンマネージャなしで直結運用。
+/// 実ゲーム用の単独シーン。
 /// </summary>
-class GameScene {
+class GameScene : public IScene {
 public:
-    /// <summary>共有リソースを受け取って初期化（DI）</summary>
-    void Initialize(const EngineContext &engine) {
-        // Sprite はデバイスがあれば初期化できる
-        sprite_.Initialize(engine.device);
-    }
+    /// <summary>
+    /// 共有リソースを受け取って初期化（DI）
+    /// </summary>
+    void Initialize(const EngineContext &engine) override;
 
-    /// <summary>ゲーム更新</summary>
-    void Update(float /*dt*/) {
-        sprite_.Update();
-    }
+    /// <summary>
+    /// ゲーム更新
+    /// </summary>
+    void Update(float dt) override;
 
-    /// <summary>描画：共通PSO適用→個別スプライト描画</summary>
-    void Draw(const EngineContext &engine, const RenderContext &rc) {
-        engine.spriteCommon->ApplyCommonDrawSettings(
-            rc.cmdList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        sprite_.Draw(rc.cmdList);
-    }
+    /// <summary>
+    /// 描画：共通PSO適用→個別スプライト描画<
+    /// /summary>
+    void Draw(const EngineContext &engine, const RenderContext &rc) override;
 
-    void Finalize() {
-        // 特になし
-	}
+    /// <summary>
+    /// 終了処理
+    /// </summary>
+    void Finalize() override;
 
 private:
     Sprite sprite_;
