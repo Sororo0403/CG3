@@ -9,10 +9,14 @@
 /// </summary>
 class Camera {
 public:
-    /// <summary>コンストラクタ。</summary>
+    /// <summary>
+    /// コンストラクタ。
+    /// </summary>
     Camera() = default;
 
-    /// <summary>デストラクタ。</summary>
+    /// <summary>
+    /// デストラクタ。
+    /// </summary>
     ~Camera() = default;
 
     /// <summary>
@@ -31,10 +35,14 @@ public:
         float nearZ = 0.1f,
         float farZ = 1000.0f);
 
-    /// <summary>毎フレーム更新。dirty のとき行列を再計算する。</summary>
+    /// <summary>
+    /// 毎フレーム更新。dirty のとき行列を再計算する。
+    /// </summary>
     void Update();
 
-    /// <summary>ビューポートサイズの変更（リサイズ）を反映。</summary>
+    /// <summary>
+    /// ビューポートサイズの変更（リサイズ）を反映。
+    /// </summary>
     void SetViewportSize(float w, float h);
 
     /// <summary>レンズ（FOV/アスペクト/近遠）を設定。</summary>
@@ -111,9 +119,13 @@ private:
 
     bool dirty_ = true;
 
-    /// <summary>内部計算：View/Proj/ViewProj を再生成。</summary>
+    /// <summary>
+    /// 内部計算：View/Proj/ViewProj を再生成。
+    /// </summary>
     void Recalculate_();
 
-    /// <summary>Yaw/Pitch から forward を作って target を更新。</summary>
+    /// <summary>
+    /// Yaw/Pitch から forward を作って target を更新。
+    /// </summary>
     void ApplyYawPitch_(float yaw, float pitch);
 };

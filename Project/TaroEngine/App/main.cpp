@@ -58,7 +58,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     // DI: EngineContext を用意
     // ===============================
     EngineContext engine{};
-    engine.dx = dx.get();
+    engine.directXCommon = dx.get();
     engine.device = dx->GetDevice();
     engine.spriteCommon = spriteCommon.get();
 
@@ -100,7 +100,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
         dx->PreDraw(clearColor);
 
         RenderContext rc{};
-        rc.cmdList = dx->GetCommandList();
+        rc.commandList = dx->GetCommandList();
 
         sceneMgr.Draw(rc);
 

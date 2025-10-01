@@ -4,14 +4,18 @@
 class DirectXCommon;
 class SpriteCommon;
 
-// エンジン全体で共有する長寿命オブジェクト束
+/// <summary>
+/// エンジン全体で共有する長寿命オブジェクトを束ねる。
+/// </summary>
 struct EngineContext {
-    DirectXCommon *dx = nullptr;
-    ID3D12Device *device = nullptr;
-    SpriteCommon *spriteCommon = nullptr;
+    DirectXCommon *directXCommon = nullptr; // DirectX12基盤管理
+    ID3D12Device *device = nullptr;         // D3D12デバイス
+    SpriteCommon *spriteCommon = nullptr;   // スプライト共通描画設定
 };
 
-// フレームごとに変わる描画用ハンドル
+/// <summary>
+/// フレームごとの描画用コンテキスト。
+/// </summary>
 struct RenderContext {
-    ID3D12GraphicsCommandList *cmdList = nullptr;
+    ID3D12GraphicsCommandList *commandList = nullptr; // コマンドリスト
 };

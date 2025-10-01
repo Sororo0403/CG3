@@ -1,5 +1,7 @@
+#define USE_MATH_DEFINES_
+#include <cmath>
 #include "GameScene.h"
-#include "imgui.h"   // ★ IMGUI
+#include "imgui.h"
 
 void GameScene::Initialize(const EngineContext &engine) {
     // --- カメラ初期化 ---
@@ -13,7 +15,7 @@ void GameScene::Initialize(const EngineContext &engine) {
 }
 
 void GameScene::OnResize(uint32_t w, uint32_t h) {
-    // ビューポート変更（DirectXCommon の Resize 後などに呼んでね）
+    // ビューポート変更
     camera_.SetViewportSize(static_cast<float>(w), static_cast<float>(h));
 }
 
@@ -21,7 +23,7 @@ void GameScene::Update(float /*dt*/) {
      // カメラ行列更新
     camera_.Update();
 
-    // スプライト更新（カメラの ViewProjection を使用する版）
+    // スプライト更新
     sprite_.Update(camera_);
 }
 
@@ -61,8 +63,7 @@ void GameScene::Draw(const EngineContext &engine, const RenderContext &rc) {
         orbitChanged |= ImGui::DragFloat("Radius", &orbitRadius, 0.05f, 0.01f, 1e6f);
 
         if (ImGui::Button("Apply Orbit")) {
-            // カメラ位置を target 周りに回す（Camera::OrbitTarget は増分式なので小刻みに呼ぶ想定）
-            // ここでは度→ラジアン変換して一回適用
+            // カメラ位置を target 周りに回す
             float yawRad = orbitYawDeg * 3.14159265f / 180.0f;
             float pitchRad = orbitPitchDeg * 3.14159265f / 180.0f;
 
@@ -89,10 +90,10 @@ void GameScene::Draw(const EngineContext &engine, const RenderContext &rc) {
 
     // 共通 PSO / ルートシグネチャ適用
     engine.spriteCommon->ApplyCommonDrawSettings(
-        rc.cmdList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        rc.commandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     // スプライト描画
-    sprite_.Draw(rc.cmdList);
+    sprite_.Draw(rc.commandList);
 }
 
 void GameScene::Finalize() {

@@ -48,7 +48,7 @@ public:
 
 private:
     Sprite sprite_; // このシーンで使う単独スプライト
-    Camera camera_; // ★ 3D カメラ
+    Camera camera_; // 3D カメラ
 
     // IMGUI 用一時値（ドラッグ操作をスムーズにするため保持）
     Vector3 camPos_{0.0f, 3.0f, -8.0f};
