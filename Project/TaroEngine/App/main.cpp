@@ -2,91 +2,76 @@
 #include "WinApp.h"
 #include "SpriteCommon.h"
 #include "ShaderCompiler.h"
-#include "Sprite.h"
+#include "EngineContext.h"
+#include "GameScene.h"
 
-// Windowsアプリのエントリポイント
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-    // ===============================
-    // アプリ基盤の初期化
-    // ===============================
+    // --- 基盤初期化 ---
     auto *winApp = new WinApp();
-    winApp->Initialize(); // ウィンドウ生成 & 表示
+    winApp->Initialize();
 
-    // ===============================
-    // DirectX12 の初期化
-    // ===============================
     auto *dx = new DirectXCommon();
     dx->Initialize(winApp);
 
-    // ===============================
-    // ウィンドウサイズ変更時の処理
-    // ===============================
     winApp->SetOnResize([dx](uint32_t w, uint32_t h, UINT state) {
-        if (state == SIZE_MINIMIZED) // 最小化時は無視
-            return;
-        dx->Resize(w, h); // バックバッファ等の再生成
+        if (state == SIZE_MINIMIZED) return;
+        dx->Resize(w, h);
         });
 
-    // ===============================
-    // Sprite 共通パイプラインの初期化
-    // ===============================
+    // --- Sprite 共通パイプライン（アプリ全体で1回だけ）---
     ShaderCompiler compiler;
     compiler.Initialize();
 
-    SpriteCommon spriteCommon;
-    spriteCommon.Initialize(dx->GetDevice());
+    auto *spriteCommon = new SpriteCommon();
+    spriteCommon->Initialize(dx->GetDevice());
 
     SpriteCommon::PipelineFormats formats{};
     formats.rtvFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     formats.dsvFormat = DXGI_FORMAT_UNKNOWN;
     formats.numRenderTargets = 1;
 
-    spriteCommon.CreateGraphicsPipeline(
+    spriteCommon->CreateGraphicsPipeline(
         compiler,
         dx->GetDevice(),
         L"Resources/Shaders/SpriteVS.hlsl",
         L"Resources/Shaders/SpritePS.hlsl",
         formats,
-        L"main",
-        L"main");
+        L"main", L"main");
 
-    // ===============================
-    // Sprite オブジェクト生成
-    // ===============================
-    Sprite sprite;
-    sprite.Initialize(dx->GetDevice());
+    // --- DI: EngineContext を用意 ---
+    EngineContext engine{};
+    engine.dx = dx;
+    engine.device = dx->GetDevice();
+    engine.spriteCommon = spriteCommon;
 
-    // ===============================
-    // メインループ
-    // ===============================
+    // --- 単独シーンを作って開始 ---
+    GameScene scene;
+    scene.Initialize(engine);
+
+    // --- メインループ ---
     MSG msg{};
     while (msg.message != WM_QUIT) {
-        if (winApp->ProcessMessage()) // Windowsメッセージ処理
-            break;
+        if (winApp->ProcessMessage()) break;
 
-        // 更新
-        sprite.Update();
+        scene.Update(1.0f / 60.0f); // 必要なら dt 計測に差し替え
 
-        // 描画開始
         float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
         dx->PreDraw(clearColor);
 
-        // Sprite 描画設定
-        auto *cmdList = dx->GetCommandList();
-        spriteCommon.ApplyCommonDrawSettings(cmdList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        RenderContext rc{};
+        rc.cmdList = dx->GetCommandList();
 
-        // Sprite 描画
-        sprite.Draw(cmdList);
+        scene.Draw(engine, rc);
 
-        // 描画終了 & Present
         dx->PostDraw();
     }
 
-    // ===============================
-    // 終了処理
-    // ===============================
+    // --- 終了 ---
+    scene.Finalize();
     dx->Finalize();
     winApp->Finalize();
+
+    delete spriteCommon;
     delete dx;
     delete winApp;
     return 0;
