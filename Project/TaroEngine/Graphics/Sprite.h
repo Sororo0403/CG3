@@ -4,6 +4,9 @@
 #include "Material.h"
 #include "TransformMatrix.h"
 #include "VertexData.h"
+#include "Vector2.h"
+
+class Camera; // ★ 前方宣言
 
 /// <summary>
 /// 2D スプライトを表すクラス。<br/>
@@ -12,55 +15,59 @@
 /// </summary>
 class Sprite {
 public:
-    /// <summary>
-    /// コンストラクタ。
-    /// </summary>
+    /// <summary>コンストラクタ。</summary>
     Sprite() = default;
-
-    /// <summary>
-    /// デストラクタ。
-    /// </summary>
+    /// <summary>デストラクタ。</summary>
     ~Sprite() = default;
 
     /// <summary>
-    /// 初期化処理。<br/>
-    /// 頂点・インデックス・マテリアル・変換行列バッファを生成し、CPUからアクセスできるようにマップする。
+    /// 初期化処理。頂点/インデックス/マテリアル/変換行列バッファを生成してマップする。
     /// </summary>
     /// <param name="device">D3D12 デバイス。</param>
     void Initialize(ID3D12Device *device);
 
     /// <summary>
-    /// 毎フレームの更新処理。<br/>
-    /// 位置・回転・サイズなどの変換パラメータを行列に反映する。
+    /// 更新処理（互換用）。固定の正射影(1280x720)で WVP を組む。
     /// </summary>
     void Update();
 
     /// <summary>
-    /// 描画処理。<br/>
-    /// コマンドリストに頂点/インデックスバッファをセットし、ドローコールを発行する。
+    /// 更新処理（カメラ使用）。WVP = World * (View*Proj)。
     /// </summary>
+    /// <param name="camera">3D カメラ。</param>
+    void Update(const Camera &camera);
+
+    /// <summary>描画（バッファとCBをセットしてドロー）。</summary>
     /// <param name="cmdList">描画先のコマンドリスト。</param>
     void Draw(ID3D12GraphicsCommandList *cmdList);
 
+    // --- パラメータ操作 ---
+    void SetPosition(const Vector2 &p) { position_ = p; }
+    void SetSize(const Vector2 &s) { size_ = s; }
+    void SetRotation(float r) { rotation_ = r; }
+
 private:
     // GPU リソース
-    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;    // 頂点バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;     // インデックスバッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;  // マテリアル用定数バッファ
-    Microsoft::WRL::ComPtr<ID3D12Resource> transformResource_; // 変換行列用定数バッファ
+    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> transformResource_;
 
-    // バッファビュー
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{}; // 頂点バッファビュー
-    D3D12_INDEX_BUFFER_VIEW  indexBufferView_{};  // インデックスバッファビュー
+    // ビュー
+    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+    D3D12_INDEX_BUFFER_VIEW  indexBufferView_{};
 
-    // CPU からアクセスするためのポインタ
-    VertexData *vertexData_ = nullptr;          // 頂点データ
-    uint32_t *indexData_ = nullptr;             // インデックスデータ
-    Material *materialData_ = nullptr;          // マテリアルデータ
-    TransformMatrix *transformMatrixData_ = nullptr; // 変換行列データ
+    // マップ先
+    VertexData *vertexData_ = nullptr;
+    uint32_t *indexData_ = nullptr;
+    Material *materialData_ = nullptr;
+    TransformMatrix *transformMatrixData_ = nullptr;
 
-    // スプライトの変換パラメータ
-    Vector2 position_ = {0.0f, 0.0f}; // 座標
-    Vector2 size_ = {100.0f, 100.0f}; // サイズ（幅・高さ）
-    float rotation_ = 0.0f;           // 回転角度（ラジアン）
+    // 変換パラメータ
+    Vector2 position_{0.0f, 0.0f};
+    Vector2 size_{100.0f, 100.0f};
+    float   rotation_ = 0.0f;
+
+    // 内部共通：頂点更新＋World 計算を行い、引数 vp（= View*Proj）で WVP を組む
+    void UpdateImpl_(const struct Matrix4x4 &vp);
 };

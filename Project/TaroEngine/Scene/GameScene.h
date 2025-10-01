@@ -2,6 +2,7 @@
 #include "IScene.h"
 #include "Sprite.h"
 #include "SpriteCommon.h"
+#include "Camera.h"      // ★ 追加
 
 /// <summary>
 /// 実際のゲーム用のシーン。<br/>
@@ -37,6 +38,22 @@ public:
     /// </summary>
     void Finalize() override;
 
+    /// <summary>
+    /// （任意）リサイズ通知がある場合に呼ぶ。<br/>
+    /// カメラのアスペクト比を更新する。
+    /// </summary>
+    /// <param name="w">幅</param>
+    /// <param name="h">高さ</param>
+    void OnResize(uint32_t w, uint32_t h);
+
 private:
     Sprite sprite_; // このシーンで使う単独スプライト
+    Camera camera_; // ★ 3D カメラ
+
+    // IMGUI 用一時値（ドラッグ操作をスムーズにするため保持）
+    Vector3 camPos_{0.0f, 3.0f, -8.0f};
+    Vector3 camTarget_{0.0f, 1.0f, 0.0f};
+    float camFovDeg_ = 60.0f;
+    float camNear_ = 0.1f;
+    float camFar_ = 2000.0f;
 };
