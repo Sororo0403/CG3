@@ -226,6 +226,9 @@
     <ClInclude Include="TaroEngine\Core\RenderContext.h">
       <Filter>Include\Core</Filter>
     </ClInclude>
+    <ClInclude Include="TaroEngine\Math\VectorUtil.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\SpriteVS.hlsl">

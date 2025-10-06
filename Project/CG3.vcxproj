@@ -208,6 +208,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Math\Vector4.h" />
     <ClInclude Include="TaroEngine\Scene\GameScene.h" />
     <ClInclude Include="TaroEngine\Scene\IScene.h" />
+    <ClInclude Include="TaroEngine\Math\VectorUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

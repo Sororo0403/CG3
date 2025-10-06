@@ -4,30 +4,11 @@
 #include <DirectXMath.h>
 #include "DirectXTex/d3dx12.h"
 #include "DirectXTex/DirectXTex.h"
+#include "BufferUtil.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 static inline void CheckHR(HRESULT hr) { assert(SUCCEEDED(hr)); }
-
-// Uploadバッファ作成（共通）
-static ComPtr<ID3D12Resource> CreateUploadBuffer(ID3D12Device *device, size_t bytes) {
-    ComPtr<ID3D12Resource> res;
-    D3D12_HEAP_PROPERTIES heap{};
-    heap.Type = D3D12_HEAP_TYPE_UPLOAD;
-    D3D12_RESOURCE_DESC desc{};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    desc.Width = bytes;
-    desc.Height = 1;
-    desc.DepthOrArraySize = 1;
-    desc.MipLevels = 1;
-    desc.SampleDesc.Count = 1;
-    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    CheckHR(device->CreateCommittedResource(
-        &heap, D3D12_HEAP_FLAG_NONE, &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-        IID_PPV_ARGS(res.ReleaseAndGetAddressOf())));
-    return res;
-}
 
 void Sprite::Initialize(ID3D12Device *device) {
     assert(device);
@@ -69,8 +50,8 @@ void Sprite::Draw(ID3D12GraphicsCommandList *cmd) const {
 
 void Sprite::CreateBuffers(ID3D12Device *device) {
     // 頂点4 / インデックス6
-    vb_ = CreateUploadBuffer(device, sizeof(VertexData) * 4);
-    ib_ = CreateUploadBuffer(device, sizeof(uint32_t) * 6);
+    vb_ = BufferUtil::CreateUploadBuffer(device, sizeof(VertexData) * 4);
+    ib_ = BufferUtil::CreateUploadBuffer(device, sizeof(uint32_t) * 6);
 
     // マップ
     vb_->Map(0, nullptr, reinterpret_cast<void **>(&mappedVB_));
@@ -92,8 +73,8 @@ void Sprite::CreateBuffers(ID3D12Device *device) {
     // CB
     const size_t matSize = ((sizeof(Material) + 255) / 256) * 256;
     const size_t trnSize = ((sizeof(TransformMatrix) + 255) / 256) * 256;
-    cbMaterial_ = CreateUploadBuffer(device, matSize);
-    cbTransform_ = CreateUploadBuffer(device, trnSize);
+    cbMaterial_ = BufferUtil::CreateUploadBuffer(device, matSize);
+    cbTransform_ = BufferUtil::CreateUploadBuffer(device, trnSize);
     cbMaterial_->Map(0, nullptr, reinterpret_cast<void **>(&mappedMaterial_));
     cbTransform_->Map(0, nullptr, reinterpret_cast<void **>(&mappedTransform_));
 
