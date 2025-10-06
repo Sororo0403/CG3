@@ -148,6 +148,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="TaroEngine\Logger\OutputLogger.cpp" />
     <ClCompile Include="TaroEngine\Graphics\Camera.cpp" />
     <ClCompile Include="TaroEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp" />
@@ -168,10 +169,12 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Logger\LogTimeUtil.h" />
+    <ClInclude Include="TaroEngine\Logger\LogLevelUtil.h" />
+    <ClInclude Include="TaroEngine\Logger\OutputLogger.h" />
     <ClInclude Include="TaroEngine\Graphics\Camera.h" />
     <ClInclude Include="TaroEngine\Logger\ILogger.h" />
     <ClInclude Include="TaroEngine\Logger\LogLevel.h" />
-    <ClInclude Include="TaroEngine\Logger\LogMessage.h" />
     <ClInclude Include="TaroEngine\Scene\SceneManager.h" />
     <ClInclude Include="TaroEngine\Core\EngineContext.h" />
     <ClInclude Include="TaroEngine\Graphics\BufferUtil.h" />
