@@ -1,43 +1,26 @@
 #pragma once
+#include <cstdint>
 #include "IScene.h"
+#include "EngineContext.h"
+#include "RenderContext.h"
 #include "Sprite.h"
 
 /// <summary>
-/// スプライトを管理・描画するメインのゲームシーン。
+/// テクスチャ付きスプライトを表示するシーン
 /// </summary>
-class GameScene : public IScene {
+class GameScene : public IScene {  // ★ IScene を public 継承
 public:
-    /// <summary>
-    /// シーンを初期化し、スプライトを構築する。
-    /// </summary>
-    /// <param name="engine">エンジンの共有コンテキスト。</param>
+    GameScene() = default;
+    ~GameScene() override = default; // 重要：仮想デストラクタ
+
+    // ===== IScene overrides =====
     void Initialize(const EngineContext &engine) override;
-
-    /// <summary>
-    /// シーンを更新し、スプライトの状態を反映する。
-    /// </summary>
-    /// <param name="dt">経過時間（秒）。</param>
-    void Update(float dt) override;
-
-    /// <summary>
-    /// シーンを描画し、スプライトを表示する。
-    /// </summary>
-    /// <param name="engine">エンジンの共有コンテキスト。</param>
-    /// <param name="rc">描画コンテキスト。</param>
+    void Update(float deltaTime) override;
     void Draw(const EngineContext &engine, const RenderContext &rc) override;
-
-    /// <summary>
-    /// シーン固有のリソースを解放する。
-    /// </summary>
+    void OnResize(uint32_t w, uint32_t h);
     void Finalize() override;
 
-    /// <summary>
-    /// ウィンドウサイズ変更に応じてスプライトを調整する。
-    /// </summary>
-    /// <param name="w">ウィンドウの幅。</param>
-    /// <param name="h">ウィンドウの高さ。</param>
-    void OnResize(uint32_t w, uint32_t h);
-
 private:
-	Sprite sprite_; // 画面に張り付くスプライト
+    Sprite sprite_;
+    bool spriteTexLoaded_ = false;
 };

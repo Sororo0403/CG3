@@ -13,26 +13,23 @@ public:
 
     void Initialize(ID3D12Device *device);
 
-    // 画面サイズ（ピクセル）※リサイズ時に呼ぶ
     void SetViewportSize(uint32_t w, uint32_t h);
-
-    // スプライト矩形（ピクセル）
     void SetRect(float x, float y, float width, float height);
-
-    // 色（Material.color）RGBA
     void SetColor(float r, float g, float b, float a);
-
-    // 毎フレーム更新（行列やCBの更新だけ。カメラ不要）
     void Update();
-
-    // 描画（共通PSO適用後に呼ぶ）
     void Draw(ID3D12GraphicsCommandList *cmd) const;
+
+    // 画像を読み込み、Upload→VRAM→SRV作成まで行う（1回だけ呼べばOK）
+    void LoadTextureFromFile(ID3D12Device *device,
+        ID3D12GraphicsCommandList *cmd,
+        const wchar_t *pathW,
+        ID3D12DescriptorHeap *srvHeap,
+        UINT srvIndex);
 
 private:
     void CreateBuffers(ID3D12Device *device);
     void UpdateVertices();      // Rect 変更反映
     void UpdateConstants();     // WVP/Color をCBへ
-
     static TransformMatrix MakePixelToNDC(uint32_t vpw, uint32_t vph);
 
 private:
@@ -51,6 +48,12 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> cbTransform_;
     Material *mappedMaterial_ = nullptr;
     TransformMatrix *mappedTransform_ = nullptr;
+
+    // テクスチャ
+    Microsoft::WRL::ComPtr<ID3D12Resource> tex_;       // DefaultHeap
+    Microsoft::WRL::ComPtr<ID3D12Resource> texUpload_; // UploadHeap
+    D3D12_CPU_DESCRIPTOR_HANDLE cpuSrv_{};
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuSrv_{};
 
     // 状態
     uint32_t viewportW_ = 1, viewportH_ = 1;

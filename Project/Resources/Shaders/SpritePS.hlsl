@@ -2,9 +2,8 @@ cbuffer Material : register(b0) {
     float4 gColor;
 };
 
-cbuffer Transform : register(b1) {
-    float4x4 gWVP;
-};
+Texture2D gTex0 : register(t0);
+SamplerState gSamp0 : register(s0);
 
 struct VSOutput {
     float4 posH : SV_POSITION;
@@ -12,5 +11,6 @@ struct VSOutput {
 };
 
 float4 main(VSOutput input) : SV_TARGET {
-    return gColor;
+    float4 tex = gTex0.Sample(gSamp0, input.uv);
+    return tex * gColor;
 }

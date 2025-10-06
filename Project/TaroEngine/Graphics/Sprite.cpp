@@ -2,11 +2,14 @@
 #include <cassert>
 #include <cstring>
 #include <DirectXMath.h>
+#include "DirectXTex/d3dx12.h"
+#include "DirectXTex/DirectXTex.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
+static inline void CheckHR(HRESULT hr) { assert(SUCCEEDED(hr)); }
 
-// Uploadバッファ作成ヘルパ
+// Uploadバッファ作成（共通）
 static ComPtr<ID3D12Resource> CreateUploadBuffer(ID3D12Device *device, size_t bytes) {
     ComPtr<ID3D12Resource> res;
     D3D12_HEAP_PROPERTIES heap{};
@@ -19,11 +22,10 @@ static ComPtr<ID3D12Resource> CreateUploadBuffer(ID3D12Device *device, size_t by
     desc.MipLevels = 1;
     desc.SampleDesc.Count = 1;
     desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    HRESULT hr = device->CreateCommittedResource(
+    CheckHR(device->CreateCommittedResource(
         &heap, D3D12_HEAP_FLAG_NONE, &desc,
         D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-        IID_PPV_ARGS(res.ReleaseAndGetAddressOf()));
-    assert(SUCCEEDED(hr));
+        IID_PPV_ARGS(res.ReleaseAndGetAddressOf())));
     return res;
 }
 
@@ -31,7 +33,7 @@ void Sprite::Initialize(ID3D12Device *device) {
     assert(device);
     device_ = device;
     CreateBuffers(device_);
-    SetColor(1, 1, 1, 1); // 既定：白
+    SetColor(1, 1, 1, 1);
 }
 
 void Sprite::SetViewportSize(uint32_t w, uint32_t h) {
@@ -47,26 +49,21 @@ void Sprite::SetRect(float x, float y, float width, float height) {
 void Sprite::SetColor(float r, float g, float b, float a) {
     if (!mappedMaterial_) return;
     mappedMaterial_->color = {r,g,b,a};
-    // それ以外の Material フィールドは既定値
     mappedMaterial_->enableLighting = 0;
-    mappedMaterial_->uvTransform = {}; // 未使用
+    mappedMaterial_->uvTransform = {};
 }
 
-void Sprite::Update() {
-    UpdateConstants();
-}
+void Sprite::Update() { UpdateConstants(); }
 
 void Sprite::Draw(ID3D12GraphicsCommandList *cmd) const {
-    // ルートバインド
     // p0: PS CBV(b0), p1: VS CBV(b1)
     cmd->SetGraphicsRootConstantBufferView(0, cbMaterial_->GetGPUVirtualAddress());
     cmd->SetGraphicsRootConstantBufferView(1, cbTransform_->GetGPUVirtualAddress());
+    // p2: SRV(t0)
+    if (gpuSrv_.ptr) { cmd->SetGraphicsRootDescriptorTable(2, gpuSrv_); }
 
-    // VB/IB
     cmd->IASetVertexBuffers(0, 1, &vbv_);
     cmd->IASetIndexBuffer(&ibv_);
-
-    // 2トライアングル
     cmd->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
 
@@ -83,7 +80,7 @@ void Sprite::CreateBuffers(ID3D12Device *device) {
     uint32_t idx[6] = {0,1,2, 2,1,3};
     std::memcpy(mappedIB_, idx, sizeof(idx));
 
-    // VBV/IBV（ストライドは VertexData のサイズ）
+    // VBV/IBV
     vbv_.BufferLocation = vb_->GetGPUVirtualAddress();
     vbv_.StrideInBytes = sizeof(VertexData);
     vbv_.SizeInBytes = sizeof(VertexData) * 4;
@@ -93,9 +90,10 @@ void Sprite::CreateBuffers(ID3D12Device *device) {
     ibv_.SizeInBytes = sizeof(uint32_t) * 6;
 
     // CB
-    cbMaterial_ = CreateUploadBuffer(device, ((sizeof(Material) + 255) / 256) * 256);
-    cbTransform_ = CreateUploadBuffer(device, ((sizeof(TransformMatrix) + 255) / 256) * 256);
-
+    const size_t matSize = ((sizeof(Material) + 255) / 256) * 256;
+    const size_t trnSize = ((sizeof(TransformMatrix) + 255) / 256) * 256;
+    cbMaterial_ = CreateUploadBuffer(device, matSize);
+    cbTransform_ = CreateUploadBuffer(device, trnSize);
     cbMaterial_->Map(0, nullptr, reinterpret_cast<void **>(&mappedMaterial_));
     cbTransform_->Map(0, nullptr, reinterpret_cast<void **>(&mappedTransform_));
 
@@ -104,31 +102,27 @@ void Sprite::CreateBuffers(ID3D12Device *device) {
 }
 
 void Sprite::UpdateVertices() {
-    // 左上原点のピクセル矩形をそのまま頂点へ（z=0, w=1）
-    // [0] 左上, [1] 右上, [2] 左下, [3] 右下
-    // UV は 0-1 固定（PS は gColor 固定出力だが将来の拡張のため保持）
-    VertexData v{};
-    // 0: 左上
-    mappedVB_[0].position = {x_,        y_,        0.0f, 1.0f};
+    // 左上原点のピクセル矩形 → 頂点へ
+    mappedVB_[0].position = {x_,        y_,        0.0f, 1.0f}; // 左上
     mappedVB_[0].texcoord = {0.0f, 0.0f};
-    mappedVB_[0].normal = {0.0f, 0.0f, 1.0f};
-    // 1: 右上
-    mappedVB_[1].position = {x_ + w_,     y_,        0.0f, 1.0f};
+    mappedVB_[0].normal = {0,0,1};
+
+    mappedVB_[1].position = {x_ + w_,   y_,        0.0f, 1.0f}; // 右上
     mappedVB_[1].texcoord = {1.0f, 0.0f};
-    mappedVB_[1].normal = {0.0f, 0.0f, 1.0f};
-    // 2: 左下
-    mappedVB_[2].position = {x_,        y_ + h_,     0.0f, 1.0f};
+    mappedVB_[1].normal = {0,0,1};
+
+    mappedVB_[2].position = {x_,        y_ + h_,   0.0f, 1.0f}; // 左下
     mappedVB_[2].texcoord = {0.0f, 1.0f};
-    mappedVB_[2].normal = {0.0f, 0.0f, 1.0f};
-    // 3: 右下
-    mappedVB_[3].position = {x_ + w_,     y_ + h_,     0.0f, 1.0f};
+    mappedVB_[2].normal = {0,0,1};
+
+    mappedVB_[3].position = {x_ + w_,   y_ + h_,   0.0f, 1.0f}; // 右下
     mappedVB_[3].texcoord = {1.0f, 1.0f};
-    mappedVB_[3].normal = {0.0f, 0.0f, 1.0f};
+    mappedVB_[3].normal = {0,0,1};
 }
 
-static inline void StoreMatrixColumnMajor(float dst[16], const XMFLOAT4X4 &m) {
-    // XMFLOAT4X4 は row-major 配列だが、HLSL 既定 column_major に合わせて転置して送る
-    // （あなたの Matrix4x4 実装に合わせてここは自由に差し替え可）
+// HLSL既定 column_major に合わせ転置して格納
+static inline void StoreMatrixColumnMajor(float dst[16], const DirectX::XMFLOAT4X4 &m) {
+    using namespace DirectX;
     XMMATRIX mt = XMMatrixTranspose(XMLoadFloat4x4(&m));
     XMFLOAT4X4 cm{};
     XMStoreFloat4x4(&cm, mt);
@@ -136,34 +130,143 @@ static inline void StoreMatrixColumnMajor(float dst[16], const XMFLOAT4X4 &m) {
 }
 
 TransformMatrix Sprite::MakePixelToNDC(uint32_t vpw, uint32_t vph) {
-    // ピクセル座標 (0..W, 0..H) → NDC (-1..1, 1..-1)
-    //  [ 2/W   0   0   0 ]
-    //  [ 0   -2/H  0   0 ]
-    //  [ 0     0   1   0 ]
-    //  [-1     1   0   1 ]
+    using namespace DirectX;
     XMFLOAT4X4 M = {
         2.0f / vpw, 0,            0, 0,
         0,         -2.0f / vph,   0, 0,
         0,          0,            1, 0,
        -1.0f,       1.0f,         0, 1
     };
-
     TransformMatrix t{};
-    // WVP = 上の行列、World は恒等でOK
     StoreMatrixColumnMajor(reinterpret_cast<float *>(&t.WVP), M);
 
-    XMFLOAT4X4 I = {
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0,
-        0,0,0,1
-    };
+    XMFLOAT4X4 I = {1,0,0,0,  0,1,0,0,  0,0,1,0,  0,0,0,1};
     StoreMatrixColumnMajor(reinterpret_cast<float *>(&t.World), I);
     return t;
 }
 
 void Sprite::UpdateConstants() {
     if (!mappedTransform_) return;
-    TransformMatrix proj = MakePixelToNDC(viewportW_, viewportH_);
-    *mappedTransform_ = proj;
+    *mappedTransform_ = MakePixelToNDC(viewportW_, viewportH_);
+}
+
+// ===== 画像→Upload→Copy→SRV =====
+void Sprite::LoadTextureFromFile(ID3D12Device *device,
+    ID3D12GraphicsCommandList *cmd,
+    const wchar_t *pathW,
+    ID3D12DescriptorHeap *srvHeap,
+    UINT srvIndex) {
+    using namespace DirectX;
+
+    // 1) 画像をCPUで読む（sRGB扱い）
+    ScratchImage img;
+    TexMetadata meta{};
+    CheckHR(LoadFromWICFile(pathW, WIC_FLAGS_FORCE_SRGB, &meta, img));
+    meta.format = MakeSRGB(meta.format);
+
+    // 2) VRAM(Default)にテクスチャを作成
+    D3D12_RESOURCE_DESC texDesc{};
+    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    texDesc.Width = static_cast<UINT>(meta.width);
+    texDesc.Height = static_cast<UINT>(meta.height);
+    texDesc.DepthOrArraySize = static_cast<UINT16>(meta.arraySize);
+    texDesc.MipLevels = static_cast<UINT16>(meta.mipLevels);
+    texDesc.Format = meta.format;
+    texDesc.SampleDesc.Count = 1;
+    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+    D3D12_HEAP_PROPERTIES heapDefault{};
+    heapDefault.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    CheckHR(device->CreateCommittedResource(
+        &heapDefault, D3D12_HEAP_FLAG_NONE, &texDesc,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+        IID_PPV_ARGS(&tex_)));
+
+    // 3) Uploadレイアウト計算
+    const UINT subCount = static_cast<UINT>(meta.mipLevels * meta.arraySize);
+    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> layouts(subCount);
+    std::vector<UINT>   numRows(subCount);
+    std::vector<UINT64> rowSizes(subCount);
+    UINT64 uploadSize = 0;
+    device->GetCopyableFootprints(&texDesc, 0, subCount, 0,
+        layouts.data(), numRows.data(),
+        rowSizes.data(), &uploadSize);
+
+    // Uploadバッファ
+    D3D12_HEAP_PROPERTIES heapUpload{};
+    heapUpload.Type = D3D12_HEAP_TYPE_UPLOAD;
+    D3D12_RESOURCE_DESC uploadDesc{};
+    uploadDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    uploadDesc.Width = uploadSize;
+    uploadDesc.Height = 1;
+    uploadDesc.DepthOrArraySize = 1;
+    uploadDesc.MipLevels = 1;
+    uploadDesc.SampleDesc.Count = 1;
+    uploadDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+    CheckHR(device->CreateCommittedResource(
+        &heapUpload, D3D12_HEAP_FLAG_NONE, &uploadDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+        IID_PPV_ARGS(&texUpload_)));
+
+    // 4) CPUでUploadへ書き込み
+    const Image *images = img.GetImages();
+    uint8_t *mapped = nullptr;
+    CheckHR(texUpload_->Map(0, nullptr, reinterpret_cast<void **>(&mapped)));
+    for (UINT i = 0; i < subCount; ++i) {
+        const auto &lay = layouts[i];
+        const auto *src = images + i;
+        uint8_t *dst = mapped + lay.Offset;
+        const size_t dstPitch = lay.Footprint.RowPitch;
+        const size_t srcPitch = src->rowPitch;
+        const UINT rows = numRows[i];
+        for (UINT y = 0; y < rows; ++y) {
+            std::memcpy(dst + y * dstPitch,
+                src->pixels + y * srcPitch,
+                (std::min)(dstPitch, srcPitch));
+        }
+    }
+    texUpload_->Unmap(0, nullptr);
+
+    // 5) CopyTextureRegionでVRAMへ転送
+    for (UINT i = 0; i < subCount; ++i) {
+        D3D12_TEXTURE_COPY_LOCATION dst{};
+        dst.pResource = tex_.Get();
+        dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        dst.SubresourceIndex = i;
+
+        D3D12_TEXTURE_COPY_LOCATION src{};
+        src.pResource = texUpload_.Get();
+        src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        src.PlacedFootprint = layouts[i];
+
+        cmd->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+    }
+
+    // 6) PS用に遷移
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = tex_.Get();
+    barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+    barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    cmd->ResourceBarrier(1, &barrier);
+
+    // 7) SRV作成（srvIndex に配置）
+    const UINT inc = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    cpuSrv_ = srvHeap->GetCPUDescriptorHandleForHeapStart();
+    cpuSrv_.ptr += SIZE_T(inc) * srvIndex;
+    gpuSrv_ = srvHeap->GetGPUDescriptorHandleForHeapStart();
+    gpuSrv_.ptr += UINT64(inc) * srvIndex;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+    srv.Format = meta.format;
+    srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv.Texture2D.MostDetailedMip = 0;
+    srv.Texture2D.MipLevels = (UINT)meta.mipLevels;
+
+    device->CreateShaderResourceView(tex_.Get(), &srv, cpuSrv_);
 }
