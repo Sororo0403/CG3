@@ -1,5 +1,5 @@
 #pragma once
-
+#include "LogLevel.h"
 #include <string>
 
 /// <summary>
@@ -7,14 +7,15 @@
 /// </summary>
 class ILogger {
 public:
-	/// <summary>
-	/// デストラクタ。
-	/// </summary>
-	virtual ~ILogger() = default;
+    /// <summary>
+    /// デストラクタ。
+    /// </summary>
+    virtual ~ILogger() = default;
 
-	/// <summary>
-	/// メッセージを出力
-	/// </summary>
-	/// <param name="msg">出力するメッセージ文字列。</param>
-	virtual void Log(const std::string &msg) = 0;
+    /// <summary>
+    /// ログレベルを指定してメッセージを出力します。
+    /// </summary>
+    /// <param name="level">ログレベル。</param>
+    /// <param name="msg">出力するメッセージ文字列。</param>
+    virtual void Log(LogLevel level, const std::string &msg) = 0;
 };

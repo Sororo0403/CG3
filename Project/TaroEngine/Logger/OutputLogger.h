@@ -8,17 +8,18 @@
 /// </summary>
 class OutputLogger : public ILogger {
 public:
-    /// <summary>
-    /// デストラクタ。
-    /// </summary>
-    ~OutputLogger() override = default;
+	/// <summary>
+	/// デストラクタ。
+	/// </summary>
+	~OutputLogger() override = default;
 
-    /// <summary>
-    /// メッセージを標準出力に書き込みます。
-    /// </summary>
-    /// <param name="msg">出力するメッセージ文字列。</param>
-    void Log(const std::string &msg) override;
+	/// <summary>
+	/// ログレベルを指定してメッセージを出力します。
+	/// </summary>
+	/// <param name="level">ログレベル。</param>
+	/// <param name="msg">出力するメッセージ文字列。</param>
+	void Log(LogLevel level, const std::string &msg) override;
 
 private:
-    std::mutex mutex_; ///< マルチスレッド出力防止用。
+	std::mutex mutex_; ///< マルチスレッド出力防止用。
 };

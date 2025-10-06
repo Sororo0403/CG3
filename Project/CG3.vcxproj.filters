@@ -107,6 +107,9 @@
     <ClCompile Include="TaroEngine\Logger\OutputLogger.cpp">
       <Filter>Source\Logger</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Logger\MultiLogger.cpp">
+      <Filter>Source\Logger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -209,6 +212,9 @@
       <Filter>Include\Logger</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Logger\LogTimeUtil.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\MultiLogger.h">
       <Filter>Include\Logger</Filter>
     </ClInclude>
   </ItemGroup>

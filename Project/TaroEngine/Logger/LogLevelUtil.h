@@ -17,7 +17,7 @@ namespace LogLevelUtil {
         case LogLevel::DEBUG: return "DEBUG";
         case LogLevel::INFO:  return "INFO";
         case LogLevel::WARN:  return "WARN";
-        case LogLevel::ERROR: return "ERROR";
+        case LogLevel::ERR: return "ERROR";
         default:              return "UNKNOWN";
         }
     }
@@ -31,7 +31,7 @@ namespace LogLevelUtil {
         if (str == "DEBUG") return LogLevel::DEBUG;
         if (str == "INFO")  return LogLevel::INFO;
         if (str == "WARN")  return LogLevel::WARN;
-        if (str == "ERROR") return LogLevel::ERROR;
+        if (str == "ERROR") return LogLevel::ERR;
         return LogLevel::INFO;
     }
 }
