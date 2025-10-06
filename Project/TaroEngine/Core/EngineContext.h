@@ -9,8 +9,8 @@ class SpriteCommon;
 /// </summary>
 struct EngineContext {
     DirectXCommon *directXCommon = nullptr; // DirectX12基盤管理
-    ID3D12Device *device = nullptr;         // D3D12デバイス
-    SpriteCommon *spriteCommon = nullptr;   // スプライト共通描画設定
+    ID3D12Device *device = nullptr; // D3D12デバイス
+    SpriteCommon *spriteCommon = nullptr; // スプライト共通描画設定
 };
 
 /// <summary>

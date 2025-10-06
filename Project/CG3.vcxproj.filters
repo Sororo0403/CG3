@@ -187,6 +187,15 @@
     <ClInclude Include="TaroEngine\Graphics\Camera.h">
       <Filter>Include\Graphics</Filter>
     </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\ILogger.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\LogMessage.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\LogLevel.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\SpriteVS.hlsl">
