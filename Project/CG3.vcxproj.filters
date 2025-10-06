@@ -36,6 +36,21 @@
     <Filter Include="Include\Math">
       <UniqueIdentifier>{f9b842af-17ea-4c57-84a2-1e6e6397ab0f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Include\Scene">
+      <UniqueIdentifier>{b8f9b00d-ddb4-4460-a9be-e4af010a26c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Scene">
+      <UniqueIdentifier>{483fc31a-9852-40a0-aa41-0a87c3f3caf2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Logger">
+      <UniqueIdentifier>{30336bb0-ae4e-4217-b861-514dd82316cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Logger">
+      <UniqueIdentifier>{1cf41058-acc0-4663-b19c-a0f2ff1b15a4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Util">
+      <UniqueIdentifier>{ca3307de-053d-4332-9965-29f98af36fde}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -82,6 +97,24 @@
     </ClCompile>
     <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp">
       <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Scene\GameScene.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Scene\SceneManager.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Camera.cpp">
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Logger\OutputLogger.cpp">
+      <Filter>Source\Logger</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Logger\MultiLogger.cpp">
+      <Filter>Source\Logger</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Logger\FileLogger.cpp">
+      <Filter>Source\Logger</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -156,6 +189,45 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\BufferUtil.h">
       <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\EngineContext.h">
+      <Filter>Include\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\GameScene.h">
+      <Filter>Include\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\IScene.h">
+      <Filter>Include\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\SceneManager.h">
+      <Filter>Include\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Camera.h">
+      <Filter>Include\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\ILogger.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\LogLevel.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\OutputLogger.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\LogLevelUtil.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\LogTimeUtil.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\MultiLogger.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Logger\FileLogger.h">
+      <Filter>Include\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Util\PathUtil.h">
+      <Filter>Include\Util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

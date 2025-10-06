@@ -80,7 +80,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Logger;$(ProjectDir)TaroEngine\Util;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -106,7 +106,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Logger;$(ProjectDir)TaroEngine\Util;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -133,7 +133,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Logger;$(ProjectDir)TaroEngine\Util;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -148,6 +148,11 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="TaroEngine\Logger\FileLogger.cpp" />
+    <ClCompile Include="TaroEngine\Logger\MultiLogger.cpp" />
+    <ClCompile Include="TaroEngine\Logger\OutputLogger.cpp" />
+    <ClCompile Include="TaroEngine\Graphics\Camera.cpp" />
+    <ClCompile Include="TaroEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp" />
     <ClCompile Include="TaroEngine\Graphics\D3DResourceLeakChecker.cpp" />
     <ClCompile Include="TaroEngine\Graphics\DirectXCommon.cpp" />
@@ -163,8 +168,20 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Core\WinApp.cpp" />
     <ClCompile Include="TaroEngine\Graphics\Sprite.cpp" />
     <ClCompile Include="TaroEngine\Graphics\SpriteCommon.cpp" />
+    <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Logger\FileLogger.h" />
+    <ClInclude Include="TaroEngine\Logger\MultiLogger.h" />
+    <ClInclude Include="TaroEngine\Logger\LogTimeUtil.h" />
+    <ClInclude Include="TaroEngine\Logger\LogLevelUtil.h" />
+    <ClInclude Include="TaroEngine\Logger\OutputLogger.h" />
+    <ClInclude Include="TaroEngine\Graphics\Camera.h" />
+    <ClInclude Include="TaroEngine\Logger\ILogger.h" />
+    <ClInclude Include="TaroEngine\Logger\LogLevel.h" />
+    <ClInclude Include="TaroEngine\Util\PathUtil.h" />
+    <ClInclude Include="TaroEngine\Scene\SceneManager.h" />
+    <ClInclude Include="TaroEngine\Core\EngineContext.h" />
     <ClInclude Include="TaroEngine\Graphics\BufferUtil.h" />
     <ClInclude Include="TaroEngine\Graphics\ShaderCompiler.h" />
     <ClInclude Include="TaroEngine\Graphics\D3DResourceLeakChecker.h" />
@@ -189,6 +206,8 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Math\Vector2.h" />
     <ClInclude Include="TaroEngine\Math\Vector3.h" />
     <ClInclude Include="TaroEngine\Math\Vector4.h" />
+    <ClInclude Include="TaroEngine\Scene\GameScene.h" />
+    <ClInclude Include="TaroEngine\Scene\IScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
