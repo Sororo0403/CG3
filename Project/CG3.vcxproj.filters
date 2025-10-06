@@ -48,9 +48,6 @@
     <Filter Include="Source\Logger">
       <UniqueIdentifier>{1cf41058-acc0-4663-b19c-a0f2ff1b15a4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Util">
-      <UniqueIdentifier>{ca3307de-053d-4332-9965-29f98af36fde}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -226,8 +223,8 @@
     <ClInclude Include="TaroEngine\Logger\FileLogger.h">
       <Filter>Include\Logger</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Util\PathUtil.h">
-      <Filter>Include\Util</Filter>
+    <ClInclude Include="TaroEngine\Core\RenderContext.h">
+      <Filter>Include\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

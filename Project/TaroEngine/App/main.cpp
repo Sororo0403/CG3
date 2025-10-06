@@ -5,10 +5,6 @@
 #include "EngineContext.h"
 #include "GameScene.h"
 #include "SceneManager.h"
-#include "OutputLogger.h"
-#include "MultiLogger.h"
-#include "FileLogger.h"
-#include "PathUtil.h"   
 #include <memory>
 #include <chrono>
 
@@ -60,17 +56,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	engine.directXCommon = dx.get();
 	engine.device = dx->GetDevice();
 	engine.spriteCommon = spriteCommon.get();
-	engine.multiLogger = std::make_unique<MultiLogger>();
-	engine.multiLogger->AddLogger(std::make_shared<OutputLogger>());
-
-	const auto logPath = PathUtil::DefaultLogFilePath();
-	auto fileLogger = std::make_shared<FileLogger>(logPath.string());
-	if (fileLogger->IsOpen()) {
-		engine.multiLogger->AddLogger(fileLogger);
-		engine.multiLogger->Log(LogLevel::INFO, ("FileLogger attached: " + logPath.string()).c_str());
-	} else {
-		engine.multiLogger->Log(LogLevel::WARN, ("FileLogger open failed: " + logPath.string()).c_str());
-	}
 
 	// ===============================
 	// シーンマネージャ初期化 & 最初のシーン

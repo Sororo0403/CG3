@@ -1,5 +1,6 @@
 #pragma once
 #include "EngineContext.h"
+#include "RenderContext.h"
 
 class IScene {
 public:
