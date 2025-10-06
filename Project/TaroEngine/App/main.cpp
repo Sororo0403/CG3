@@ -7,15 +7,12 @@
 #include "SceneManager.h"
 #include "OutputLogger.h"
 #include "MultiLogger.h"
+#include "FileLogger.h"
 #include <memory>
 #include <chrono>
 
 /// <summary>
 /// アプリのエントリポイント。
-/// - WinApp / DirectXCommon 初期化
-/// - Sprite 共通パイプラインの生成
-/// - EngineContext 構築
-/// - SceneManager によるシーン駆動ループ
 /// </summary>
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ===============================
@@ -64,6 +61,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	engine.spriteCommon = spriteCommon.get();
 	engine.multiLogger = std::make_unique<MultiLogger>();
 	engine.multiLogger->AddLogger(std::make_shared<OutputLogger>());
+
+	std::filesystem::create_directories("Logs");
+	auto fileLogger = std::make_shared<FileLogger>("Logs/app.log");
+	if (fileLogger->IsOpen()) {
+		engine.multiLogger->AddLogger(fileLogger);
+		engine.multiLogger->Log(LogLevel::INFO, "FileLogger attached: Logs/app.log");
+	} else {
+		engine.multiLogger->Log(LogLevel::WARN, "FileLogger open failed: Logs/app.log");
+	}
 
 	// ===============================
 	// シーンマネージャ初期化 & 最初のシーン
@@ -117,6 +123,5 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	dx->Finalize();            // D3D12 後片付け
 	winApp->Finalize();        // ウィンドウ破棄
 
-	// unique_ptr なので delete は不要
 	return 0;
 }
