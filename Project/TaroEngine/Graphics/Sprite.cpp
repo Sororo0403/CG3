@@ -1,102 +1,169 @@
 #include "Sprite.h"
-#include "BufferUtil.h"
-#include "MatrixUtil.h"
-#include "Camera.h"
 #include <cassert>
 #include <cstring>
+#include <DirectXMath.h>
 
-// HLSL 側が row_major なら 1（転置せず送る）
-// 既定の column_major なら 0（送る直前に Transpose）
-#define SPRITE_SEND_ROW_MAJOR 0
+using Microsoft::WRL::ComPtr;
+using namespace DirectX;
+
+// Uploadバッファ作成ヘルパ
+static ComPtr<ID3D12Resource> CreateUploadBuffer(ID3D12Device *device, size_t bytes) {
+    ComPtr<ID3D12Resource> res;
+    D3D12_HEAP_PROPERTIES heap{};
+    heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+    D3D12_RESOURCE_DESC desc{};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    desc.Width = bytes;
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.SampleDesc.Count = 1;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    HRESULT hr = device->CreateCommittedResource(
+        &heap, D3D12_HEAP_FLAG_NONE, &desc,
+        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
+        IID_PPV_ARGS(res.ReleaseAndGetAddressOf()));
+    assert(SUCCEEDED(hr));
+    return res;
+}
 
 void Sprite::Initialize(ID3D12Device *device) {
     assert(device);
-
-    // === 頂点 / インデックス ===
-    vertexResource_ = BufferUtil::CreateUploadBuffer(device, sizeof(VertexData) * 4);
-    indexResource_ = BufferUtil::CreateUploadBuffer(device, sizeof(uint32_t) * 6);
-
-    vertexResource_->Map(0, nullptr, reinterpret_cast<void **>(&vertexData_));
-    indexResource_->Map(0, nullptr, reinterpret_cast<void **>(&indexData_));
-
-    vertexBufferView_.BufferLocation = vertexResource_->GetGPUVirtualAddress();
-    vertexBufferView_.SizeInBytes = sizeof(VertexData) * 4;
-    vertexBufferView_.StrideInBytes = sizeof(VertexData);
-
-    indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
-    indexBufferView_.SizeInBytes = sizeof(uint32_t) * 6;
-    indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-
-    // 四角形のインデックス
-    const uint32_t indices[6] = {0,1,2, 2,1,3};
-    std::memcpy(indexData_, indices, sizeof(indices));
-
-    // === マテリアル ===
-    materialResource_ = BufferUtil::CreateUploadBuffer(device, sizeof(Material));
-    materialResource_->Map(0, nullptr, reinterpret_cast<void **>(&materialData_));
-    materialData_->color = Vector4(1, 1, 1, 1);
-    materialData_->enableLighting = false;
-    materialData_->uvTransform = MatrixUtil::MakeIdentityMatrix();
-
-    // === 変換行列 ===
-    transformResource_ = BufferUtil::CreateUploadBuffer(device, sizeof(TransformMatrix));
-    transformResource_->Map(0, nullptr, reinterpret_cast<void **>(&transformMatrixData_));
-    transformMatrixData_->World = MatrixUtil::MakeIdentityMatrix();
-    transformMatrixData_->WVP = MatrixUtil::MakeIdentityMatrix();
+    device_ = device;
+    CreateBuffers(device_);
+    SetColor(1, 1, 1, 1); // 既定：白
 }
 
-// 内部共通：vp = View * Proj を受け取り、WVP を組む
-void Sprite::UpdateImpl_(const Matrix4x4 &vp) {
-    // 頂点（ローカル）更新：サイズは頂点段階で反映
-    const float hw = size_.x * 0.5f;
-    const float hh = size_.y * 0.5f;
-
-    vertexData_[0] = {{ -hw, -hh, 0.0f }, { 0.0f, 1.0f }};
-    vertexData_[1] = {{ -hw,  hh, 0.0f }, { 0.0f, 0.0f }};
-    vertexData_[2] = {{  hw, -hh, 0.0f }, { 1.0f, 1.0f }};
-    vertexData_[3] = {{  hw,  hh, 0.0f }, { 1.0f, 0.0f }};
-
-    // World：回転→平行移動（スケールは頂点で済ませたので掛けない）
-    auto R = MatrixUtil::MakeRotationZMatrix(rotation_);
-    auto T = MatrixUtil::MakeTranslationMatrix(position_.x, position_.y, 0.0f);
-    auto W = MatrixUtil::Multiply(R, T);
-
-#if SPRITE_SEND_ROW_MAJOR
-    transformMatrixData_->World = W;
-    transformMatrixData_->WVP = MatrixUtil::Multiply(W, vp);
-#else
-    transformMatrixData_->World = MatrixUtil::Transpose(W);
-    auto wvp = MatrixUtil::Multiply(W, vp);
-    transformMatrixData_->WVP = MatrixUtil::Transpose(wvp);
-#endif
+void Sprite::SetViewportSize(uint32_t w, uint32_t h) {
+    viewportW_ = (w == 0 ? 1u : w);
+    viewportH_ = (h == 0 ? 1u : h);
 }
 
-// 互換用：固定の正射影(1280x720)で VP を組む
+void Sprite::SetRect(float x, float y, float width, float height) {
+    x_ = x; y_ = y; w_ = width; h_ = height;
+    UpdateVertices();
+}
+
+void Sprite::SetColor(float r, float g, float b, float a) {
+    if (!mappedMaterial_) return;
+    mappedMaterial_->color = {r,g,b,a};
+    // それ以外の Material フィールドは既定値
+    mappedMaterial_->enableLighting = 0;
+    mappedMaterial_->uvTransform = {}; // 未使用
+}
+
 void Sprite::Update() {
-    auto V = MatrixUtil::MakeIdentityMatrix();
-    auto P = MatrixUtil::MakeOrthographicMatrix(1280.0f, 720.0f, 0.0f, 1.0f);
-    auto VP = MatrixUtil::Multiply(V, P);
-    UpdateImpl_(VP);
+    UpdateConstants();
 }
 
-// カメラ使用版：VP = View * Proj（右掛け）
-void Sprite::Update(const Camera &camera) {
-    const auto &V = camera.GetView();
-    const auto &P = camera.GetProjection();
-    auto VP = MatrixUtil::Multiply(V, P);
-    UpdateImpl_(VP);
+void Sprite::Draw(ID3D12GraphicsCommandList *cmd) const {
+    // ルートバインド
+    // p0: PS CBV(b0), p1: VS CBV(b1)
+    cmd->SetGraphicsRootConstantBufferView(0, cbMaterial_->GetGPUVirtualAddress());
+    cmd->SetGraphicsRootConstantBufferView(1, cbTransform_->GetGPUVirtualAddress());
+
+    // VB/IB
+    cmd->IASetVertexBuffers(0, 1, &vbv_);
+    cmd->IASetIndexBuffer(&ibv_);
+
+    // 2トライアングル
+    cmd->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
 
-void Sprite::Draw(ID3D12GraphicsCommandList *cmdList) {
-    assert(cmdList);
+void Sprite::CreateBuffers(ID3D12Device *device) {
+    // 頂点4 / インデックス6
+    vb_ = CreateUploadBuffer(device, sizeof(VertexData) * 4);
+    ib_ = CreateUploadBuffer(device, sizeof(uint32_t) * 6);
 
-    cmdList->IASetVertexBuffers(0, 1, &vertexBufferView_);
-    cmdList->IASetIndexBuffer(&indexBufferView_);
-    cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    // マップ
+    vb_->Map(0, nullptr, reinterpret_cast<void **>(&mappedVB_));
+    ib_->Map(0, nullptr, reinterpret_cast<void **>(&mappedIB_));
 
-    // RootParameter の順に CBV を積む（例：b0=Material, b1=Transform）
-    cmdList->SetGraphicsRootConstantBufferView(0, materialResource_->GetGPUVirtualAddress());
-    cmdList->SetGraphicsRootConstantBufferView(1, transformResource_->GetGPUVirtualAddress());
+    // インデックス（2三角形）
+    uint32_t idx[6] = {0,1,2, 2,1,3};
+    std::memcpy(mappedIB_, idx, sizeof(idx));
 
-    cmdList->DrawIndexedInstanced(6, 1, 0, 0, 0);
+    // VBV/IBV（ストライドは VertexData のサイズ）
+    vbv_.BufferLocation = vb_->GetGPUVirtualAddress();
+    vbv_.StrideInBytes = sizeof(VertexData);
+    vbv_.SizeInBytes = sizeof(VertexData) * 4;
+
+    ibv_.BufferLocation = ib_->GetGPUVirtualAddress();
+    ibv_.Format = DXGI_FORMAT_R32_UINT;
+    ibv_.SizeInBytes = sizeof(uint32_t) * 6;
+
+    // CB
+    cbMaterial_ = CreateUploadBuffer(device, ((sizeof(Material) + 255) / 256) * 256);
+    cbTransform_ = CreateUploadBuffer(device, ((sizeof(TransformMatrix) + 255) / 256) * 256);
+
+    cbMaterial_->Map(0, nullptr, reinterpret_cast<void **>(&mappedMaterial_));
+    cbTransform_->Map(0, nullptr, reinterpret_cast<void **>(&mappedTransform_));
+
+    // 初期矩形
+    SetRect(0, 0, 100, 100);
+}
+
+void Sprite::UpdateVertices() {
+    // 左上原点のピクセル矩形をそのまま頂点へ（z=0, w=1）
+    // [0] 左上, [1] 右上, [2] 左下, [3] 右下
+    // UV は 0-1 固定（PS は gColor 固定出力だが将来の拡張のため保持）
+    VertexData v{};
+    // 0: 左上
+    mappedVB_[0].position = {x_,        y_,        0.0f, 1.0f};
+    mappedVB_[0].texcoord = {0.0f, 0.0f};
+    mappedVB_[0].normal = {0.0f, 0.0f, 1.0f};
+    // 1: 右上
+    mappedVB_[1].position = {x_ + w_,     y_,        0.0f, 1.0f};
+    mappedVB_[1].texcoord = {1.0f, 0.0f};
+    mappedVB_[1].normal = {0.0f, 0.0f, 1.0f};
+    // 2: 左下
+    mappedVB_[2].position = {x_,        y_ + h_,     0.0f, 1.0f};
+    mappedVB_[2].texcoord = {0.0f, 1.0f};
+    mappedVB_[2].normal = {0.0f, 0.0f, 1.0f};
+    // 3: 右下
+    mappedVB_[3].position = {x_ + w_,     y_ + h_,     0.0f, 1.0f};
+    mappedVB_[3].texcoord = {1.0f, 1.0f};
+    mappedVB_[3].normal = {0.0f, 0.0f, 1.0f};
+}
+
+static inline void StoreMatrixColumnMajor(float dst[16], const XMFLOAT4X4 &m) {
+    // XMFLOAT4X4 は row-major 配列だが、HLSL 既定 column_major に合わせて転置して送る
+    // （あなたの Matrix4x4 実装に合わせてここは自由に差し替え可）
+    XMMATRIX mt = XMMatrixTranspose(XMLoadFloat4x4(&m));
+    XMFLOAT4X4 cm{};
+    XMStoreFloat4x4(&cm, mt);
+    std::memcpy(dst, &cm, sizeof(cm));
+}
+
+TransformMatrix Sprite::MakePixelToNDC(uint32_t vpw, uint32_t vph) {
+    // ピクセル座標 (0..W, 0..H) → NDC (-1..1, 1..-1)
+    //  [ 2/W   0   0   0 ]
+    //  [ 0   -2/H  0   0 ]
+    //  [ 0     0   1   0 ]
+    //  [-1     1   0   1 ]
+    XMFLOAT4X4 M = {
+        2.0f / vpw, 0,            0, 0,
+        0,         -2.0f / vph,   0, 0,
+        0,          0,            1, 0,
+       -1.0f,       1.0f,         0, 1
+    };
+
+    TransformMatrix t{};
+    // WVP = 上の行列、World は恒等でOK
+    StoreMatrixColumnMajor(reinterpret_cast<float *>(&t.WVP), M);
+
+    XMFLOAT4X4 I = {
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    };
+    StoreMatrixColumnMajor(reinterpret_cast<float *>(&t.World), I);
+    return t;
+}
+
+void Sprite::UpdateConstants() {
+    if (!mappedTransform_) return;
+    TransformMatrix proj = MakePixelToNDC(viewportW_, viewportH_);
+    *mappedTransform_ = proj;
 }

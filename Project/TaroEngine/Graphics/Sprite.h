@@ -1,73 +1,58 @@
 #pragma once
 #include <d3d12.h>
 #include <wrl.h>
+#include <cstdint>
+#include "VertexData.h"
 #include "Material.h"
 #include "TransformMatrix.h"
-#include "VertexData.h"
-#include "Vector2.h"
 
-class Camera; // ★ 前方宣言
-
-/// <summary>
-/// 2D スプライトを表すクラス。<br/>
-/// 頂点バッファ・インデックスバッファ・マテリアル・変換行列を持ち、
-/// 初期化、更新、描画を管理する。
-/// </summary>
 class Sprite {
 public:
-    /// <summary>コンストラクタ。</summary>
     Sprite() = default;
-    /// <summary>デストラクタ。</summary>
     ~Sprite() = default;
 
-    /// <summary>
-    /// 初期化処理。頂点/インデックス/マテリアル/変換行列バッファを生成してマップする。
-    /// </summary>
-    /// <param name="device">D3D12 デバイス。</param>
     void Initialize(ID3D12Device *device);
 
-    /// <summary>
-    /// 更新処理（互換用）。固定の正射影(1280x720)で WVP を組む。
-    /// </summary>
+    // 画面サイズ（ピクセル）※リサイズ時に呼ぶ
+    void SetViewportSize(uint32_t w, uint32_t h);
+
+    // スプライト矩形（ピクセル）
+    void SetRect(float x, float y, float width, float height);
+
+    // 色（Material.color）RGBA
+    void SetColor(float r, float g, float b, float a);
+
+    // 毎フレーム更新（行列やCBの更新だけ。カメラ不要）
     void Update();
 
-    /// <summary>
-    /// 更新処理（カメラ使用）。WVP = World * (View*Proj)。
-    /// </summary>
-    /// <param name="camera">3D カメラ。</param>
-    void Update(const Camera &camera);
-
-    /// <summary>描画（バッファとCBをセットしてドロー）。</summary>
-    /// <param name="cmdList">描画先のコマンドリスト。</param>
-    void Draw(ID3D12GraphicsCommandList *cmdList);
-
-    // --- パラメータ操作 ---
-    void SetPosition(const Vector2 &p) { position_ = p; }
-    void SetSize(const Vector2 &s) { size_ = s; }
-    void SetRotation(float r) { rotation_ = r; }
+    // 描画（共通PSO適用後に呼ぶ）
+    void Draw(ID3D12GraphicsCommandList *cmd) const;
 
 private:
-    // GPU リソース
-    Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> transformResource_;
+    void CreateBuffers(ID3D12Device *device);
+    void UpdateVertices();      // Rect 変更反映
+    void UpdateConstants();     // WVP/Color をCBへ
 
-    // ビュー
-    D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
-    D3D12_INDEX_BUFFER_VIEW  indexBufferView_{};
+    static TransformMatrix MakePixelToNDC(uint32_t vpw, uint32_t vph);
 
-    // マップ先
-    VertexData *vertexData_ = nullptr;
-    uint32_t *indexData_ = nullptr;
-    Material *materialData_ = nullptr;
-    TransformMatrix *transformMatrixData_ = nullptr;
+private:
+    ID3D12Device *device_ = nullptr;
 
-    // 変換パラメータ
-    Vector2 position_{0.0f, 0.0f};
-    Vector2 size_{100.0f, 100.0f};
-    float   rotation_ = 0.0f;
+    // 頂点/インデックス
+    Microsoft::WRL::ComPtr<ID3D12Resource> vb_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> ib_;
+    D3D12_VERTEX_BUFFER_VIEW vbv_{};
+    D3D12_INDEX_BUFFER_VIEW  ibv_{};
+    VertexData *mappedVB_ = nullptr;
+    uint32_t *mappedIB_ = nullptr;
 
-    // 内部共通：頂点更新＋World 計算を行い、引数 vp（= View*Proj）で WVP を組む
-    void UpdateImpl_(const struct Matrix4x4 &vp);
+    // CB（Upload）
+    Microsoft::WRL::ComPtr<ID3D12Resource> cbMaterial_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> cbTransform_;
+    Material *mappedMaterial_ = nullptr;
+    TransformMatrix *mappedTransform_ = nullptr;
+
+    // 状態
+    uint32_t viewportW_ = 1, viewportH_ = 1;
+    float x_ = 0, y_ = 0, w_ = 100, h_ = 100; // ピクセル矩形
 };
