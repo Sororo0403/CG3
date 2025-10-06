@@ -8,6 +8,7 @@
 #include "OutputLogger.h"
 #include "MultiLogger.h"
 #include "FileLogger.h"
+#include "PathUtil.h"   
 #include <memory>
 #include <chrono>
 
@@ -62,13 +63,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	engine.multiLogger = std::make_unique<MultiLogger>();
 	engine.multiLogger->AddLogger(std::make_shared<OutputLogger>());
 
-	std::filesystem::create_directories("Logs");
-	auto fileLogger = std::make_shared<FileLogger>("Logs/app.log");
+	const auto logPath = PathUtil::DefaultLogFilePath();
+	auto fileLogger = std::make_shared<FileLogger>(logPath.string());
 	if (fileLogger->IsOpen()) {
 		engine.multiLogger->AddLogger(fileLogger);
-		engine.multiLogger->Log(LogLevel::INFO, "FileLogger attached: Logs/app.log");
+		engine.multiLogger->Log(LogLevel::INFO, ("FileLogger attached: " + logPath.string()).c_str());
 	} else {
-		engine.multiLogger->Log(LogLevel::WARN, "FileLogger open failed: Logs/app.log");
+		engine.multiLogger->Log(LogLevel::WARN, ("FileLogger open failed: " + logPath.string()).c_str());
 	}
 
 	// ===============================
