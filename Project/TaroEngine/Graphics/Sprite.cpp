@@ -2,12 +2,10 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
-#include <memory>
 #include "DirectXTex/d3dx12.h"
 #include "BufferUtil.h"
 #include "Matrix4x4.h"
 #include "MatrixUtil.h"
-#include "Texture2D.h"
 
 using Microsoft::WRL::ComPtr;
 static inline void CheckHR(HRESULT hr) { assert(SUCCEEDED(hr)); }
@@ -47,16 +45,25 @@ void Sprite::SetColor(float r, float g, float b, float a) {
 
 void Sprite::Update() { UpdateConstants(); }
 
-void Sprite::SetTexture(const std::shared_ptr<Texture2D> &tex) {
-    texture_ = tex;
+void Sprite::SetTextureView(const TextureView &view) {
+    hasTexture_ = view.IsValid();
+    if (hasTexture_) {
+        srvGpu_ = view.gpu;
+    }
+}
+
+void Sprite::SetTextureHandle(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) {
+    hasTexture_ = (gpuHandle.ptr != 0);
+    srvGpu_ = gpuHandle;
 }
 
 void Sprite::Draw(ID3D12GraphicsCommandList *cmd) const {
+    // 注意：呼び出し側でシェーダ可視なSRVヒープを SetDescriptorHeaps 済みであること
     // p0: PS CBV(b0), p1: VS CBV(b1), p2: SRV(t0)
     cmd->SetGraphicsRootConstantBufferView(0, cbMaterial_->GetGPUVirtualAddress());
     cmd->SetGraphicsRootConstantBufferView(1, cbTransform_->GetGPUVirtualAddress());
-    if (texture_) {
-        cmd->SetGraphicsRootDescriptorTable(2, texture_->GetGpuSrv());
+    if (hasTexture_) {
+        cmd->SetGraphicsRootDescriptorTable(2, srvGpu_);
     }
 
     cmd->IASetVertexBuffers(0, 1, &vbv_);
@@ -99,21 +106,21 @@ void Sprite::CreateBuffers(ID3D12Device *device) {
 
 void Sprite::UpdateVertices() {
     // 左上原点のピクセル矩形 → 頂点へ
-    mappedVB_[0].position = {x_,        y_,        0.0f, 1.0f}; // 左上
+    mappedVB_[0].position = {x_,       y_,        0.0f, 1.0f}; // 左上
     mappedVB_[0].texcoord = {0.0f, 0.0f};
-    mappedVB_[0].normal = {0,0,1};
+    mappedVB_[0].normal = {0, 0, 1};
 
-    mappedVB_[1].position = {x_ + w_,   y_,        0.0f, 1.0f}; // 右上
+    mappedVB_[1].position = {x_ + w_,  y_,        0.0f, 1.0f}; // 右上
     mappedVB_[1].texcoord = {1.0f, 0.0f};
-    mappedVB_[1].normal = {0,0,1};
+    mappedVB_[1].normal = {0, 0, 1};
 
-    mappedVB_[2].position = {x_,        y_ + h_,   0.0f, 1.0f}; // 左下
+    mappedVB_[2].position = {x_,       y_ + h_,   0.0f, 1.0f}; // 左下
     mappedVB_[2].texcoord = {0.0f, 1.0f};
-    mappedVB_[2].normal = {0,0,1};
+    mappedVB_[2].normal = {0, 0, 1};
 
-    mappedVB_[3].position = {x_ + w_,   y_ + h_,   0.0f, 1.0f}; // 右下
+    mappedVB_[3].position = {x_ + w_,  y_ + h_,   0.0f, 1.0f}; // 右下
     mappedVB_[3].texcoord = {1.0f, 1.0f};
-    mappedVB_[3].normal = {0,0,1};
+    mappedVB_[3].normal = {0, 0, 1};
 }
 
 TransformMatrix Sprite::MakePixelToNDC(uint32_t vpw, uint32_t vph) {

@@ -2,12 +2,10 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
-#include <memory>
 #include "VertexData.h"
 #include "Material.h"
 #include "TransformMatrix.h"
-
-class Texture2D; // 前方宣言
+#include "TextureManager.h" // TextureView を使う
 
 class Sprite {
 public:
@@ -22,8 +20,10 @@ public:
     void Update();
     void Draw(ID3D12GraphicsCommandList *cmd) const;
 
-    // 分離後：スプライトはテクスチャを参照で受け取る
-    void SetTexture(const std::shared_ptr<Texture2D> &tex);
+    // 既定：TextureManager から返された SRV を設定
+    void SetTextureView(const TextureView &view);
+    // 直接 GPU ハンドルを渡したい場合
+    void SetTextureHandle(D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle);
 
 private:
     void CreateBuffers(ID3D12Device *device);
@@ -48,8 +48,9 @@ private:
     Material *mappedMaterial_ = nullptr;
     TransformMatrix *mappedTransform_ = nullptr;
 
-    // テクスチャ参照
-    std::shared_ptr<Texture2D> texture_;
+    // SRV（DescriptorTable 用）
+    D3D12_GPU_DESCRIPTOR_HANDLE srvGpu_{};
+    bool hasTexture_ = false;
 
     // 状態
     uint32_t viewportW_ = 1, viewportH_ = 1;

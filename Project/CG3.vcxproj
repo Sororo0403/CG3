@@ -149,6 +149,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="TaroEngine\Graphics\Camera.cpp" />
+    <ClCompile Include="TaroEngine\Graphics\TextureManager.cpp" />
     <ClCompile Include="TaroEngine\Scene\SceneManager.cpp" />
     <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp" />
     <ClCompile Include="TaroEngine\Graphics\D3DResourceLeakChecker.cpp" />

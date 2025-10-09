@@ -1,6 +1,4 @@
 #include "GameScene.h"
-#include "EngineContext.h"
-#include "RenderContext.h"
 #include "SpriteCommon.h"
 #include "DirectXCommon.h"
 #include "imgui.h"
@@ -38,9 +36,11 @@ void GameScene::Update(float /*deltaTime*/) {
 
 void GameScene::Draw(const EngineContext *engineContext, const RenderContext *renderContext) {
     // === 初回のみテクスチャをロード & セット ===
-    if (!spriteTex_) {
+    if (!spriteTex_.has_value()) {
         spriteTex_ = texMgr_.Load(renderContext->commandList, L"Resources/uvChecker.png");
-        sprite_.SetTexture(spriteTex_);
+        // SetTexture ではなく、SRV を直接設定
+        sprite_.SetTextureView(spriteTex_->view);
+        // もしくは: sprite_.SetTextureHandle(spriteTex_->view.gpu);
     }
 
     // === ImGui デバッグUI ===
@@ -65,6 +65,5 @@ void GameScene::Draw(const EngineContext *engineContext, const RenderContext *re
 }
 
 void GameScene::Finalize() {
-    // 共有リソースはスマートポインタで自動解放
     spriteTex_.reset();
 }

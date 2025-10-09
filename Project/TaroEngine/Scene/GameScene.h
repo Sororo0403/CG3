@@ -1,12 +1,11 @@
 #pragma once
-#include "IScene.h"
+#include <optional>
+#include <cstdint>
+#include "EngineContext.h"
+#include "RenderContext.h"
 #include "Sprite.h"
-#include <memory>
-
-struct EngineContext;
-struct RenderContext;
 #include "TextureManager.h"
-#include "Texture2D.h"
+#include "IScene.h"
 
 class GameScene : public IScene {
 public:
@@ -16,13 +15,12 @@ public:
     void Finalize() override;
 
 private:
-    Sprite sprite_;
+    // UI 状態
+    float uiX_ = 100.0f, uiY_ = 100.0f;
+    float uiW_ = 256.0f, uiH_ = 256.0f;
+    float uiCol_[4] = {1, 1, 1, 1};
 
-    // テクスチャ分離後のメンバ
-    TextureManager texMgr_;                // SRV ヒープ管理＋キャッシュ
-    std::shared_ptr<Texture2D>      spriteTex_;             // 表示用テクスチャ（共有）
-
-    // ImGui 調整用
-    float uiX_ = 100.0f, uiY_ = 100.0f, uiW_ = 256.0f, uiH_ = 256.0f;
-    float uiCol_[4] = {1,1,1,1};
+    Sprite sprite_{};
+    TextureManager texMgr_{};
+    std::optional<TextureHandle> spriteTex_; // ← SetTexture ではなく TextureHandle を保持
 };

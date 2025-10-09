@@ -99,7 +99,10 @@
       <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="TaroEngine\Graphics\Texture2D.cpp">
-      <Filter>Source</Filter>
+      <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\TextureManager.cpp">
+      <Filter>Source\Graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -197,10 +200,10 @@
       <Filter>Include\Math</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\Texture2D.h">
-      <Filter>Include</Filter>
+      <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\TextureManager.h">
-      <Filter>Include</Filter>
+      <Filter>Include\Graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
