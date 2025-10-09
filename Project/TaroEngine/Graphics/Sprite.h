@@ -2,9 +2,12 @@
 #include <d3d12.h>
 #include <wrl.h>
 #include <cstdint>
+#include <memory>
 #include "VertexData.h"
 #include "Material.h"
 #include "TransformMatrix.h"
+
+class Texture2D; // 前方宣言
 
 class Sprite {
 public:
@@ -19,12 +22,8 @@ public:
     void Update();
     void Draw(ID3D12GraphicsCommandList *cmd) const;
 
-    // 画像を読み込み、Upload→VRAM→SRV作成まで行う（1回だけ呼べばOK）
-    void LoadTextureFromFile(ID3D12Device *device,
-        ID3D12GraphicsCommandList *cmd,
-        const wchar_t *pathW,
-        ID3D12DescriptorHeap *srvHeap,
-        UINT srvIndex);
+    // 分離後：スプライトはテクスチャを参照で受け取る
+    void SetTexture(const std::shared_ptr<Texture2D> &tex);
 
 private:
     void CreateBuffers(ID3D12Device *device);
@@ -49,11 +48,8 @@ private:
     Material *mappedMaterial_ = nullptr;
     TransformMatrix *mappedTransform_ = nullptr;
 
-    // テクスチャ
-    Microsoft::WRL::ComPtr<ID3D12Resource> tex_;       // DefaultHeap
-    Microsoft::WRL::ComPtr<ID3D12Resource> texUpload_; // UploadHeap
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuSrv_{};
-    D3D12_GPU_DESCRIPTOR_HANDLE gpuSrv_{};
+    // テクスチャ参照
+    std::shared_ptr<Texture2D> texture_;
 
     // 状態
     uint32_t viewportW_ = 1, viewportH_ = 1;

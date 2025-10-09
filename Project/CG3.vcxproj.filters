@@ -42,9 +42,6 @@
     <Filter Include="Source\Scene">
       <UniqueIdentifier>{483fc31a-9852-40a0-aa41-0a87c3f3caf2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Log">
-      <UniqueIdentifier>{efccc90a-7ea0-4f68-9208-f67dac07089b}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -100,6 +97,9 @@
     </ClCompile>
     <ClCompile Include="TaroEngine\Graphics\Camera.cpp">
       <Filter>Source\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Texture2D.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -195,6 +195,12 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Math\VectorUtil.h">
       <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Texture2D.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\TextureManager.h">
+      <Filter>Include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

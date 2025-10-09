@@ -1,73 +1,70 @@
 #include "GameScene.h"
+#include "EngineContext.h"
+#include "RenderContext.h"
 #include "SpriteCommon.h"
 #include "DirectXCommon.h"
 #include "imgui.h"
 
 // ImGui が SRV[0] を使用している想定 → スプライトは [1] に置く
-namespace {
-	constexpr UINT kSpriteSrvIndex = 1;
-}
+namespace { constexpr UINT kSpriteSrvStartIndex = 1; }
 
 void GameScene::Initialize(const EngineContext *engineContext) {
-	// === スプライト初期化 ===
-	sprite_.Initialize(engineContext->device);
+    // === スプライト初期化 ===
+    sprite_.Initialize(engineContext->device);
 
-	// 画面サイズ（ピクセル）
-	const uint32_t defaultW = 1280;
-	const uint32_t defaultH = 720;
-	sprite_.SetViewportSize(defaultW, defaultH);
+    // 画面サイズ（ピクセル）
+    const uint32_t defaultW = 1280;
+    const uint32_t defaultH = 720;
+    sprite_.SetViewportSize(defaultW, defaultH);
 
-	// 色と矩形設定
-	sprite_.SetColor(1.0f, 1.0f, 1.0f, 1.0f);
-	sprite_.SetRect(100.0f, 100.0f, 256.0f, 256.0f);
+    // 色と矩形設定
+    sprite_.SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+    sprite_.SetRect(uiX_, uiY_, uiW_, uiH_);
 
-	// テクスチャは Draw() の初回でロードする
-	spriteTexLoaded_ = false;
+    // === TextureManager 準備（SRV ヒープと関連付け）===
+    texMgr_.Initialize(
+        engineContext->device,
+        engineContext->directXCommon->GetSrvHeap(),
+        kSpriteSrvStartIndex);
+
+    // テクスチャは最初の Draw タイミングでロード（cmd があるとき）
+    spriteTex_.reset();
 }
 
 void GameScene::Update(float /*deltaTime*/) {
-	// 定数バッファ更新など
-	sprite_.Update();
+    // 定数バッファ（行列）更新
+    sprite_.Update();
 }
 
 void GameScene::Draw(const EngineContext *engineContext, const RenderContext *renderContext) {
-	// === 初回のみテクスチャをロード ===
-	if (!spriteTexLoaded_) {
-		sprite_.LoadTextureFromFile(
-			engineContext->device,
-			renderContext->commandList,
-			L"Resources/uvChecker.png",        // ← テクスチャファイル
-			engineContext->directXCommon->GetSrvHeap(),     // SRVヒープ（共用）
-			kSpriteSrvIndex                    // SRVインデックス
-		);
-		spriteTexLoaded_ = true;
-	}
+    // === 初回のみテクスチャをロード & セット ===
+    if (!spriteTex_) {
+        spriteTex_ = texMgr_.Load(renderContext->commandList, L"Resources/uvChecker.png");
+        sprite_.SetTexture(spriteTex_);
+    }
 
-	// === ImGui デバッグUI ===
-	if (ImGui::Begin("Sprite")) {
-		static float x = 100.0f, y = 100.0f, w = 256.0f, h = 256.0f;
-		static float col[4] = {1, 1, 1, 1};
+    // === ImGui デバッグUI ===
+    if (ImGui::Begin("Sprite")) {
+        bool moved = ImGui::DragFloat2("Pos (px)", &uiX_, 1.0f);
+        bool sized = ImGui::DragFloat2("Size (px)", &uiW_, 1.0f, 1.0f, 4096.0f);
+        bool recol = ImGui::ColorEdit4("Color", uiCol_);
 
-		bool moved = ImGui::DragFloat2("Pos (px)", &x, 1.0f);
-		bool sized = ImGui::DragFloat2("Size (px)", &w, 1.0f, 1.0f, 4096.0f);
-		bool recol = ImGui::ColorEdit4("Color", col);
+        if (moved || sized) { sprite_.SetRect(uiX_, uiY_, uiW_, uiH_); }
+        if (recol) { sprite_.SetColor(uiCol_[0], uiCol_[1], uiCol_[2], uiCol_[3]); }
+        ImGui::End();
+    }
 
-		if (moved || sized) { sprite_.SetRect(x, y, w, h); }
-		if (recol) { sprite_.SetColor(col[0], col[1], col[2], col[3]); }
+    // === スプライト描画 ===
+    // 共通 PSO とルートシグネチャ適用
+    engineContext->spriteCommon->ApplyCommonDrawSettings(
+        renderContext->commandList,
+        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		ImGui::End();
-	}
-
-	// === スプライト描画 ===
-	// 共通PSOとルートシグネチャ適用
-	engineContext->spriteCommon->ApplyCommonDrawSettings(
-		renderContext->commandList,
-		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// 描画
-	sprite_.Draw(renderContext->commandList);
+    // 描画
+    sprite_.Draw(renderContext->commandList);
 }
 
 void GameScene::Finalize() {
-	// 今のところ特に解放対象なし
+    // 共有リソースはスマートポインタで自動解放
+    spriteTex_.reset();
 }

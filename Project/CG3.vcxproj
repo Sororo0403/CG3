@@ -166,6 +166,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Graphics\Sprite.cpp" />
     <ClCompile Include="TaroEngine\Graphics\SpriteCommon.cpp" />
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
+    <ClCompile Include="TaroEngine\Graphics\Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TaroEngine\Core\RenderContext.h" />
@@ -199,6 +200,8 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Scene\GameScene.h" />
     <ClInclude Include="TaroEngine\Scene\IScene.h" />
     <ClInclude Include="TaroEngine\Math\VectorUtil.h" />
+    <ClInclude Include="TaroEngine\Graphics\Texture2D.h" />
+    <ClInclude Include="TaroEngine\Graphics\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
