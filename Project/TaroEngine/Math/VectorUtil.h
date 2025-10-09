@@ -39,5 +39,4 @@ namespace VectorUtil {
 		const float inv = 1.0f / std::sqrt(len2);
 		return Vector3(v.x * inv, v.y * inv, v.z * inv);
 	}
-
 } // namespace VectorUtil
