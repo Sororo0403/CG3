@@ -42,6 +42,9 @@
     <Filter Include="Source\Scene">
       <UniqueIdentifier>{483fc31a-9852-40a0-aa41-0a87c3f3caf2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Log">
+      <UniqueIdentifier>{efccc90a-7ea0-4f68-9208-f67dac07089b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">

@@ -8,9 +8,9 @@ namespace {
 	constexpr UINT kSpriteSrvIndex = 1;
 }
 
-void GameScene::Initialize(const EngineContext &engine) {
+void GameScene::Initialize(const EngineContext *engineContext) {
 	// === スプライト初期化 ===
-	sprite_.Initialize(engine.device);
+	sprite_.Initialize(engineContext->device);
 
 	// 画面サイズ（ピクセル）
 	const uint32_t defaultW = 1280;
@@ -30,14 +30,14 @@ void GameScene::Update(float /*deltaTime*/) {
 	sprite_.Update();
 }
 
-void GameScene::Draw(const EngineContext &engine, const RenderContext &rc) {
+void GameScene::Draw(const EngineContext *engineContext, const RenderContext *renderContext) {
 	// === 初回のみテクスチャをロード ===
 	if (!spriteTexLoaded_) {
 		sprite_.LoadTextureFromFile(
-			engine.device,
-			rc.commandList,
+			engineContext->device,
+			renderContext->commandList,
 			L"Resources/uvChecker.png",        // ← テクスチャファイル
-			engine.directXCommon->GetSrvHeap(),     // SRVヒープ（共用）
+			engineContext->directXCommon->GetSrvHeap(),     // SRVヒープ（共用）
 			kSpriteSrvIndex                    // SRVインデックス
 		);
 		spriteTexLoaded_ = true;
@@ -60,17 +60,12 @@ void GameScene::Draw(const EngineContext &engine, const RenderContext &rc) {
 
 	// === スプライト描画 ===
 	// 共通PSOとルートシグネチャ適用
-	engine.spriteCommon->ApplyCommonDrawSettings(
-		rc.commandList,
+	engineContext->spriteCommon->ApplyCommonDrawSettings(
+		renderContext->commandList,
 		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	// 描画
-	sprite_.Draw(rc.commandList);
-}
-
-void GameScene::OnResize(uint32_t w, uint32_t h) {
-	// ビューポートサイズ変更対応
-	sprite_.SetViewportSize(w, h);
+	sprite_.Draw(renderContext->commandList);
 }
 
 void GameScene::Finalize() {

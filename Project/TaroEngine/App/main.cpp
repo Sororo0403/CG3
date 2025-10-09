@@ -52,17 +52,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ===============================
 	// DI: EngineContext を用意
 	// ===============================
-	EngineContext engine{};
-	engine.directXCommon = dx.get();
-	engine.device = dx->GetDevice();
-	engine.spriteCommon = spriteCommon.get();
+	EngineContext engineContext;
+	engineContext.directXCommon = dx.get();
+	engineContext.device = dx->GetDevice();
+	engineContext.spriteCommon = spriteCommon.get();
 
 	// ===============================
 	// シーンマネージャ初期化 & 最初のシーン
 	// ===============================
-	SceneManager sceneMgr;
-	sceneMgr.Initialize(engine);
-	sceneMgr.ChangeSceneT<GameScene>();  // 最初のシーンを予約
+	SceneManager sceneManager;
+	sceneManager.Initialize(&engineContext);
+	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
 	// ===============================
 	// メインループ
@@ -88,16 +88,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		if (dt > kDtClampMax) dt = kDtClampMax;
 
 		// --- 更新 ---
-		sceneMgr.Update(dt);
+		sceneManager.Update(dt);
 
 		// --- 描画 ---
 		const float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
 		dx->PreDraw(clearColor);
 
-		RenderContext rc{};
-		rc.commandList = dx->GetCommandList();
+		RenderContext renderContext{};
+		renderContext.commandList = dx->GetCommandList();
 
-		sceneMgr.Draw(rc);
+		sceneManager.Draw(&renderContext);
 
 		dx->PostDraw();
 	}
@@ -105,7 +105,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ===============================
 	// 終了処理
 	// ===============================
-	sceneMgr.Finalize();       // 現在シーンのFinalize
+	sceneManager.Finalize();       // 現在シーンのFinalize
 	dx->Finalize();            // D3D12 後片付け
 	winApp->Finalize();        // ウィンドウ破棄
 

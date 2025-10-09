@@ -1,54 +1,48 @@
 #include "SceneManager.h"
 
-void SceneManager::Initialize(const EngineContext &engine) {
-	engine_ = &engine;
+void SceneManager::Initialize(const EngineContext *engineContext) {
+	engineContext_ = engineContext;
 }
 
-void SceneManager::Update(float dt) {
-	// 切替は Update の冒頭で実行（安全なタイミング）
+void SceneManager::Update(float deltaTime) {
 	ProcessPendingChange();
 
-	if (currentInitialized_ && current_) {
-		current_->Update(dt);
+	if (currentScene_) {
+		currentScene_->Update(deltaTime);
 	}
 }
 
-void SceneManager::Draw(const RenderContext &rc) {
-	if (currentInitialized_ && current_ && engine_) {
-		current_->Draw(*engine_, rc);
+void SceneManager::Draw(const RenderContext *renderContext) {
+	if (currentScene_) {
+		currentScene_->Draw(engineContext_, renderContext);
 	}
 }
 
 
 void SceneManager::Finalize() {
-	if (current_) {
-		current_->Finalize();
-		current_.reset();
-		currentInitialized_ = false;
+	if (currentScene_) {
+		currentScene_->Finalize();
+		currentScene_.reset();
 	}
 
 	pending_.reset();
-	engine_ = nullptr;
 }
 
-void SceneManager::ChangeScene(std::unique_ptr<IScene> next) {
-	pending_ = std::move(next);
+void SceneManager::ChangeScene(std::unique_ptr<IScene> nextScene) {
+	pending_ = std::move(nextScene);
 }
 
 void SceneManager::ProcessPendingChange() {
 	if (!pending_) return;
 
-	// 現在のシーンを終了
-	if (current_) {
-		current_->Finalize();
-		current_.reset();
-		currentInitialized_ = false;
+	if (currentScene_) {
+		currentScene_->Finalize();
+		currentScene_.reset();
 	}
 
-	// 新しいシーンへ切替
-	current_ = std::move(pending_);
-	if (current_ && engine_) {
-		current_->Initialize(*engine_);
-		currentInitialized_ = true;
+	currentScene_ = std::move(pending_);
+
+	if (currentScene_) {
+		currentScene_->Initialize(engineContext_);
 	}
 }
