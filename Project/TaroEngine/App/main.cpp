@@ -57,11 +57,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	engineContext.device = dx->GetDevice();
 	engineContext.spriteCommon = spriteCommon.get();
 
+	RenderContext renderContext{};
+
 	// ===============================
 	// シーンマネージャ初期化 & 最初のシーン
 	// ===============================
 	SceneManager sceneManager;
-	sceneManager.Initialize(&engineContext);
+	sceneManager.Initialize(&engineContext, &renderContext);
 	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
 	// ===============================
@@ -94,10 +96,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		const float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
 		dx->PreDraw(clearColor);
 
-		RenderContext renderContext{};
 		renderContext.commandList = dx->GetCommandList();
 
-		sceneManager.Draw(&renderContext);
+		sceneManager.Draw();
 
 		dx->PostDraw();
 	}

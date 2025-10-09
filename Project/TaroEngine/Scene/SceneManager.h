@@ -8,7 +8,8 @@ public:
 	/// 初期化処理
 	/// </summary>
 	/// <param name="engineContext">エンジンの共有コンテキスト</param>
-	void Initialize(const EngineContext *engineContext);
+	/// <param name="renderContext">描画コンテキスト</param>
+	void Initialize(const EngineContext *engineContext, const RenderContext *renderContext);
 
 	/// <summary>
 	/// 更新処理
@@ -19,8 +20,7 @@ public:
 	/// <summary>
 	/// 描画処理
 	/// </summary>
-	/// <param name="renderContext">描画コンテキスト</param>
-	void Draw(const RenderContext *renderContext);
+	void Draw();
 
 	/// <summary>
 	/// 解放処理
@@ -41,6 +41,7 @@ private:
 
 private:
 	const EngineContext *engineContext_ = nullptr; // エンジンの共有コンテキスト
+	const RenderContext *renderContext_ = nullptr; // 描画コンテキスト
 	std::unique_ptr<IScene> currentScene_;		   // 現在のシーン
 	std::unique_ptr<IScene> pending_;			   // 次に切り替える予定のシーン
 };

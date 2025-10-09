@@ -1,7 +1,8 @@
 #include "SceneManager.h"
 
-void SceneManager::Initialize(const EngineContext *engineContext) {
+void SceneManager::Initialize(const EngineContext *engineContext, const RenderContext *renderContext) {
 	engineContext_ = engineContext;
+	renderContext_ = renderContext;
 }
 
 void SceneManager::Update(float deltaTime) {
@@ -12,12 +13,11 @@ void SceneManager::Update(float deltaTime) {
 	}
 }
 
-void SceneManager::Draw(const RenderContext *renderContext) {
+void SceneManager::Draw() {
 	if (currentScene_) {
-		currentScene_->Draw(engineContext_, renderContext);
+		currentScene_->Draw(engineContext_, renderContext_);
 	}
 }
-
 
 void SceneManager::Finalize() {
 	if (currentScene_) {
