@@ -143,6 +143,9 @@
     <ClCompile Include="TaroEngine\Graphics\Rendering\Object3d.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Core\Logger\OutputLogger.cpp">
+      <Filter>Source\Core\Logger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -250,7 +253,16 @@
     <ClInclude Include="TaroEngine\Graphics\Rendering\Object3d.h">
       <Filter>Include\Graphics\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="ILogger.h">
+    <ClInclude Include="TaroEngine\Core\Logger\ILogger.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\OutputLogger.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\LogUtility.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\LogLevel.h">
       <Filter>Include\Core\Logger</Filter>
     </ClInclude>
   </ItemGroup>

@@ -1,14 +1,6 @@
 #pragma once
 #include <string_view>
-
-enum class LogLevel {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL,
-};
+#include "LogLevel.h"
 
 class ILogger {
 public:

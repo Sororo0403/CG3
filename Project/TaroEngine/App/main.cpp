@@ -5,6 +5,7 @@
 #include "EngineContext.h"
 #include "GameScene.h"
 #include "SceneManager.h"
+#include "OutputLogger.h"
 #include <memory>
 #include <chrono>
 
@@ -65,6 +66,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	SceneManager sceneManager;
 	sceneManager.Initialize(&engineContext, &renderContext);
 	sceneManager.ChangeScene(std::make_unique<GameScene>());
+
+	OutputLogger outputLogger;
+	outputLogger.Log(LogLevel::INFO, "----- Application Start -----");
 
 	// ===============================
 	// メインループ
