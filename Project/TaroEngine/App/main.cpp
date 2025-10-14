@@ -6,6 +6,8 @@
 #include "GameScene.h"
 #include "SceneManager.h"
 #include "FileLogger.h"
+#include "OutputLogger.h"
+#include "LoggerManager.h"
 #include <memory>
 #include <chrono>
 
@@ -67,9 +69,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	sceneManager.Initialize(&engineContext, &renderContext);
 	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
-	FileLogger fileLogger;
-	fileLogger.SetFilePath("log.txt");
-	fileLogger.Log(LogLevel::INFO, "----- Application Start -----");
+	LoggerManager &loggerManager = LoggerManager::GetInstance();
+	loggerManager.AddLogger(std::make_shared<OutputLogger>());
+	std::shared_ptr<FileLogger> fileLogger = std::make_shared<FileLogger>();
+	fileLogger->SetFilePath("log.txt");
+	loggerManager.AddLogger(fileLogger);
+
+	LOG_INFO("アプリ開始");
 
 	// ===============================
 	// メインループ

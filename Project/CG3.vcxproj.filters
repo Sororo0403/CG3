@@ -149,6 +149,9 @@
     <ClCompile Include="TaroEngine\Core\Logger\FileLogger.cpp">
       <Filter>Source\Core\Logger</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Core\Logger\LoggerManager.cpp">
+      <Filter>Source\Core\Logger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -269,6 +272,9 @@
       <Filter>Include\Core\Logger</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\Logger\FileLogger.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\LoggerManager.h">
       <Filter>Include\Core\Logger</Filter>
     </ClInclude>
   </ItemGroup>
