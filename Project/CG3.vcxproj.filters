@@ -69,6 +69,12 @@
     <Filter Include="Source\ThirdParty\ImGui">
       <UniqueIdentifier>{f5ae23c4-7007-4dfe-a563-9b858a105780}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Core\Logger">
+      <UniqueIdentifier>{7e84f2fa-0a1d-4794-9495-6c86894bee47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Core\Logger">
+      <UniqueIdentifier>{4df610ca-56a8-4f2e-93ed-6d6d9753c632}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -243,6 +249,9 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\Rendering\Object3d.h">
       <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="ILogger.h">
+      <Filter>Include\Core\Logger</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
