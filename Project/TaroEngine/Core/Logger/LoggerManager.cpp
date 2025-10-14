@@ -1,10 +1,5 @@
 #include "LoggerManager.h"
 
-LoggerManager &LoggerManager::GetInstance() noexcept {
-    static LoggerManager instance;
-    return instance;
-}
-
 LoggerManager::~LoggerManager() = default;
 
 void LoggerManager::Log(LogLevel logLevel, std::string_view message) {

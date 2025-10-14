@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include "IScene.h"
 
@@ -9,7 +10,7 @@ public:
 	/// </summary>
 	/// <param name="engineContext">エンジンの共有コンテキスト</param>
 	/// <param name="renderContext">描画コンテキスト</param>
-	void Initialize(const EngineContext *engineContext, const RenderContext *renderContext);
+	void Initialize(const EngineContext *engineContext,const RenderContext *renderContext);
 
 	/// <summary>
 	/// 更新処理

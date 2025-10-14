@@ -15,7 +15,7 @@ void SceneManager::Update(float deltaTime) {
 
 void SceneManager::Draw() {
 	if (currentScene_) {
-		currentScene_->Draw(engineContext_, renderContext_);
+		currentScene_->Draw();
 	}
 }
 
@@ -43,6 +43,6 @@ void SceneManager::ProcessPendingChange() {
 	currentScene_ = std::move(pending_);
 
 	if (currentScene_) {
-		currentScene_->Initialize(engineContext_);
+		currentScene_->Initialize(engineContext_, renderContext_);
 	}
 }

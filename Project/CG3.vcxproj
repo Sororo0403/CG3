@@ -175,6 +175,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Graphics\Resources\Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Core\RenderContext.h" />
     <ClInclude Include="TaroEngine\Core\Logger\LoggerManager.h" />
     <ClInclude Include="TaroEngine\Core\Logger\FileLogger.h" />
     <ClInclude Include="TaroEngine\Core\Logger\ILogger.h" />
@@ -183,7 +184,6 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Core\Logger\OutputLogger.h" />
     <ClInclude Include="TaroEngine\Graphics\Rendering\Object3d.h" />
     <ClInclude Include="TaroEngine\Graphics\Rendering\Object3dCommon.h" />
-    <ClInclude Include="TaroEngine\Core\RenderContext.h" />
     <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h" />
     <ClInclude Include="TaroEngine\Scene\SceneManager.h" />
     <ClInclude Include="TaroEngine\Core\EngineContext.h" />
