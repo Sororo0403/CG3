@@ -10,8 +10,7 @@
 namespace BufferUtil {
 
     /// <summary>
-    /// 定数バッファを 256B アラインに揃える。<br/>
-    /// CBV は必ず 256 バイト単位に揃える必要がある。
+    /// 定数バッファを 256B アラインに揃える。
     /// </summary>
     /// <param name="size">バイト数。</param>
     /// <returns>アライン済みのバイト数。</returns>
@@ -20,8 +19,7 @@ namespace BufferUtil {
     }
 
     /// <summary>
-    /// Upload ヒープに配置されたバッファを作成する。<br/>
-    /// CPU→GPU 転送用。マップして書き込み可能。
+    /// Upload ヒープに配置されたバッファを作成する
     /// </summary>
     /// <param name="device">D3D12 デバイス。</param>
     /// <param name="sizeInBytes">バッファサイズ。</param>

@@ -5,10 +5,11 @@
 #include "VertexData.h"
 #include "Material.h"
 #include "TransformMatrix.h"
-#include "TextureManager.h" // TextureView を使う
+#include "TextureManager.h"   
 
 class Sprite {
 public:
+
     Sprite() = default;
     ~Sprite() = default;
 
