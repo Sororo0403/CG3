@@ -1,2 +1,16 @@
 [14:10:41.473][INFO] アプリ開始
 [14:11:16.305][INFO] アプリ開始
+[15:15:44.987][INFO] GameScene: 初期化開始
+[15:15:44.989][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:15:45.014][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:15:45.014][DEBUG] カメラ行列を設定しました
+[15:15:45.014][INFO] GameScene: 初期化完了
+[15:15:45.066][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:15:45.066][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:16:17.116][INFO] GameScene: 初期化開始
+[15:16:17.117][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:16:17.142][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:16:17.144][DEBUG] カメラ行列を設定しました
+[15:16:17.144][INFO] GameScene: 初期化完了
+[15:16:17.198][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:16:17.198][INFO] Plane テクスチャをロードしました (uvChecker.png)

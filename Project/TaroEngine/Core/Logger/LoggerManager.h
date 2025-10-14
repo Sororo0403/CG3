@@ -8,13 +8,6 @@
 
 class LoggerManager final : public ILogger {
 public:
-
-	/// <summary>
-	/// シングルトンインスタンスを取得
-	/// </summary>
-	/// <returns>LoggerManagerの参照</returns>
-	static LoggerManager &GetInstance() noexcept;
-
 	/// <summary>
 	/// デストラクタ
 	/// </summary>
@@ -42,11 +35,3 @@ private:
 	mutable std::mutex mutex_;
 	std::vector<std::shared_ptr<ILogger>> loggers_;
 };
-
-// 簡易マクロ群
-#define LOG_TRACE(msg) LoggerManager::GetInstance().Log(LogLevel::TRACE, (msg))
-#define LOG_DEBUG(msg) LoggerManager::GetInstance().Log(LogLevel::DEBUG, (msg))
-#define LOG_INFO(msg)  LoggerManager::GetInstance().Log(LogLevel::INFO,  (msg))
-#define LOG_WARN(msg)  LoggerManager::GetInstance().Log(LogLevel::WARN,  (msg))
-#define LOG_ERROR(msg) LoggerManager::GetInstance().Log(LogLevel::ERR, (msg))
-#define LOG_FATAL(msg) LoggerManager::GetInstance().Log(LogLevel::FATAL, (msg))

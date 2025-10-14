@@ -205,9 +205,6 @@
     <ClInclude Include="TaroEngine\Scene\SceneManager.h">
       <Filter>Include\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Core\RenderContext.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
     <ClInclude Include="TaroEngine\Math\VectorUtil.h">
       <Filter>Include\Math</Filter>
     </ClInclude>
@@ -276,6 +273,9 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\Logger\LoggerManager.h">
       <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\RenderContext.h">
+      <Filter>Include\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

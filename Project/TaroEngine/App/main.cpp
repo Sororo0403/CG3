@@ -69,13 +69,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	sceneManager.Initialize(&engineContext, &renderContext);
 	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
-	LoggerManager &loggerManager = LoggerManager::GetInstance();
+	LoggerManager loggerManager;
 	loggerManager.AddLogger(std::make_shared<OutputLogger>());
 	std::shared_ptr<FileLogger> fileLogger = std::make_shared<FileLogger>();
 	fileLogger->SetFilePath("log.txt");
 	loggerManager.AddLogger(fileLogger);
-
-	LOG_INFO("アプリ開始");
+	engineContext.loggerManager = &loggerManager;
 
 	// ===============================
 	// メインループ

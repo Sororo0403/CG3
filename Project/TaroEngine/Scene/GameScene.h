@@ -1,8 +1,6 @@
 #pragma once
 #include <optional>
 #include <cstdint>
-#include "EngineContext.h"
-#include "RenderContext.h"
 #include "Sprite.h"
 #include "TextureManager.h"
 #include "IScene.h"
@@ -13,9 +11,9 @@
 
 class GameScene : public IScene {
 public:
-    void Initialize(const EngineContext *engineContext) override;
+    void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
     void Update(float deltaTime) override;
-    void Draw(const EngineContext *engineContext, const RenderContext *renderContext) override;
+    void Draw() override;
     void Finalize() override;
 
 private:
