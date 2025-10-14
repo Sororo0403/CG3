@@ -14,3 +14,57 @@
 [15:16:17.144][INFO] GameScene: 初期化完了
 [15:16:17.198][INFO] Sprite テクスチャをロードしました (uvChecker.png)
 [15:16:17.198][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:37:31.192][INFO] GameScene: 初期化開始
+[15:37:31.194][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:37:31.217][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:37:31.218][DEBUG] カメラ行列を設定しました
+[15:37:31.218][INFO] GameScene: 初期化完了
+[15:37:31.296][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:37:31.297][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:37:51.767][INFO] GameScene: 終了処理開始
+[15:37:51.768][DEBUG] GameScene: リソースを解放しました
+[15:37:51.768][INFO] GameScene: 終了処理完了
+[15:46:06.705][INFO] GameScene: 初期化開始
+[15:46:06.707][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:46:06.732][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:46:06.732][DEBUG] カメラ行列を設定しました
+[15:46:06.732][INFO] GameScene: 初期化完了
+[15:46:06.800][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:46:06.800][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:46:32.940][INFO] GameScene: 終了処理開始
+[15:46:32.940][DEBUG] GameScene: リソースを解放しました
+[15:46:32.940][INFO] GameScene: 終了処理完了
+[15:55:43.134][INFO] GameScene: 初期化開始
+[15:55:43.135][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:55:43.160][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:55:43.161][DEBUG] カメラ行列を設定しました
+[15:55:43.161][INFO] GameScene: 初期化完了
+[15:55:43.228][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:55:43.228][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:56:25.537][INFO] GameScene: 初期化開始
+[15:56:25.538][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:56:25.563][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:56:25.563][DEBUG] カメラ行列を設定しました
+[15:56:25.563][INFO] GameScene: 初期化完了
+[15:56:25.615][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:56:25.615][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:56:28.408][INFO] GameScene: 終了処理開始
+[15:56:28.409][DEBUG] GameScene: リソースを解放しました
+[15:56:28.409][INFO] GameScene: 終了処理完了
+[15:56:57.751][INFO] GameScene: 初期化開始
+[15:56:57.752][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:56:57.775][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:56:57.776][DEBUG] カメラ行列を設定しました
+[15:56:57.776][INFO] GameScene: 初期化完了
+[15:56:57.827][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:56:57.827][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[15:57:06.646][INFO] GameScene: 終了処理開始
+[15:57:06.647][DEBUG] GameScene: リソースを解放しました
+[15:57:06.647][INFO] GameScene: 終了処理完了
+[15:57:30.253][INFO] GameScene: 初期化開始
+[15:57:30.254][DEBUG] Sprite 初期化完了: Rect=(100, 100, 256, 256)
+[15:57:30.278][INFO] Plane モデルを読み込みました (Resources/plane.obj)
+[15:57:30.279][DEBUG] カメラ行列を設定しました
+[15:57:30.279][INFO] GameScene: 初期化完了
+[15:57:30.330][INFO] Sprite テクスチャをロードしました (uvChecker.png)
+[15:57:30.330][INFO] Plane テクスチャをロードしました (uvChecker.png)

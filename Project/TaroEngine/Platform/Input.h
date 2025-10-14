@@ -1,67 +1,71 @@
 #pragma once
+
 #define DIRECTINPUT_VERSION 0x0800
-#include "WinApp.h"
+#include <Windows.h>
 #include <dinput.h>
 #include <wrl.h>
+#include <cstdint>
 
-/// <summary>
-/// DirectInput を使ったキーボード入力クラス
-/// </summary>
 class Input {
 public:
-	// DirectInput の「キー押下中」を示すビットマスク値
-	static constexpr BYTE KEY_PRESSED_MASK = 0x80;
+    /// <summary>
+    /// 初期化処理
+    /// </summary>
+    /// <param name="hInstance">アプリケーションのインスタンスハンドル</param>
+    /// <param name="hwnd">アプリケーションのウィンドウハンドル</param>
+    /// <returns>初期化に成功した場合は true、失敗した場合は false を返します</returns>
+    bool Initialize(HINSTANCE hInstance, HWND hwnd) noexcept;
 
-public:
-	// ===============================
-	// ライフサイクル
-	// ===============================
+    /// <summary>
+    /// 毎フレーム呼び出してキーボードの状態を更新します。
+    /// </summary>
+    void Update() noexcept;
 
-	/// <summary>
-	/// DirectInput を初期化し、キーボードデバイスを生成する
-	/// </summary>
-	/// <param name="winApp">アプリの WinApp</param>
-	void Initialize(WinApp *winApp);
+    /// <summary>
+    /// 解放処理
+    /// </summary>
+    void Finalize() noexcept;
 
-	/// <summary>
-	/// 毎フレームのキー状態を更新する
-	/// </summary>
-	void Update();
+    /// <summary>
+    /// 現在と前フレームのキー状態をすべて初期化
+    /// </summary>
+    void ResetStates() noexcept;
 
-	// ===============================
-	// 入力判定
-	// ===============================
+    /// <summary>
+    /// 指定されたキーが押されているかを返す
+    /// </summary>
+    /// <param name="dik">DirectInput のキーコード (DIK_*)</param>
+    /// <returns>押されている場合は true</returns>
+    bool IsKeyDown(std::uint8_t dik) const noexcept;
 
-	/// <summary>
-	/// 指定キーが押され続けているかを返す
-	/// </summary>
-	/// <param name="dik">DIK_ 定数</param>
-	bool IsKeyDown(BYTE dik) const { return (now_[dik] & KEY_PRESSED_MASK) != 0; }
+    /// <summary>
+    /// 指定されたキーが「今フレームで新たに押された」かを返す
+    /// </summary>
+    /// <param name="dik">DirectInput のキーコード (DIK_*)</param>
+    /// <returns>押された瞬間なら true</returns>
+    bool IsKeyPressed(std::uint8_t dik) const noexcept;
 
-	/// <summary>
-	/// 指定キーが離された瞬間かを返す
-	/// </summary>
-	/// <param name="dik">DIK_ 定数</param>
-	bool IsKeyReleased(BYTE dik) const {
-		return (prev_[dik] & KEY_PRESSED_MASK) && !(now_[dik] & KEY_PRESSED_MASK);
-	}
-
-	/// <summary>
-	/// 指定キーが押された瞬間かを返す
-	/// </summary>
-	/// <param name="dik">DIK_ 定数</param>
-	bool IsKeyPressed(BYTE dik) const {
-		return !(prev_[dik] & KEY_PRESSED_MASK) && (now_[dik] & KEY_PRESSED_MASK);
-	}
+    /// <summary>
+    /// 指定されたキーが「今フレームで離された」かを返す
+    /// </summary>
+    /// <param name="dik">DirectInput のキーコード (DIK_*)</param>
+    /// <returns>離された瞬間なら true</returns>
+    bool IsKeyReleased(std::uint8_t dik) const noexcept;
 
 private:
-	// ===============================
-	// メンバ変数
-	// ===============================
+    /// <summary>
+    /// 入力デバイスを取得状態にする
+    /// </summary>
+    /// <returns>取得に成功した場合は true</returns>
+    bool TryAcquire() noexcept;
 
-	WinApp *winApp_ = nullptr; // WinApp への参照
-	Microsoft::WRL::ComPtr<IDirectInput8> directInput_; // DirectInput 本体
-	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard_; // キーボードデバイス
-	BYTE now_[256] = {}; // 今フレームのキー状態
-	BYTE prev_[256] = {}; // 前フレームのキー状態
+private:
+	// 押されているかを示すビットマスク
+    static constexpr BYTE KEY_PRESSED_MASK = 0x80;
+
+	// DirectInput 関連
+    Microsoft::WRL::ComPtr<IDirectInput8> directInput_;
+    Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard_;
+    BYTE now_[256] = {};
+    BYTE prev_[256] = {};
 };

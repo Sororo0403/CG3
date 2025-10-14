@@ -2,43 +2,81 @@
 #include <cassert>
 #include <cstring>
 
-void Input::Initialize(WinApp *winApp) {
-    // WinApp から借りたインスタンスを保存
-    winApp_ = winApp;
+bool Input::Initialize(HINSTANCE hInstance, HWND hwnd) noexcept {
+	HRESULT hr = DirectInput8Create(
+		hInstance,
+		DIRECTINPUT_VERSION,
+		IID_IDirectInput8,
+		reinterpret_cast<void **>(directInput_.GetAddressOf()),
+		nullptr);
+	if (FAILED(hr)) return false;
 
-    // DirectInput オブジェクトを生成
-    HRESULT hr = DirectInput8Create(
-        winApp_->GetHInstance(), // アプリのインスタンス
-        DIRECTINPUT_VERSION, // バージョン
-        IID_IDirectInput8, // DirectInput8 の GUID
-        reinterpret_cast<void **>(directInput_.GetAddressOf()), // ComPtr に格納
-        nullptr);
-    assert(SUCCEEDED(hr));
+	hr = directInput_->CreateDevice(GUID_SysKeyboard, keyboard_.GetAddressOf(), nullptr);
+	if (FAILED(hr)) return false;
 
-    // キーボードデバイスを作成
-    hr = directInput_->CreateDevice(GUID_SysKeyboard, keyboard_.GetAddressOf(), nullptr);
-    assert(SUCCEEDED(hr));
+	hr = keyboard_->SetDataFormat(&c_dfDIKeyboard);
+	if (FAILED(hr)) return false;
 
-    // データフォーマットをキーボード用に設定
-    hr = keyboard_->SetDataFormat(&c_dfDIKeyboard);
-    assert(SUCCEEDED(hr));
+	hr = keyboard_->SetCooperativeLevel(
+		hwnd,
+		DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+	if (FAILED(hr)) return false;
 
-    // 協調モードを設定
-    hr = keyboard_->SetCooperativeLevel(
-        winApp_->GetHwnd(),
-        DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
-    assert(SUCCEEDED(hr));
+	ResetStates();
+	TryAcquire();
+	return true;
 }
 
-void Input::Update() {
-    // 前フレームのキー状態を保存
-    std::memcpy(prev_, now_, sizeof(now_));
+void Input::Update() noexcept {
+	if (!keyboard_) return;
 
-    // 入力デバイスを取得（フォーカス喪失時は Acquire が必要）
-    if (FAILED(keyboard_->Acquire())) {
-        return; // フォーカスが戻るまで何もしない
-    }
+	std::memcpy(prev_, now_, sizeof(now_));
+	if (!TryAcquire()) {
+		std::memset(now_, 0, sizeof(now_));
+		return;
+	}
 
-    // 今フレームのキー状態を取得
-    keyboard_->GetDeviceState(sizeof(now_), now_);
+	HRESULT hr = keyboard_->GetDeviceState(sizeof(now_), now_);
+	if (FAILED(hr)) {
+		std::memset(now_, 0, sizeof(now_));
+		TryAcquire();
+	}
+}
+
+void Input::Finalize() noexcept {
+	if (keyboard_) keyboard_->Unacquire();
+	keyboard_.Reset();
+	directInput_.Reset();
+	ResetStates();
+}
+
+void Input::ResetStates() noexcept {
+	std::memset(now_, 0, sizeof(now_));
+	std::memset(prev_, 0, sizeof(prev_));
+}
+
+bool Input::IsKeyDown(std::uint8_t dik) const noexcept {
+	assert(dik < 256);
+	return (now_[dik] & KEY_PRESSED_MASK) != 0;
+}
+
+bool Input::IsKeyPressed(std::uint8_t dik) const noexcept {
+	assert(dik < 256);
+	return !(prev_[dik] & KEY_PRESSED_MASK) && (now_[dik] & KEY_PRESSED_MASK);
+}
+
+bool Input::IsKeyReleased(std::uint8_t dik) const noexcept {
+	assert(dik < 256);
+	return (prev_[dik] & KEY_PRESSED_MASK) && !(now_[dik] & KEY_PRESSED_MASK);
+}
+
+bool Input::TryAcquire() noexcept {
+	if (!keyboard_) return false;
+	HRESULT hr = keyboard_->Acquire();
+	if (SUCCEEDED(hr)) return true;
+	if (hr == DIERR_INPUTLOST || hr == DIERR_NOTACQUIRED) {
+		hr = keyboard_->Acquire();
+		return SUCCEEDED(hr);
+	}
+	return false;
 }
