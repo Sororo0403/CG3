@@ -5,10 +5,6 @@
 #include "EngineContext.h"
 #include "GameScene.h"
 #include "SceneManager.h"
-#include "OutputLogger.h"
-#include "MultiLogger.h"
-#include "FileLogger.h"
-#include "PathUtil.h"   
 #include <memory>
 #include <chrono>
 
@@ -56,28 +52,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ===============================
 	// DI: EngineContext を用意
 	// ===============================
-	EngineContext engine{};
-	engine.directXCommon = dx.get();
-	engine.device = dx->GetDevice();
-	engine.spriteCommon = spriteCommon.get();
-	engine.multiLogger = std::make_unique<MultiLogger>();
-	engine.multiLogger->AddLogger(std::make_shared<OutputLogger>());
+	EngineContext engineContext;
+	engineContext.directXCommon = dx.get();
+	engineContext.device = dx->GetDevice();
+	engineContext.spriteCommon = spriteCommon.get();
 
-	const auto logPath = PathUtil::DefaultLogFilePath();
-	auto fileLogger = std::make_shared<FileLogger>(logPath.string());
-	if (fileLogger->IsOpen()) {
-		engine.multiLogger->AddLogger(fileLogger);
-		engine.multiLogger->Log(LogLevel::INFO, ("FileLogger attached: " + logPath.string()).c_str());
-	} else {
-		engine.multiLogger->Log(LogLevel::WARN, ("FileLogger open failed: " + logPath.string()).c_str());
-	}
+	RenderContext renderContext{};
 
 	// ===============================
 	// シーンマネージャ初期化 & 最初のシーン
 	// ===============================
-	SceneManager sceneMgr;
-	sceneMgr.Initialize(engine);
-	sceneMgr.ChangeSceneT<GameScene>();  // 最初のシーンを予約
+	SceneManager sceneManager;
+	sceneManager.Initialize(&engineContext, &renderContext);
+	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
 	// ===============================
 	// メインループ
@@ -103,16 +90,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		if (dt > kDtClampMax) dt = kDtClampMax;
 
 		// --- 更新 ---
-		sceneMgr.Update(dt);
+		sceneManager.Update(dt);
 
 		// --- 描画 ---
 		const float clearColor[] = {0.1f, 0.25f, 0.5f, 1.0f};
 		dx->PreDraw(clearColor);
 
-		RenderContext rc{};
-		rc.commandList = dx->GetCommandList();
+		renderContext.commandList = dx->GetCommandList();
 
-		sceneMgr.Draw(rc);
+		sceneManager.Draw();
 
 		dx->PostDraw();
 	}
@@ -120,7 +106,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ===============================
 	// 終了処理
 	// ===============================
-	sceneMgr.Finalize();       // 現在シーンのFinalize
+	sceneManager.Finalize();       // 現在シーンのFinalize
 	dx->Finalize();            // D3D12 後片付け
 	winApp->Finalize();        // ウィンドウ破棄
 

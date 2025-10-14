@@ -1,54 +1,48 @@
 #include "SceneManager.h"
 
-void SceneManager::Initialize(const EngineContext &engine) {
-    engine_ = &engine;
+void SceneManager::Initialize(const EngineContext *engineContext, const RenderContext *renderContext) {
+	engineContext_ = engineContext;
+	renderContext_ = renderContext;
+}
+
+void SceneManager::Update(float deltaTime) {
+	ProcessPendingChange();
+
+	if (currentScene_) {
+		currentScene_->Update(deltaTime);
+	}
+}
+
+void SceneManager::Draw() {
+	if (currentScene_) {
+		currentScene_->Draw(engineContext_, renderContext_);
+	}
 }
 
 void SceneManager::Finalize() {
-    if (current_) {
-        current_->Finalize();
-        current_.reset();
-        currentInitialized_ = false;
-    }
+	if (currentScene_) {
+		currentScene_->Finalize();
+		currentScene_.reset();
+	}
 
-    pending_.reset();
-    engine_ = nullptr;
+	pending_.reset();
 }
 
-void SceneManager::ChangeScene(std::unique_ptr<IScene> next) {
-    // 次フレームの Update 冒頭で確実に切り替える
-    pending_ = std::move(next);
+void SceneManager::ChangeScene(std::unique_ptr<IScene> nextScene) {
+	pending_ = std::move(nextScene);
 }
 
 void SceneManager::ProcessPendingChange() {
-    if (!pending_) return;
+	if (!pending_) return;
 
-    // 既存を終了
-    if (current_) {
-        current_->Finalize();
-        current_.reset();
-        currentInitialized_ = false;
-    }
+	if (currentScene_) {
+		currentScene_->Finalize();
+		currentScene_.reset();
+	}
 
-    // 切替
-    current_ = std::move(pending_);
-    if (current_ && engine_) {
-        current_->Initialize(*engine_);
-        currentInitialized_ = true;
-    }
-}
+	currentScene_ = std::move(pending_);
 
-void SceneManager::Update(float dt) {
-    // 切替は Update の先頭で行う（安全に）
-    ProcessPendingChange();
-
-    if (currentInitialized_ && current_) {
-        current_->Update(dt);
-    }
-}
-
-void SceneManager::Draw(const RenderContext &rc) {
-    if (currentInitialized_ && current_ && engine_) {
-        current_->Draw(*engine_, rc);
-    }
+	if (currentScene_) {
+		currentScene_->Initialize(engineContext_);
+	}
 }

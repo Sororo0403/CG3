@@ -1,104 +1,114 @@
-#define USE_MATH_DEFINES_
-#include <cmath>
 #include "GameScene.h"
+#include "SpriteCommon.h"
+#include "DirectXCommon.h"
 #include "imgui.h"
-#include "MultiLogger.h"
-#include "LogLevel.h"
+#include <DirectXMath.h>
+using namespace DirectX;
 
-void GameScene::Initialize(const EngineContext &engine) {
-	// --- カメラ初期化 ---
-	camera_.Initialize(1280.0f, 720.0f, camFovDeg_ * 3.14159265f / 180.0f, camNear_, camFar_);
-	camera_.SetPosition(camPos_);
-	camera_.SetTarget(camTarget_);
-	camera_.Update();
+// ImGui が SRV[0] を使用している想定 → スプライトは [1] から
+namespace { constexpr UINT kSpriteSrvStartIndex = 1; }
 
-	// --- スプライト初期化 ---
-	sprite_.Initialize(engine.device);
-	engine.multiLogger->Log(LogLevel::INFO, "GameScene: Sprite initialized.");
+// 行列ユーティリティ（Transpose 済みの float[16] を作る簡易版）
+static void MakeViewProj_T(float *out16, float eyeX, float eyeY, float eyeZ,
+    float tgtX, float tgtY, float tgtZ,
+    float upX, float upY, float upZ,
+    float fovY, float aspect, float zn, float zf) {
+    XMVECTOR eye = XMVectorSet(eyeX, eyeY, eyeZ, 1.0f);
+    XMVECTOR tgt = XMVectorSet(tgtX, tgtY, tgtZ, 1.0f);
+    XMVECTOR up = XMVectorSet(upX, upY, upZ, 0.0f);
+    XMMATRIX V = XMMatrixLookAtRH(eye, tgt, up);
+    XMMATRIX P = XMMatrixPerspectiveFovRH(fovY, aspect, zn, zf);
+    XMMATRIX VP = XMMatrixTranspose(V * P); // ← シェーダ側の行列読み取りに合わせて転置
+    XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4 *>(out16), VP);
 }
 
-void GameScene::OnResize(uint32_t w, uint32_t h) {
-	// ビューポート変更
-	camera_.SetViewportSize(static_cast<float>(w), static_cast<float>(h));
+void GameScene::Initialize(const EngineContext *engineContext) {
+    // === Sprite ===
+    sprite_.Initialize(engineContext->device);
+    sprite_.SetViewportSize(1280, 720);
+    sprite_.SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+    sprite_.SetRect(uiX_, uiY_, uiW_, uiH_);
+
+    // === SRV ヒープと紐付け（ImGui[0] を避けて 1 から使う）===
+    texMgr_.Initialize(
+        engineContext->device,
+        engineContext->directXCommon->GetSrvHeap(),
+        kSpriteSrvStartIndex);
+
+    spriteTex_.reset();
+
+    // === 3D 共通部 & plane ===
+    obj3dCommon_.Initialize(engineContext->directXCommon); // ルートシグネチャ・PSO 構築
+    plane_.Initialize(&obj3dCommon_);
+    // ※ モデルは Resources/Models/plane.obj を想定（Z+ を上にした右手座標などは環境に合わせて）
+    plane_.LoadObj(L"Resources/plane.obj");
+    plane_.SetScale(pScl_[0], pScl_[1], pScl_[2]);
+    plane_.SetColor(pCol_[0], pCol_[1], pCol_[2], pCol_[3]);
+    planeTex_.reset();
+
+    // カメラ行列
+    MakeViewProj_T(viewProj_, camPos_[0], camPos_[1], camPos_[2],
+        0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f,
+        XMConvertToRadians(60.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
 }
 
-void GameScene::Update(float /*dt*/) {
-	// カメラ行列更新
-	camera_.Update();
+void GameScene::Update(float /*deltaTime*/) {
+    // === plane の状態反映 ===
+    plane_.SetPosition(pPos_[0], pPos_[1], pPos_[2]);
+    plane_.SetRotation(pRot_[0], pRot_[1], pRot_[2]);
+    plane_.SetScale(pScl_[0], pScl_[1], pScl_[2]);
+    plane_.SetColor(pCol_[0], pCol_[1], pCol_[2], pCol_[3]);
 
-	// スプライト更新
-	sprite_.Update(camera_);
+    // CB 書き込み（viewProj と camera）
+    plane_.Update(viewProj_, camPos_);
+
+    // === sprite は定数更新 ===
+    sprite_.Update();
 }
 
-void GameScene::Draw(const EngineContext &engine, const RenderContext &rc) {
-	// ==== ImGui: Camera パネル ====
-	if (ImGui::Begin("Camera")) {
-		// 位置／注視点
-		if (ImGui::DragFloat3("Position", &camPos_.x, 0.05f)) {
-			camera_.SetPosition(camPos_);
-		}
-		if (ImGui::DragFloat3("Target", &camTarget_.x, 0.05f)) {
-			camera_.SetTarget(camTarget_);
-		}
+void GameScene::Draw(const EngineContext *engineContext, const RenderContext *renderContext) {
+    // === 初回ロード（遅延）===
+    if (!spriteTex_.has_value()) {
+        spriteTex_ = texMgr_.Load(renderContext->commandList, L"Resources/uvChecker.png");
+        sprite_.SetTextureView(spriteTex_->view);
+        // sprite_.SetTextureHandle(spriteTex_->view.gpu); // どちらでもOK
+    }
+    if (!planeTex_.has_value()) {
+        // plane も同じテクスチャをとりあえず使う（必要なら差し替え）
+        planeTex_ = texMgr_.Load(renderContext->commandList, L"Resources/uvChecker.png");
+        plane_.SetTextureSrv(planeTex_->view.gpu);
+    }
 
-		// FOV / Near / Far
-		if (ImGui::SliderFloat("FOV (deg)", &camFovDeg_, 10.0f, 120.0f)) {
-			camera_.SetLens(camFovDeg_ * 3.14159265f / 180.0f, camera_.GetAspect(), camNear_, camFar_);
-		}
-		bool nearChanged = ImGui::DragFloat("Near", &camNear_, 0.01f, 0.001f, camFar_ - 0.001f);
-		bool farChanged = ImGui::DragFloat("Far", &camFar_, 1.0f, camNear_ + 0.001f, 100000.0f);
-		if (nearChanged || farChanged) {
-			// Near/Far は常に整合性を保つ
-			if (camNear_ < 0.0001f) camNear_ = 0.0001f;
-			if (camFar_ <= camNear_ + 0.001f) camFar_ = camNear_ + 0.001f;
-			camera_.SetLens(camFovDeg_ * 3.14159265f / 180.0f, camera_.GetAspect(), camNear_, camFar_);
-		}
+    // === ImGui ===
+    if (ImGui::Begin("Sprite")) {
+        bool moved = ImGui::DragFloat2("Pos (px)", &uiX_, 1.0f);
+        bool sized = ImGui::DragFloat2("Size (px)", &uiW_, 1.0f, 1.0f, 4096.0f);
+        bool recol = ImGui::ColorEdit4("Color", uiCol_);
+        if (moved || sized) { sprite_.SetRect(uiX_, uiY_, uiW_, uiH_); }
+        if (recol) { sprite_.SetColor(uiCol_[0], uiCol_[1], uiCol_[2], uiCol_[3]); }
+        ImGui::End();
+    }
+    if (ImGui::Begin("Plane")) {
+        ImGui::DragFloat3("Pos", pPos_, 0.05f);
+        ImGui::DragFloat3("Rot(rad)", pRot_, 0.01f);
+        ImGui::DragFloat3("Scale", pScl_, 0.05f, 0.01f, 100.0f);
+        ImGui::ColorEdit4("Color", pCol_);
+        ImGui::End();
+    }
 
-		// 簡易オービット（注視点中心に公転）
-		static float orbitYawDeg = 0.0f;
-		static float orbitPitchDeg = 0.0f;
-		static float orbitRadius = 8.0f;
+    // === 3D描画 ===
+    // ※ PSO/RS は Object3d 側で共通設定を適用します
+    plane_.Draw(renderContext->commandList);
 
-		ImGui::SeparatorText("Orbit");
-		bool orbitChanged = false;
-		orbitChanged |= ImGui::DragFloat("Yaw (deg)", &orbitYawDeg, 0.25f, -360.0f, 360.0f);
-		orbitChanged |= ImGui::DragFloat("Pitch (deg)", &orbitPitchDeg, 0.25f, -89.0f, 89.0f);
-		orbitChanged |= ImGui::DragFloat("Radius", &orbitRadius, 0.05f, 0.01f, 1e6f);
-
-		if (ImGui::Button("Apply Orbit")) {
-			// カメラ位置を target 周りに回す
-			float yawRad = orbitYawDeg * 3.14159265f / 180.0f;
-			float pitchRad = orbitPitchDeg * 3.14159265f / 180.0f;
-
-			// 現在の target を使って公転させる
-			camera_.SetTarget(camTarget_);
-			camera_.OrbitTarget(yawRad, pitchRad, orbitRadius);
-			camPos_ = camera_.GetPosition(); // UI 側へ反映
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Reset")) {
-			camPos_ = {0.0f, 3.0f, -8.0f};
-			camTarget_ = {0.0f, 1.0f,  0.0f};
-			camFovDeg_ = 60.0f;
-			camNear_ = 0.1f;
-			camFar_ = 2000.0f;
-
-			camera_.SetPosition(camPos_);
-			camera_.SetTarget(camTarget_);
-			camera_.SetLens(camFovDeg_ * 3.14159265f / 180.0f, camera_.GetAspect(), camNear_, camFar_);
-		}
-
-		ImGui::End();
-	}
-
-	// 共通 PSO / ルートシグネチャ適用
-	engine.spriteCommon->ApplyCommonDrawSettings(
-		rc.commandList, D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// スプライト描画
-	sprite_.Draw(rc.commandList);
+    // === 2Dスプライト描画 ===
+    engineContext->spriteCommon->ApplyCommonDrawSettings(
+        renderContext->commandList,
+        D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    sprite_.Draw(renderContext->commandList);
 }
 
 void GameScene::Finalize() {
-	// 特に解放処理なし（必要なら追加）
+    spriteTex_.reset();
+    planeTex_.reset();
 }

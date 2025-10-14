@@ -8,9 +8,6 @@
     <Filter Include="Source\Graphics">
       <UniqueIdentifier>{408120d2-e08a-47dc-9f45-e1940a031b68}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\ImGui">
-      <UniqueIdentifier>{f5ae23c4-7007-4dfe-a563-9b858a105780}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source\App">
       <UniqueIdentifier>{6046ee8b-a975-4281-9722-2c5348eb8e9a}</UniqueIdentifier>
     </Filter>
@@ -27,9 +24,6 @@
     <Filter Include="Include\Graphics">
       <UniqueIdentifier>{54979f6f-596a-4740-aae4-a10b201ee1d4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\ImGui">
-      <UniqueIdentifier>{9a28578a-7d68-4055-8a9a-334b66bee167}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Include\Core">
       <UniqueIdentifier>{dcccfdb5-7c2f-4fc2-9625-91fe40c669ff}</UniqueIdentifier>
     </Filter>
@@ -42,61 +36,70 @@
     <Filter Include="Source\Scene">
       <UniqueIdentifier>{483fc31a-9852-40a0-aa41-0a87c3f3caf2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Logger">
-      <UniqueIdentifier>{30336bb0-ae4e-4217-b861-514dd82316cb}</UniqueIdentifier>
+    <Filter Include="Include\Platform">
+      <UniqueIdentifier>{ee0b124e-5bda-462c-8c64-41fe3957d0d8}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Logger">
-      <UniqueIdentifier>{1cf41058-acc0-4663-b19c-a0f2ff1b15a4}</UniqueIdentifier>
+    <Filter Include="Include\Graphics\LowLevel">
+      <UniqueIdentifier>{7ea6e075-2f56-4c03-8737-c44dd29a06ba}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Util">
-      <UniqueIdentifier>{ca3307de-053d-4332-9965-29f98af36fde}</UniqueIdentifier>
+    <Filter Include="Include\Graphics\Resources">
+      <UniqueIdentifier>{1ea9198f-1db8-45dd-9c61-d9176c18c43f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Graphics\Rendering">
+      <UniqueIdentifier>{31d219f0-4221-45eb-8383-59ce2c425734}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\ThirdParty">
+      <UniqueIdentifier>{a39ff30e-cb2a-497e-b5a6-743b55b5fbc4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\ThirdParty\ImGui">
+      <UniqueIdentifier>{9a28578a-7d68-4055-8a9a-334b66bee167}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Graphics\LowLevel">
+      <UniqueIdentifier>{048c6d1a-e042-4900-baef-e776d4d333e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Graphics\Resources">
+      <UniqueIdentifier>{0bd11202-446f-45c6-bc82-4056b2a4a569}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Graphics\Rendering">
+      <UniqueIdentifier>{bdd4c739-13fe-4160-82fc-0d378a59a9f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ThirdParty">
+      <UniqueIdentifier>{4c09f61f-94aa-45af-865e-3e84d7d5d292}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\ThirdParty\ImGui">
+      <UniqueIdentifier>{f5ae23c4-7007-4dfe-a563-9b858a105780}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
-      <Filter>Source\ImGui</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_demo.cpp">
-      <Filter>Source\ImGui</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_draw.cpp">
-      <Filter>Source\ImGui</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
-      <Filter>Source\ImGui</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
-      <Filter>Source\ImGui</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_tables.cpp">
-      <Filter>Source\ImGui</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
-      <Filter>Source\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\DirectXCommon.cpp">
-      <Filter>Source\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\D3DResourceLeakChecker.cpp">
-      <Filter>Source\Graphics</Filter>
+      <Filter>Source\ThirdParty\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="TaroEngine\App\main.cpp">
       <Filter>Source\App</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Core\Input.cpp">
+    <ClCompile Include="TaroEngine\Platform\Input.cpp">
       <Filter>Source\Core</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Core\WinApp.cpp">
+    <ClCompile Include="TaroEngine\Platform\WinApp.cpp">
       <Filter>Source\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\SpriteCommon.cpp">
-      <Filter>Source\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\Sprite.cpp">
-      <Filter>Source\Graphics</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\ShaderCompiler.cpp">
-      <Filter>Source\Graphics</Filter>
     </ClCompile>
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp">
       <Filter>Source\Scene</Filter>
@@ -104,61 +107,61 @@
     <ClCompile Include="TaroEngine\Scene\SceneManager.cpp">
       <Filter>Source\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\Camera.cpp">
-      <Filter>Source\Graphics</Filter>
+    <ClCompile Include="TaroEngine\Graphics\LowLevel\D3DResourceLeakChecker.cpp">
+      <Filter>Source\Graphics\LowLevel</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Logger\OutputLogger.cpp">
-      <Filter>Source\Logger</Filter>
+    <ClCompile Include="TaroEngine\Graphics\LowLevel\DirectXCommon.cpp">
+      <Filter>Source\Graphics\LowLevel</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Logger\MultiLogger.cpp">
-      <Filter>Source\Logger</Filter>
+    <ClCompile Include="TaroEngine\Graphics\Resources\Texture2D.cpp">
+      <Filter>Source\Graphics\Resources</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Logger\FileLogger.cpp">
-      <Filter>Source\Logger</Filter>
+    <ClCompile Include="TaroEngine\Graphics\Resources\TextureManager.cpp">
+      <Filter>Source\Graphics\Resources</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\ShaderCompiler.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Sprite.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\SpriteCommon.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Object3dCommon.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Object3d.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_impl_dx12.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_impl_win32.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_internal.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_rectpack.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_textedit.h">
-      <Filter>Include\ImGui</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_truetype.h">
-      <Filter>Include\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\DirectXCommon.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\D3DResourceLeakChecker.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Input.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\WinApp.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Sprite.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\SpriteCommon.h">
-      <Filter>Include\Graphics</Filter>
+      <Filter>Include\ThirdParty\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Math\Matrix4x4.h">
       <Filter>Include\Math</Filter>
@@ -172,23 +175,8 @@
     <ClInclude Include="TaroEngine\Math\Vector4.h">
       <Filter>Include\Math</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Material.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\TransformMatrix.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\VertexData.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="TaroEngine\Math\MatrixUtil.h">
       <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\ShaderCompiler.h">
-      <Filter>Include\Graphics</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\BufferUtil.h">
-      <Filter>Include\Graphics</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\EngineContext.h">
       <Filter>Include\Core</Filter>
@@ -202,32 +190,59 @@
     <ClInclude Include="TaroEngine\Scene\SceneManager.h">
       <Filter>Include\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Camera.h">
-      <Filter>Include\Graphics</Filter>
+    <ClInclude Include="TaroEngine\Core\RenderContext.h">
+      <Filter>Include\Core</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\ILogger.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Math\VectorUtil.h">
+      <Filter>Include\Math</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\LogLevel.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Platform\Input.h">
+      <Filter>Include\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\OutputLogger.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Platform\WinApp.h">
+      <Filter>Include\Platform</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\LogLevelUtil.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Graphics\LowLevel\DirectXCommon.h">
+      <Filter>Include\Graphics\LowLevel</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\LogTimeUtil.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Graphics\LowLevel\D3DResourceLeakChecker.h">
+      <Filter>Include\Graphics\LowLevel</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\MultiLogger.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Graphics\LowLevel\BufferUtil.h">
+      <Filter>Include\Graphics\LowLevel</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Logger\FileLogger.h">
-      <Filter>Include\Logger</Filter>
+    <ClInclude Include="TaroEngine\Graphics\Resources\Texture2D.h">
+      <Filter>Include\Graphics\Resources</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Util\PathUtil.h">
-      <Filter>Include\Util</Filter>
+    <ClInclude Include="TaroEngine\Graphics\Resources\TextureManager.h">
+      <Filter>Include\Graphics\Resources</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Material.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\ShaderCompiler.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Sprite.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\SpriteCommon.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\TransformMatrix.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\VertexData.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Object3dCommon.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Object3d.h">
+      <Filter>Include\Graphics\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -235,6 +250,12 @@
       <Filter>Shader</Filter>
     </FxCompile>
     <FxCompile Include="Resources\Shaders\SpritePS.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Resources\Shaders\Object3dVS.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Resources\Shaders\Object3dPS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>
