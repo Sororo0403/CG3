@@ -69,6 +69,12 @@
     <Filter Include="Source\ThirdParty\ImGui">
       <UniqueIdentifier>{f5ae23c4-7007-4dfe-a563-9b858a105780}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Core\Logger">
+      <UniqueIdentifier>{7e84f2fa-0a1d-4794-9495-6c86894bee47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Core\Logger">
+      <UniqueIdentifier>{4df610ca-56a8-4f2e-93ed-6d6d9753c632}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -136,6 +142,15 @@
     </ClCompile>
     <ClCompile Include="TaroEngine\Graphics\Rendering\Object3d.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Core\Logger\OutputLogger.cpp">
+      <Filter>Source\Core\Logger</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Core\Logger\FileLogger.cpp">
+      <Filter>Source\Core\Logger</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Core\Logger\LoggerManager.cpp">
+      <Filter>Source\Core\Logger</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -243,6 +258,24 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\Rendering\Object3d.h">
       <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\ILogger.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\OutputLogger.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\LogUtility.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\LogLevel.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\FileLogger.h">
+      <Filter>Include\Core\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\Logger\LoggerManager.h">
+      <Filter>Include\Core\Logger</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
