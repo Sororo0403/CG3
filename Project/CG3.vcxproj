@@ -80,7 +80,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\Platform;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics\LowLevel;$(ProjectDir)TaroEngine\Graphics\Resources;$(ProjectDir)TaroEngine\Graphics\Rendering;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Core\Logger;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\Platform;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics\LowLevel;$(ProjectDir)TaroEngine\Graphics\Rendering;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Core\Logger;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -106,7 +106,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\Platform;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics\LowLevel;$(ProjectDir)TaroEngine\Graphics\Resources;$(ProjectDir)TaroEngine\Graphics\Rendering;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Core\Logger;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\Platform;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics\LowLevel;$(ProjectDir)TaroEngine\Graphics\Rendering;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Core\Logger;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -133,7 +133,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\Platform;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics\LowLevel;$(ProjectDir)TaroEngine\Graphics\Resources;$(ProjectDir)TaroEngine\Graphics\Rendering;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Core\Logger;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)TaroEngine\Platform;$(ProjectDir)TaroEngine\App;$(ProjectDir)TaroEngine\Graphics\LowLevel;$(ProjectDir)TaroEngine\Graphics\Rendering;$(ProjectDir)TaroEngine\Math;$(ProjectDir)TaroEngine\Scene;$(ProjectDir)TaroEngine\Core\Logger;$(ProjectDir)TaroEngine\Core;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -148,15 +148,12 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Mesh.cpp" />
+    <ClCompile Include="TaroEngine\Graphics\Rendering\ModelRenderer.cpp" />
     <ClCompile Include="TaroEngine\Core\Logger\LoggerManager.cpp" />
     <ClCompile Include="TaroEngine\Core\Logger\FileLogger.cpp" />
     <ClCompile Include="TaroEngine\Core\Logger\OutputLogger.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Object3d.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Object3dCommon.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Resources\TextureManager.cpp" />
     <ClCompile Include="TaroEngine\Scene\SceneManager.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Rendering\ShaderCompiler.cpp" />
     <ClCompile Include="TaroEngine\Graphics\LowLevel\D3DResourceLeakChecker.cpp" />
     <ClCompile Include="TaroEngine\Graphics\LowLevel\DirectXCommon.cpp" />
     <ClCompile Include="Externals\imgui\imgui.cpp" />
@@ -169,12 +166,12 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Platform\Input.cpp" />
     <ClCompile Include="TaroEngine\App\main.cpp" />
     <ClCompile Include="TaroEngine\Platform\WinApp.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Sprite.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Rendering\SpriteCommon.cpp" />
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
-    <ClCompile Include="TaroEngine\Graphics\Resources\Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Graphics\LowLevel\BufferUtility.h" />
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Mesh.h" />
+    <ClInclude Include="TaroEngine\Graphics\Rendering\ModelRenderer.h" />
     <ClInclude Include="TaroEngine\Core\RenderContext.h" />
     <ClInclude Include="TaroEngine\Core\Logger\LoggerManager.h" />
     <ClInclude Include="TaroEngine\Core\Logger\FileLogger.h" />
@@ -182,13 +179,8 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Core\Logger\LogLevel.h" />
     <ClInclude Include="TaroEngine\Core\Logger\LogUtility.h" />
     <ClInclude Include="TaroEngine\Core\Logger\OutputLogger.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Object3d.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Object3dCommon.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h" />
     <ClInclude Include="TaroEngine\Scene\SceneManager.h" />
     <ClInclude Include="TaroEngine\Core\EngineContext.h" />
-    <ClInclude Include="TaroEngine\Graphics\LowLevel\BufferUtil.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\ShaderCompiler.h" />
     <ClInclude Include="TaroEngine\Graphics\LowLevel\D3DResourceLeakChecker.h" />
     <ClInclude Include="TaroEngine\Graphics\LowLevel\DirectXCommon.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
@@ -201,21 +193,12 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="TaroEngine\Platform\Input.h" />
     <ClInclude Include="TaroEngine\Platform\WinApp.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Material.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Sprite.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\SpriteCommon.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\TransformMatrix.h" />
-    <ClInclude Include="TaroEngine\Graphics\Rendering\VertexData.h" />
     <ClInclude Include="TaroEngine\Math\Matrix4x4.h" />
-    <ClInclude Include="TaroEngine\Math\MatrixUtil.h" />
     <ClInclude Include="TaroEngine\Math\Vector2.h" />
     <ClInclude Include="TaroEngine\Math\Vector3.h" />
     <ClInclude Include="TaroEngine\Math\Vector4.h" />
     <ClInclude Include="TaroEngine\Scene\GameScene.h" />
     <ClInclude Include="TaroEngine\Scene\IScene.h" />
-    <ClInclude Include="TaroEngine\Math\VectorUtil.h" />
-    <ClInclude Include="TaroEngine\Graphics\Resources\Texture2D.h" />
-    <ClInclude Include="TaroEngine\Graphics\Resources\TextureManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">
@@ -223,7 +206,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Resources\Shaders\Object3dPS.hlsl">
+    <FxCompile Include="Resources\Shaders\ModelPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
@@ -231,23 +214,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
-    <FxCompile Include="Resources\Shaders\Object3dVS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Resources\Shaders\SpritePS.hlsl">
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
-      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Pixel</ShaderType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </FxCompile>
-    <FxCompile Include="Resources\Shaders\SpriteVS.hlsl">
+    <FxCompile Include="Resources\Shaders\ModelVS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Vertex</ShaderType>

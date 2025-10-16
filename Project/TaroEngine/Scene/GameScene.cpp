@@ -1,154 +1,91 @@
-// GameScene.cpp
+#define NOMINMAX
 #include "GameScene.h"
-#include "SpriteCommon.h"
 #include "DirectXCommon.h"
-#include "EngineContext.h"
-#include "LoggerManager.h"
-#include "LogLevel.h"
+#include <algorithm>
+#include "imgui/imgui.h"   // ★ 追加
 
-#include "imgui.h"
-#include <DirectXMath.h>
-#include <format>
 using namespace DirectX;
 
-// ImGui が SRV[0] を使用している想定 → スプライトは [1] から
-namespace { constexpr UINT kSpriteSrvStartIndex = 1; }
-
-// 行列ユーティリティ（Transpose 済みの float[16] を作る簡易版）
-static void MakeViewProj_T(float *out16, float eyeX, float eyeY, float eyeZ,
-	float tgtX, float tgtY, float tgtZ,
-	float upX, float upY, float upZ,
-	float fovY, float aspect, float zn, float zf) {
-	XMVECTOR eye = XMVectorSet(eyeX, eyeY, eyeZ, 1.0f);
-	XMVECTOR tgt = XMVectorSet(tgtX, tgtY, tgtZ, 1.0f);
-	XMVECTOR up = XMVectorSet(upX, upY, upZ, 0.0f);
-	XMMATRIX V = XMMatrixLookAtRH(eye, tgt, up);
-	XMMATRIX P = XMMatrixPerspectiveFovRH(fovY, aspect, zn, zf);
-	XMMATRIX VP = XMMatrixTranspose(V * P);
-	XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4 *>(out16), VP);
-}
-
 void GameScene::Initialize(const EngineContext *engineContext, const RenderContext *renderContext) {
-	engineContext_ = engineContext;
-	renderContext_ = renderContext;
+    engineContext_ = engineContext;
+    renderContext_ = renderContext;
 
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::INFO, "GameScene: 初期化開始");
-	}
+    auto *dx = engineContext_->directXCommon;
+    model_.Initialize(dx->GetDevice(), nullptr);
+    cube_.CreateBox(dx->GetDevice());
 
-	// === Sprite ===
-	sprite_.Initialize(engineContext_->device);
-	sprite_.SetViewportSize(1280, 720);
-	sprite_.SetColor(1.0f, 1.0f, 1.0f, 1.0f);
-	sprite_.SetRect(uiX_, uiY_, uiW_, uiH_);
+    // 初期のビュー・プロジェクション（実値は Update/Draw で毎フレーム再計算）
+    view_ = XMMatrixLookAtLH(XMLoadFloat3(&eye_), XMLoadFloat3(&tgt_), XMLoadFloat3(&up_));
 
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::DEBUG, std::format(
-			"Sprite 初期化完了: Rect=({}, {}, {}, {})", uiX_, uiY_, uiW_, uiH_));
-	}
+    const float w = 1280.0f, h = 720.0f;
+    proj_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovYDeg_), w / h, nearZ_, farZ_);
 
-	// === SRV ヒープと紐付け ===
-	texMgr_.Initialize(
-		engineContext_->device,
-		engineContext_->directXCommon->GetSrvHeap(),
-		kSpriteSrvStartIndex);
-
-	spriteTex_.reset();
-
-	// === 3D共通部 & plane ===
-	obj3dCommon_.Initialize(engineContext_->directXCommon);
-	plane_.Initialize(&obj3dCommon_);
-	plane_.LoadObj(L"Resources/plane.obj");
-	plane_.SetScale(pScl_[0], pScl_[1], pScl_[2]);
-	plane_.SetColor(pCol_[0], pCol_[1], pCol_[2], pCol_[3]);
-	planeTex_.reset();
-
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::INFO, "Plane モデルを読み込みました (Resources/plane.obj)");
-	}
-
-	// === カメラ行列 ===
-	MakeViewProj_T(viewProj_, camPos_[0], camPos_[1], camPos_[2],
-		0.0f, 0.0f, 0.0f,
-		0.0f, 1.0f, 0.0f,
-		XMConvertToRadians(60.0f), 1280.0f / 720.0f, 0.1f, 100.0f);
-
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::DEBUG, "カメラ行列を設定しました");
-	}
-
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::INFO, "GameScene: 初期化完了");
-	}
+    // モデル色は初期白
+    color_[0] = 1.0f; color_[1] = 1.0f; color_[2] = 1.0f; color_[3] = 1.0f;
 }
 
-void GameScene::Update(float /*deltaTime*/) {
-	// === Plane の状態更新 ===
-	plane_.SetPosition(pPos_[0], pPos_[1], pPos_[2]);
-	plane_.SetRotation(pRot_[0], pRot_[1], pRot_[2]);
-	plane_.SetScale(pScl_[0], pScl_[1], pScl_[2]);
-	plane_.SetColor(pCol_[0], pCol_[1], pCol_[2], pCol_[3]);
-
-	// === CB更新 ===
-	plane_.Update(viewProj_, camPos_);
-	sprite_.Update();
+void GameScene::Update(float deltaTime) {
+    if (autoSpin_) {
+        angleY_ += deltaTime * rotSpeed_;
+    }
+    world_ = XMMatrixRotationY(angleY_);
 }
 
 void GameScene::Draw() {
-	// === 初回ロード ===
-	if (!spriteTex_.has_value()) {
-		spriteTex_ = texMgr_.Load(renderContext_->commandList, L"Resources/uvChecker.png");
-		sprite_.SetTextureView(spriteTex_->view);
+    auto *dx = engineContext_->directXCommon;
+    auto *cmd = dx->GetCommandList();
 
-		if (engineContext_->loggerManager) {
-			engineContext_->loggerManager->Log(LogLevel::INFO, "Sprite テクスチャをロードしました (uvChecker.png)");
-		}
-	}
+    // =========================
+    // ImGui UI（ここでパラメータを編集）
+    // =========================
+    if (ImGui::Begin("Scene \xef\xbc\xbc Controls")) { // 「Scene ▶ Controls」
+        ImGui::TextDisabled("Camera");
+        ImGui::DragFloat3("Eye", &eye_.x, 0.01f, -1000.0f, 1000.0f, "%.2f");
+        ImGui::DragFloat3("Target", &tgt_.x, 0.01f, -1000.0f, 1000.0f, "%.2f");
+        ImGui::DragFloat3("Up", &up_.x, 0.01f, -10.0f, 10.0f, "%.2f");
 
-	if (!planeTex_.has_value()) {
-		planeTex_ = texMgr_.Load(renderContext_->commandList, L"Resources/uvChecker.png");
-		plane_.SetTextureSrv(planeTex_->view.gpu);
+        ImGui::SliderFloat("FOV (deg)", &fovYDeg_, 10.0f, 120.0f, "%.1f");
+        ImGui::DragFloatRange2("ZNear/ZFar", &nearZ_, &farZ_, 0.01f, 0.01f, 1000.0f, "N=%.2f", "F=%.1f");
 
-		if (engineContext_->loggerManager) {
-			engineContext_->loggerManager->Log(LogLevel::INFO, "Plane テクスチャをロードしました (uvChecker.png)");
-		}
-	}
+        if (ImGui::Button("Reset Camera")) {
+            eye_ = {0.0f, 1.5f, -3.0f};
+            tgt_ = {0.0f, 0.5f,  0.0f};
+            up_ = {0.0f, 1.0f,  0.0f};
+            fovYDeg_ = 60.0f; nearZ_ = 0.1f; farZ_ = 100.0f;
+        }
 
-	// === ImGui ===
-	if (ImGui::Begin("Sprite")) {
-		bool moved = ImGui::DragFloat2("Pos (px)", &uiX_, 1.0f);
-		bool sized = ImGui::DragFloat2("Size (px)", &uiW_, 1.0f, 1.0f, 4096.0f);
-		bool recol = ImGui::ColorEdit4("Color", uiCol_);
-		if (moved || sized) { sprite_.SetRect(uiX_, uiY_, uiW_, uiH_); }
-		if (recol) { sprite_.SetColor(uiCol_[0], uiCol_[1], uiCol_[2], uiCol_[3]); }
-		ImGui::End();
-	}
-	if (ImGui::Begin("Plane")) {
-		ImGui::DragFloat3("Pos", pPos_, 0.05f);
-		ImGui::DragFloat3("Rot(rad)", pRot_, 0.01f);
-		ImGui::DragFloat3("Scale", pScl_, 0.05f, 0.01f, 100.0f);
-		ImGui::ColorEdit4("Color", pCol_);
-		ImGui::End();
-	}
+        ImGui::Separator();
+        ImGui::TextDisabled("Model");
+        ImGui::Checkbox("Auto Spin", &autoSpin_);
+        ImGui::DragFloat("Rot Speed (rad/s)", &rotSpeed_, 0.01f, -10.0f, 10.0f);
+        ImGui::ColorEdit4("Color", color_, ImGuiColorEditFlags_Float);
 
-	// === 描画 ===
-	plane_.Draw(renderContext_->commandList);
-	engineContext_->spriteCommon->ApplyCommonDrawSettings(
-		renderContext_->commandList,
-		D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	sprite_.Draw(renderContext_->commandList);
+        if (ImGui::Button("Reset Rotation")) { angleY_ = 0.0f; }
+
+        ImGui::Separator();
+        ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    }
+    ImGui::End();
+
+    // UI の値で最新の View / Proj を再計算（アスペクトは実ウィンドウから取得）
+    const uint32_t wU = std::max<uint32_t>(1u, dx->GetWidth());
+    const uint32_t hU = std::max<uint32_t>(1u, dx->GetHeight());
+    const float aspect = static_cast<float>(wU) / static_cast<float>(hU);
+
+    view_ = XMMatrixLookAtLH(XMLoadFloat3(&eye_), XMLoadFloat3(&tgt_), XMLoadFloat3(&up_));
+    proj_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovYDeg_), aspect, nearZ_, farZ_);
+
+    // HLSL 既定 column_major → 転置して送る
+    float vT[16], pT[16], wT[16];
+    StoreT(vT, view_);
+    StoreT(pT, proj_);
+    StoreT(wT, world_);
+
+    model_.Begin(cmd, vT, pT);
+    model_.Draw(cmd, cube_, wT, color_);
+    model_.End(cmd);
 }
 
 void GameScene::Finalize() {
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::INFO, "GameScene: 終了処理開始");
-	}
-
-	spriteTex_.reset();
-	planeTex_.reset();
-
-	if (engineContext_->loggerManager) {
-		engineContext_->loggerManager->Log(LogLevel::DEBUG, "GameScene: リソースを解放しました");
-		engineContext_->loggerManager->Log(LogLevel::INFO, "GameScene: 終了処理完了");
-	}
+    model_.Finalize();
 }
