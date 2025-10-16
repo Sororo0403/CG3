@@ -17,6 +17,20 @@ void LoggerManager::Log(LogLevel logLevel, std::string_view message) {
     }
 }
 
+void LoggerManager::Log(LogLevel logLevel, std::wstring_view message) {
+    std::vector<std::shared_ptr<ILogger>> targets;
+    {
+        std::scoped_lock lock(mutex_);
+        targets = loggers_;
+    }
+
+    for (const auto &logger : targets) {
+        if (logger) {
+            logger->Log(logLevel, message);
+        }
+    }
+}
+
 void LoggerManager::AddLogger(const std::shared_ptr<ILogger> &logger) {
     if (!logger) return;
     std::scoped_lock lock(mutex_);

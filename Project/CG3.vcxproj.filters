@@ -128,6 +128,9 @@
     <ClCompile Include="TaroEngine\Graphics\Rendering\Mesh.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.cpp">
+      <Filter>Source\Graphics\LowLevel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -218,6 +221,12 @@
       <Filter>Include\Graphics\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\LowLevel\BufferUtility.h">
+      <Filter>Include\Graphics\LowLevel</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Core\StringUtility.h">
+      <Filter>Include\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.h">
       <Filter>Include\Graphics\LowLevel</Filter>
     </ClInclude>
   </ItemGroup>

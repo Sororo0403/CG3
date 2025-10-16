@@ -14,9 +14,6 @@ public:
 	void Finalize();
 
 private:
-	const EngineContext *engineContext_ = nullptr;
-	const RenderContext *renderContext_ = nullptr;
-
 	ModelRenderer model_;
 	Mesh          cube_;
 

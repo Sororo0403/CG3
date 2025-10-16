@@ -21,6 +21,13 @@ public:
 	void Log(LogLevel logLevel, std::string_view message) override;
 
 	/// <summary>
+	/// ログ出力
+	/// </summary>
+	/// <param name="logLevel">ログレベル</param>
+	/// <param name="message">メッセージ</param>
+	void Log(LogLevel logLevel, std::wstring_view message) override;
+
+	/// <summary>
 	/// ロガーを追加
 	/// </summary>
 	/// <param name="logger">追加するロガー</param>

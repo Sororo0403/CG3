@@ -2,7 +2,7 @@
 #include "GameScene.h"
 #include "DirectXCommon.h"
 #include <algorithm>
-#include "imgui/imgui.h"   // ★ 追加
+#include "imgui/imgui.h"
 
 using namespace DirectX;
 
@@ -11,7 +11,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     renderContext_ = renderContext;
 
     auto *dx = engineContext_->directXCommon;
-    model_.Initialize(dx->GetDevice(), nullptr);
+    model_.Initialize(dx->GetDevice(), renderContext_->shaderCompiler);
     cube_.CreateBox(dx->GetDevice());
 
     // 初期のビュー・プロジェクション（実値は Update/Draw で毎フレーム再計算）

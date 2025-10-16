@@ -3,6 +3,7 @@
 #include <format>
 #include <filesystem>
 #include <cassert>
+#include "StringUtility.h"
 
 FileLogger::~FileLogger() {
 	if (stream_.is_open()) {
@@ -44,4 +45,16 @@ void FileLogger::Log(LogLevel logLevel, std::string_view message) {
 	// スレッドセーフに出力
 	std::scoped_lock lock(mutex_);
 	stream_ << formatted << std::endl;
+}
+
+void FileLogger::Log(LogLevel logLevel, std::wstring_view message) {
+	if (!stream_.is_open()) return;
+
+	// ワイド→UTF-8 にしてファイルへ
+	std::wstring formattedW = LogUtility::FormatW(logLevel, message);
+	std::string  utf8 = StringUtility::W2U8(formattedW);
+
+	std::scoped_lock lock(mutex_);
+	stream_.write(utf8.data(), static_cast<std::streamsize>(utf8.size()));
+	stream_ << "\n";
 }

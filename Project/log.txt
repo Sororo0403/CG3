@@ -68,3 +68,21 @@
 [15:57:30.279][INFO] GameScene: 初期化完了
 [15:57:30.330][INFO] Sprite テクスチャをロードしました (uvChecker.png)
 [15:57:30.330][INFO] Plane テクスチャをロードしました (uvChecker.png)
+[14:48:43.582][INFO] [ShaderCompiler] DXCを初期化しました。
+[14:48:43.603][WARN] [DXC 診断] Resources/Shaders/ModelVS.hlsl: 診断出力はありませんでした。
+
+[14:48:43.604][INFO] [HLSL] 成功: Resources/Shaders/ModelVS.hlsl (エントリ: VSMain / ターゲット: vs_6_0)
+[14:48:43.609][WARN] [DXC 診断] Resources/Shaders/ModelPS.hlsl: 診断出力はありませんでした。
+
+[14:56:00.430][INFO] [ShaderCompiler] DXCを初期化しました。
+[14:56:00.450][WARN] [DXC 診断] Resources/Shaders/ModelVS.hlsl: 診断出力はありませんでした。
+
+[14:56:00.450][INFO] [HLSL] 成功: Resources/Shaders/ModelVS.hlsl (エントリ: VSMain / ターゲット: vs_6_0)
+[14:56:00.454][WARN] [DXC 診断] Resources/Shaders/ModelPS.hlsl: 診断出力はありませんでした。
+
+[15:04:21.942][INFO] [ShaderCompiler] DXC を初期化しました。
+[15:04:21.960][INFO] [HLSL] 成功: Resources/Shaders/ModelVS.hlsl (Entry=VSMain / Target=vs_6_0)
+[15:04:21.964][INFO] [HLSL] 成功: Resources/Shaders/ModelPS.hlsl (Entry=PSMain / Target=ps_6_0)
+[15:08:36.791][INFO] [ShaderCompiler] DXC を初期化しました。
+[15:08:36.811][INFO] [HLSL] 成功: Resources/Shaders/ModelVS.hlsl (Entry=VSMain / Target=vs_6_0)
+[15:08:36.818][INFO] [HLSL] 成功: Resources/Shaders/ModelPS.hlsl (Entry=PSMain / Target=ps_6_0)

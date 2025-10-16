@@ -7,6 +7,7 @@
 #include "FileLogger.h"
 #include "OutputLogger.h"
 #include "LoggerManager.h"
+#include "ShaderCompiler.h"
 
 #include <memory>
 #include <chrono>
@@ -32,18 +33,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		rawDx->Resize(w, h);
 		});
 
-	// EngineContext
-	EngineContext engineContext{};
-	engineContext.directXCommon = directXCommon.get();
-
-	RenderContext renderContext{};
-
-	// ===============================
-	// シーンマネージャ初期化
-	// ===============================
-	SceneManager sceneManager;
-	sceneManager.Initialize(&engineContext, &renderContext);
-	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
 	// ===============================
 	// ロガー設定
@@ -55,7 +44,31 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	fileLogger->SetFilePath("log.txt");
 	loggerManager.AddLogger(fileLogger);
 
-	engineContext.loggerManager = &loggerManager;
+	// ===============================
+	// コンパイラ初期化
+	// ===============================
+	// ShaderCompiler
+	std::shared_ptr<ShaderCompiler> shaderCompiler = std::make_shared<ShaderCompiler>();
+	shaderCompiler->Initialize(&loggerManager);
+
+	// ===============================
+	// コンテキスト初期化
+	// ===============================
+	// EngineContext
+	EngineContext engineContext{};
+	engineContext.directXCommon = directXCommon.get();
+
+	// RenderContext
+	RenderContext renderContext{};
+	renderContext.commandList = nullptr;
+	renderContext.shaderCompiler = shaderCompiler.get();
+
+	// ===============================
+	// シーンマネージャ初期化
+	// ===============================
+	SceneManager sceneManager;
+	sceneManager.Initialize(&engineContext, &renderContext);
+	sceneManager.ChangeScene(std::make_unique<GameScene>());
 
 	// ===============================
 	// メインループ
@@ -91,6 +104,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		directXCommon->PreDraw(kClearColor);
 
 		renderContext.commandList = directXCommon->GetCommandList();
+		renderContext.shaderCompiler = shaderCompiler.get();
+
 		sceneManager.Draw();
 
 		directXCommon->PostDraw();
