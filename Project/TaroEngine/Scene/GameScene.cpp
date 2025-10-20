@@ -1,3 +1,4 @@
+// GameScene.cpp
 #define NOMINMAX
 #include "GameScene.h"
 #include "DirectXCommon.h"
@@ -14,20 +15,15 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     model_.Initialize(dx->GetDevice(), renderContext_->shaderCompiler);
     cube_.CreateBox(dx->GetDevice());
 
-    // 初期のビュー・プロジェクション（実値は Update/Draw で毎フレーム再計算）
-    view_ = XMMatrixLookAtLH(XMLoadFloat3(&eye_), XMLoadFloat3(&tgt_), XMLoadFloat3(&up_));
+    camera_.Reset();
+    camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
 
-    const float w = 1280.0f, h = 720.0f;
-    proj_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovYDeg_), w / h, nearZ_, farZ_);
-
-    // モデル色は初期白
+    // 初期色
     color_[0] = 1.0f; color_[1] = 1.0f; color_[2] = 1.0f; color_[3] = 1.0f;
 }
 
 void GameScene::Update(float deltaTime) {
-    if (autoSpin_) {
-        angleY_ += deltaTime * rotSpeed_;
-    }
+    if (autoSpin_) angleY_ += deltaTime * rotSpeed_;
     world_ = XMMatrixRotationY(angleY_);
 }
 
@@ -36,22 +32,32 @@ void GameScene::Draw() {
     auto *cmd = dx->GetCommandList();
 
     // =========================
-    // ImGui UI（ここでパラメータを編集）
+    // ImGui UI
     // =========================
-    if (ImGui::Begin("Scene \xef\xbc\xbc Controls")) { // 「Scene ▶ Controls」
+    if (ImGui::Begin("Scene ▶ Controls")) {
         ImGui::TextDisabled("Camera");
-        ImGui::DragFloat3("Eye", &eye_.x, 0.01f, -1000.0f, 1000.0f, "%.2f");
-        ImGui::DragFloat3("Target", &tgt_.x, 0.01f, -1000.0f, 1000.0f, "%.2f");
-        ImGui::DragFloat3("Up", &up_.x, 0.01f, -10.0f, 10.0f, "%.2f");
+        // 編集用に一旦コピー
+        auto eye = camera_.GetEye();
+        auto tgt = camera_.GetTarget();
+        auto up = camera_.GetUp();
+        float fov = camera_.GetFovYDeg();
+        float zn = camera_.GetNearZ();
+        float zf = camera_.GetFarZ();
 
-        ImGui::SliderFloat("FOV (deg)", &fovYDeg_, 10.0f, 120.0f, "%.1f");
-        ImGui::DragFloatRange2("ZNear/ZFar", &nearZ_, &farZ_, 0.01f, 0.01f, 1000.0f, "N=%.2f", "F=%.1f");
+        if (ImGui::DragFloat3("Eye", &eye.x, 0.01f))    camera_.SetEye(eye);
+        if (ImGui::DragFloat3("Target", &tgt.x, 0.01f)) camera_.SetTarget(tgt);
+        if (ImGui::DragFloat3("Up", &up.x, 0.01f))      camera_.SetUp(up);
+
+        bool lensChanged = false;
+        lensChanged |= ImGui::SliderFloat("FOV (deg)", &fov, 10.0f, 120.0f, "%.1f");
+        lensChanged |= ImGui::DragFloatRange2("ZNear/ZFar", &zn, &zf, 0.01f, 0.01f, 1000.0f, "N=%.2f", "F=%.1f");
+        if (lensChanged) {
+            camera_.SetPerspective(fov, camera_.GetAspect(), zn, zf);
+        }
 
         if (ImGui::Button("Reset Camera")) {
-            eye_ = {0.0f, 1.5f, -3.0f};
-            tgt_ = {0.0f, 0.5f,  0.0f};
-            up_ = {0.0f, 1.0f,  0.0f};
-            fovYDeg_ = 60.0f; nearZ_ = 0.1f; farZ_ = 100.0f;
+            camera_.Reset();
+            camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
         }
 
         ImGui::Separator();
@@ -59,27 +65,20 @@ void GameScene::Draw() {
         ImGui::Checkbox("Auto Spin", &autoSpin_);
         ImGui::DragFloat("Rot Speed (rad/s)", &rotSpeed_, 0.01f, -10.0f, 10.0f);
         ImGui::ColorEdit4("Color", color_, ImGuiColorEditFlags_Float);
-
-        if (ImGui::Button("Reset Rotation")) { angleY_ = 0.0f; }
+        if (ImGui::Button("Reset Rotation")) angleY_ = 0.0f;
 
         ImGui::Separator();
         ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     }
     ImGui::End();
 
-    // UI の値で最新の View / Proj を再計算（アスペクトは実ウィンドウから取得）
-    const uint32_t wU = std::max<uint32_t>(1u, dx->GetWidth());
-    const uint32_t hU = std::max<uint32_t>(1u, dx->GetHeight());
-    const float aspect = static_cast<float>(wU) / static_cast<float>(hU);
+    // 実ウィンドウのアスペクトを反映
+    camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
 
-    view_ = XMMatrixLookAtLH(XMLoadFloat3(&eye_), XMLoadFloat3(&tgt_), XMLoadFloat3(&up_));
-    proj_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovYDeg_), aspect, nearZ_, farZ_);
-
-    // HLSL 既定 column_major → 転置して送る
+    // 転置行列を取得して描画
     float vT[16], pT[16], wT[16];
-    StoreT(vT, view_);
-    StoreT(pT, proj_);
-    StoreT(wT, world_);
+    Camera::StoreT(wT, world_);
+    camera_.GetTransposeVP(vT, pT);
 
     model_.Begin(cmd, vT, pT);
     model_.Draw(cmd, cube_, wT, color_);

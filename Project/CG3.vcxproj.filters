@@ -134,6 +134,9 @@
     <ClCompile Include="TaroEngine\Graphics\Rendering\Model.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -231,6 +234,9 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Math\VertexRef.h">
       <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h">
+      <Filter>Include\Graphics\Rendering</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
