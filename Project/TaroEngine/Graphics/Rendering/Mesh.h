@@ -7,11 +7,6 @@
 
 class Mesh {
 public:
-    // 単位キューブ(中心原点)をスケールして作成。面の表裏は ccw=true で表(外向き)が反時計回り。
-    void CreateBox(ID3D12Device *device,
-        float sx = 1.0f, float sy = 1.0f, float sz = 1.0f,
-        bool ccw = true);
-
     // 頂点配列とインデックス(32bit)。indices が空なら 0..N-1 の16bitインデックスとして扱う。
     void CreateFromVertices(ID3D12Device *device,
         const std::vector<Vertex> &vertices,

@@ -15,9 +15,9 @@ using namespace DirectX;
 
 // 1..N / -1..-N を 0..N-1 に
 static inline int ResolveIndex(int idx, int count) {
-    if (idx > 0) return idx - 1;     // 1..N -> 0..N-1
-    if (idx < 0) return count + idx; // -1..-N -> N-1..0
-    return -1;                       // 0 は不正
+    if (idx > 0) return idx - 1;
+    if (idx < 0) return count + idx;
+    return -1;
 }
 
 // "v/t/n" / "v//n" / "v/t" / "v" を VertexRef に分解
@@ -50,21 +50,14 @@ static inline XMFLOAT3 FaceNormal(const XMFLOAT3 &p0, const XMFLOAT3 &p1, const 
 }
 
 void Model::Initialize(ID3D12Device *device, const std::string &path) {
-    if (path.empty()) {
-        CreateFromBox_(device);
-    } else {
-        LoadFromOBJ_(device, path);
-    }
-}
-
-void Model::CreateFromBox_(ID3D12Device *device) {
-    mesh_.CreateBox(device);
+    assert(device);
+    assert(!path.empty() && "Model::Initialize: OBJ path is required (non-empty).");
+    LoadFromOBJ_(device, path);
 }
 
 void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
-    assert(device);
     std::ifstream ifs(path);
-    if (!ifs) { mesh_.CreateBox(device); return; }
+    assert(ifs && "Failed to open OBJ file. Check path.");
 
     std::vector<XMFLOAT3> positions;
     std::vector<XMFLOAT3> normals;
@@ -100,7 +93,7 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
             while (iss >> tok) refs.push_back(ParseVertexRef(tok));
             if (refs.size() < 3) continue;
 
-            // 多角形 -> 三角形（扇形分割）
+            // 多角形 → 三角形（扇形分割）
             for (size_t k = 1; k + 1 < refs.size(); ++k) {
                 VertexRef tri[3] = {refs[0], refs[k], refs[k + 1]};
 
@@ -113,18 +106,18 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
                     ti[m] = (tri[m].vt == -1) ? -1 : ResolveIndex(tri[m].vt, static_cast<int>(texcoords.size()));
                     ni[m] = (tri[m].vn == -1) ? -1 : ResolveIndex(tri[m].vn, static_cast<int>(normals.size()));
 
-                    if (vi[m] < 0 || vi[m] >= static_cast<int>(positions.size())) { CreateFromBox_(device); return; }
+                    assert(vi[m] >= 0 && vi[m] < static_cast<int>(positions.size()) && "OBJ: invalid position index");
                     P[m] = positions[static_cast<size_t>(vi[m])];
 
                     if (ti[m] >= 0) { T[m] = texcoords[static_cast<size_t>(ti[m])]; hasT[m] = true; } else { T[m] = XMFLOAT2{0.0f, 0.0f}; }
                     if (ni[m] >= 0) { N[m] = normals[static_cast<size_t>(ni[m])];  hasN[m] = true; } else { N[m] = XMFLOAT3{0.0f, 0.0f, 0.0f}; }
                 }
 
-                // 法線欠落時は面法線
+                // 法線欠落時は面法線（OBJ は CCW 前提）
                 if (!(hasN[0] && hasN[1] && hasN[2])) {
                     const XMFLOAT3 fn = FaceNormal(P[0], P[1], P[2]);
                     N[0] = N[1] = N[2] = fn;
-                    ni[0] = ni[1] = ni[2] = -1; // 計算法線マーク
+                    ni[0] = ni[1] = ni[2] = -1;
                 }
 
                 // (vi,ti,ni) で重複排除しながら頂点/index 追加
@@ -149,16 +142,6 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
         }
     }
 
-    if (outVertices.empty() || outIndices.empty()) { mesh_.CreateBox(device); return; }
-
+    assert(!outVertices.empty() && !outIndices.empty() && "OBJ contained no geometry");
     mesh_.CreateFromVertices(device, outVertices, outIndices);
-}
-
-void Model::Draw(ID3D12GraphicsCommandList *cmd) const {
-    const auto &vbv = mesh_.GetVBV();
-    const auto &ibv = mesh_.GetIBV();
-    cmd->IASetVertexBuffers(0, 1, &vbv);
-    cmd->IASetIndexBuffer(&ibv);
-    cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-    cmd->DrawIndexedInstanced(mesh_.GetIndexCount(), 1, 0, 0, 0);
 }

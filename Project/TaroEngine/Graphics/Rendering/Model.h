@@ -6,13 +6,12 @@
 #include "Transform.h"
 
 /// <summary>
-/// メッシュデータと変換情報を保持し、描画を行う 3D モデルクラス。<br/>
-/// OBJ からのロード（簡易）と、フォールバックとしてのボックス生成に対応します。
+/// メッシュデータと変換情報を保持し、OBJ からロードして描画する 3D モデル。
 /// </summary>
 class Model {
 public:
+    // path は必須（空文字は不可）
     void Initialize(ID3D12Device *device, const std::string &path);
-    void Draw(ID3D12GraphicsCommandList *commandList) const;
 
     Transform &GetTransform() noexcept { return transform_; }
     const Transform &GetTransform() const noexcept { return transform_; }
@@ -21,8 +20,9 @@ public:
     const D3D12_INDEX_BUFFER_VIEW &GetIBV() const noexcept { return mesh_.GetIBV(); }
     UINT GetIndexCount() const noexcept { return mesh_.GetIndexCount(); }
 
+    const Mesh &GetMesh() const noexcept { return mesh_; }
+
 private:
-    void CreateFromBox_(ID3D12Device *device);
     void LoadFromOBJ_(ID3D12Device *device, const std::string &path);
 
 private:

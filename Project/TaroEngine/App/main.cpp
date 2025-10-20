@@ -8,6 +8,7 @@
 #include "OutputLogger.h"
 #include "LoggerManager.h"
 #include "ShaderCompiler.h"
+#include "Input.h"
 
 #include <memory>
 #include <chrono>
@@ -33,7 +34,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		rawDx->Resize(w, h);
 		});
 
-
 	// ===============================
 	// ロガー設定
 	// ===============================
@@ -52,10 +52,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	shaderCompiler->Initialize(&loggerManager);
 
 	// ===============================
+	// インプット初期化
+	// ===============================
+	// Input
+	std::unique_ptr<Input> input = std::make_unique<Input>();
+	input->Initialize(winApp->GetHInstance(), winApp->GetHwnd());
+
+	// ===============================
 	// コンテキスト初期化
 	// ===============================
 	// EngineContext
 	EngineContext engineContext{};
+	engineContext.input = input.get();
 	engineContext.directXCommon = directXCommon.get();
 
 	// RenderContext
@@ -96,6 +104,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		// dt のクランプ（下限・上限）
 		if (deltaTime < kDeltaTimeClampMin) { deltaTime = kDeltaTimeClampMin; }
 		if (deltaTime > kDeltaTimeClampMax) { deltaTime = kDeltaTimeClampMax; }
+
+		// インプット更新
+		input->Update();
 
 		// --- 更新 ---
 		sceneManager.Update(deltaTime);

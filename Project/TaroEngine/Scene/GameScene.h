@@ -1,30 +1,28 @@
-// GameScene.h
 #pragma once
 #include "EngineContext.h"
 #include "RenderContext.h"
 #include "ModelRenderer.h"
-#include "Mesh.h"
+#include "Model.h"
 #include "IScene.h"
 #include "Camera.h"
-#include <DirectXMath.h>
 
+/// <summary>
+/// OBJ (player.obj) を 1 体だけ描画する最小シーン
+/// </summary>
 class GameScene : public IScene {
 public:
-    void Initialize(const EngineContext *engineContext, const RenderContext *renderContext);
-    void Update(float deltaTime);
-    void Draw();
-    void Finalize();
+    void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
+    void Update(float /*deltaTime*/) override {}
+    void Draw() override;
+    void Finalize() override;
 
 private:
-    ModelRenderer model_;
-    Mesh          cube_;
+    // 参照
+    const EngineContext *engineContext_ = nullptr;
+    const RenderContext *renderContext_ = nullptr;
+
+    // 描画リソース
+    ModelRenderer renderer_;
+    Model         player_;
     Camera        camera_;
-
-    DirectX::XMMATRIX world_ = DirectX::XMMatrixIdentity();
-
-    // === UI ===
-    bool  autoSpin_ = true;
-    float rotSpeed_ = 1.0f;   // [rad/sec]
-    float color_[4] = {1,1,1,1};
-    float angleY_ = 0.0f;
 };
