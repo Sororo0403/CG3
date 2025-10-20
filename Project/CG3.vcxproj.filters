@@ -131,6 +131,9 @@
     <ClCompile Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.cpp">
       <Filter>Source\Graphics\LowLevel</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Model.cpp">
+      <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -156,18 +159,6 @@
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_truetype.h">
       <Filter>Include\ThirdParty\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\Matrix4x4.h">
-      <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\Vector2.h">
-      <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\Vector3.h">
-      <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\Vector4.h">
-      <Filter>Include\Math</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\EngineContext.h">
       <Filter>Include\Core</Filter>
@@ -228,6 +219,18 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.h">
       <Filter>Include\Graphics\LowLevel</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Model.h">
+      <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\Transform.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\Vertex.h">
+      <Filter>Include\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Math\VertexRef.h">
+      <Filter>Include\Math</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

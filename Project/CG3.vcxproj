@@ -148,6 +148,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="TaroEngine\Graphics\Rendering\Model.cpp" />
     <ClCompile Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.cpp" />
     <ClCompile Include="TaroEngine\Graphics\Rendering\Mesh.cpp" />
     <ClCompile Include="TaroEngine\Graphics\Rendering\ModelRenderer.cpp" />
@@ -170,6 +171,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Graphics\Rendering\Model.h" />
     <ClInclude Include="TaroEngine\Core\StringUtility.h" />
     <ClInclude Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.h" />
     <ClInclude Include="TaroEngine\Graphics\LowLevel\BufferUtility.h" />
@@ -196,12 +198,11 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="TaroEngine\Platform\Input.h" />
     <ClInclude Include="TaroEngine\Platform\WinApp.h" />
-    <ClInclude Include="TaroEngine\Math\Matrix4x4.h" />
-    <ClInclude Include="TaroEngine\Math\Vector2.h" />
-    <ClInclude Include="TaroEngine\Math\Vector3.h" />
-    <ClInclude Include="TaroEngine\Math\Vector4.h" />
     <ClInclude Include="TaroEngine\Scene\GameScene.h" />
     <ClInclude Include="TaroEngine\Scene\IScene.h" />
+    <ClInclude Include="TaroEngine\Math\Transform.h" />
+    <ClInclude Include="TaroEngine\Math\Vertex.h" />
+    <ClInclude Include="TaroEngine\Math\VertexRef.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

@@ -1,72 +1,132 @@
 #include "Mesh.h"
 #include "BufferUtility.h"
 #include <cassert>
-#include <cstring>
-void Mesh::CreateBox(ID3D12Device *device) {
-    std::vector<VertexPNUT> v;
-    std::vector<uint16_t>   i;
+#include <array>
+#include <vector>
 
-    auto addFace = [&](float nx, float ny, float nz,
-        float ax, float ay, float az,   // 右方向ベクトル(半径)
-        float bx, float by, float bz,   // 上方向ベクトル(半径)
-        float cx, float cy, float cz) { // 面の中心
-            VertexPNUT quad[4];
-            // 4隅（左下→右下→右上→左上）の順に生成
-            float corners[4][3] = {
-                {cx - ax - bx, cy - ay - by, cz - az - bz}, // v0: 左下
-                {cx + ax - bx, cy + ay - by, cz + az - bz}, // v1: 右下
-                {cx + ax + bx, cy + ay + by, cz + az + bz}, // v2: 右上
-                {cx - ax + bx, cy - ay + by, cz - az + bz}, // v3: 左上
-            };
-            float t[4][2] = {{0,1},{1,1},{1,0},{0,0}}; // お好みで
+using Microsoft::WRL::ComPtr;
 
-            for (int k = 0; k < 4; ++k) {
-                auto &vv = quad[k];
-                vv.pos[0] = corners[k][0]; vv.pos[1] = corners[k][1]; vv.pos[2] = corners[k][2];
-                vv.nrm[0] = nx; vv.nrm[1] = ny; vv.nrm[2] = nz;
-                vv.uv[0] = t[k][0];       vv.uv[1] = t[k][1];
-            }
+void Mesh::Reset() noexcept {
+    vb_.Reset();
+    ib_.Reset();
+    vbv_ = {};
+    ibv_ = {};
+    indexCount_ = 0;
+}
 
-            const uint16_t base = static_cast<uint16_t>(v.size());
-            v.insert(v.end(), quad, quad + 4);
+void Mesh::UploadVertexData_(ID3D12Device *device, const void *data, size_t bytes, UINT stride) {
+    Reset(); // VB/IB 再作成時はリセット
 
-            // ★ここがポイント：CCW になるようにインデックスを組む
-            // 三角1: v0(左下) -> v3(左上) -> v2(右上)
-            // 三角2: v0(左下) -> v2(右上) -> v1(右下)
-            uint16_t tris[6] = {base + 0u, base + 3u, base + 2u,
-                                 base + 0u, base + 2u, base + 1u};
-            i.insert(i.end(), tris, tris + 6);
-        };
+    // Upload バッファ生成 → 一括書き込み
+    vb_ = BufferUtility::CreateUploadBuffer(device, static_cast<uint64_t>(bytes));
+    BufferUtility::WriteToUpload(vb_.Get(), data, bytes);
 
-    // 半径ベクトル（±0.5 の箱）
-    const float hx = 0.5f, hy = 0.5f, hz = 0.5f;
-
-    // +Z 面（外側から見ると手前）。中心(0,0,+hz)、右=+X、上=+Y、法線+Z
-    addFace(0, 0, +1, hx, 0, 0, 0, hy, 0, 0, 0, +hz);
-    // -Z 面。中心(0,0,-hz)、右=+X、上=-Y、法線-Z（上ベクトルを反転させ CCW を維持）
-    addFace(0, 0, -1, hx, 0, 0, 0, -hy, 0, 0, 0, -hz);
-    // +X 面。中心(+hx,0,0)、右=+Z、上=+Y、法線+X
-    addFace(+1, 0, 0, 0, 0, hz, 0, hy, 0, +hx, 0, 0);
-    // -X 面。中心(-hx,0,0)、右=-Z、上=+Y、法線-X
-    addFace(-1, 0, 0, 0, 0, -hz, 0, hy, 0, -hx, 0, 0);
-    // +Y 面。中心(0,+hy,0)、右=+X、上=-Z、法線+Y
-    addFace(0, +1, 0, hx, 0, 0, 0, 0, -hz, 0, +hy, 0);
-    // -Y 面。中心(0,-hy,0)、右=+X、上=+Z、法線-Y
-    addFace(0, -1, 0, hx, 0, 0, 0, 0, hz, 0, -hy, 0);
-
-    indexCount_ = static_cast<UINT>(i.size());
-
-    // VB
-    vb_ = BufferUtility::CreateUploadBuffer(device, v.size() * sizeof(VertexPNUT));
-    BufferUtility::WriteToUpload(vb_.Get(), v.data(), v.size() * sizeof(VertexPNUT));
     vbv_.BufferLocation = vb_->GetGPUVirtualAddress();
-    vbv_.StrideInBytes = sizeof(VertexPNUT);
-    vbv_.SizeInBytes = static_cast<UINT>(v.size() * sizeof(VertexPNUT));
+    vbv_.StrideInBytes = stride;
+    vbv_.SizeInBytes = static_cast<UINT>(bytes);
+}
 
-    // IB
-    ib_ = BufferUtility::CreateUploadBuffer(device, i.size() * sizeof(uint16_t));
-    BufferUtility::WriteToUpload(ib_.Get(), i.data(), i.size() * sizeof(uint16_t));
+void Mesh::UploadIndexData16_(ID3D12Device *device, const uint16_t *data, size_t count) {
+    const size_t bytes = count * sizeof(uint16_t);
+
+    ib_ = BufferUtility::CreateUploadBuffer(device, static_cast<uint64_t>(bytes));
+    BufferUtility::WriteToUpload(ib_.Get(), data, bytes);
+
     ibv_.BufferLocation = ib_->GetGPUVirtualAddress();
     ibv_.Format = DXGI_FORMAT_R16_UINT;
-    ibv_.SizeInBytes = static_cast<UINT>(i.size() * sizeof(uint16_t));
+    ibv_.SizeInBytes = static_cast<UINT>(bytes);
+
+    indexCount_ = static_cast<UINT>(count);
+}
+
+void Mesh::UploadIndexData32_(ID3D12Device *device, const uint32_t *data, size_t count) {
+    const size_t bytes = count * sizeof(uint32_t);
+
+    ib_ = BufferUtility::CreateUploadBuffer(device, static_cast<uint64_t>(bytes));
+    BufferUtility::WriteToUpload(ib_.Get(), data, bytes);
+
+    ibv_.BufferLocation = ib_->GetGPUVirtualAddress();
+    ibv_.Format = DXGI_FORMAT_R32_UINT;
+    ibv_.SizeInBytes = static_cast<UINT>(bytes);
+
+    indexCount_ = static_cast<UINT>(count);
+}
+
+void Mesh::CreateFromVertices(
+    ID3D12Device *device,
+    const std::vector<Vertex> &vertices,
+    const std::vector<uint32_t> &indices32_or_empty_for16) {
+    assert(device);
+    assert(!vertices.empty());
+
+    UploadVertexData_(device, vertices.data(),
+        vertices.size() * sizeof(Vertex),
+        static_cast<UINT>(sizeof(Vertex)));
+
+    if (!indices32_or_empty_for16.empty()) {
+        UploadIndexData32_(device, indices32_or_empty_for16.data(),
+            indices32_or_empty_for16.size());
+    } else {
+        const size_t vcount = vertices.size();
+        assert(vcount <= 0xFFFF && "Too many vertices for 16-bit implicit indices");
+        std::vector<uint16_t> idx(static_cast<size_t>(vcount));
+        for (size_t i = 0; i < vcount; ++i) idx[i] = static_cast<uint16_t>(i);
+        UploadIndexData16_(device, idx.data(), idx.size());
+    }
+}
+
+void Mesh::CreateBox(ID3D12Device *device, float sx, float sy, float sz, bool /*ccw_unused*/) {
+    assert(device);
+
+    const float hx = sx * 0.5f, hy = sy * 0.5f, hz = sz * 0.5f;
+
+    std::vector<Vertex>   v; v.reserve(24);
+    std::vector<uint16_t> i; i.reserve(36);
+
+    auto push_tri = [&](uint16_t b, uint16_t i0, uint16_t i1, uint16_t i2,
+        const DirectX::XMFLOAT3 &n) {
+            // 反転判定： (p1 - p0) × (p2 - p0) と想定法線 n の向きが逆なら入れ替える
+            using namespace DirectX;
+            XMVECTOR p0 = XMLoadFloat3(&v[b + i0].pos);
+            XMVECTOR p1 = XMLoadFloat3(&v[b + i1].pos);
+            XMVECTOR p2 = XMLoadFloat3(&v[b + i2].pos);
+            XMVECTOR c = XMVector3Cross(XMVectorSubtract(p1, p0), XMVectorSubtract(p2, p0));
+            XMVECTOR nn = XMLoadFloat3(&n);
+            float dot; XMStoreFloat(&dot, XMVector3Dot(c, nn));
+            if (dot < 0.0f) std::swap(i1, i2); // 反転してCCWに合わせる
+            i.push_back(b + i0); i.push_back(b + i1); i.push_back(b + i2);
+        };
+
+    auto addFace = [&](float nx, float ny, float nz,
+        std::array<float, 3> p0, std::array<float, 3> p1,
+        std::array<float, 3> p2, std::array<float, 3> p3) {
+            const uint16_t base = static_cast<uint16_t>(v.size());
+            DirectX::XMFLOAT3 n{nx, ny, nz};
+
+            Vertex v0{{p0[0], p0[1], p0[2]}, n, {0.0f, 0.0f}};
+            Vertex v1{{p1[0], p1[1], p1[2]}, n, {1.0f, 0.0f}};
+            Vertex v2{{p2[0], p2[1], p2[2]}, n, {1.0f, 1.0f}};
+            Vertex v3{{p3[0], p3[1], p3[2]}, n, {0.0f, 1.0f}};
+            v.push_back(v0); v.push_back(v1); v.push_back(v2); v.push_back(v3);
+
+            // 2三角形を自動でCCWに補正してから追加
+            push_tri(base, 0, 1, 2, n);
+            push_tri(base, 0, 2, 3, n);
+        };
+
+    // +X
+    addFace(+1, 0, 0, {+hx,-hy,-hz}, {+hx,-hy,+hz}, {+hx,+hy,+hz}, {+hx,+hy,-hz});
+    // -X
+    addFace(-1, 0, 0, {-hx,-hy,+hz}, {-hx,-hy,-hz}, {-hx,+hy,-hz}, {-hx,+hy,+hz});
+    // +Y (上)
+    addFace(0, +1, 0, {-hx,+hy,-hz}, {+hx,+hy,-hz}, {+hx,+hy,+hz}, {-hx,+hy,+hz});
+    // -Y (下)
+    addFace(0, -1, 0, {-hx,-hy,+hz}, {+hx,-hy,+hz}, {+hx,-hy,-hz}, {-hx,-hy,-hz});
+    // +Z (手前)
+    addFace(0, 0, +1, {-hx,-hy,+hz}, {+hx,-hy,+hz}, {+hx,+hy,+hz}, {-hx,+hy,+hz});
+    // -Z (奥)
+    addFace(0, 0, -1, {+hx,-hy,-hz}, {-hx,-hy,-hz}, {-hx,+hy,-hz}, {+hx,+hy,-hz});
+
+    UploadVertexData_(device, v.data(), v.size() * sizeof(Vertex), sizeof(Vertex));
+    UploadIndexData16_(device, i.data(), i.size());
 }
