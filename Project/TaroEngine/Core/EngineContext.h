@@ -1,14 +1,12 @@
 #pragma once
 
-#include <d3d12.h>
-
+class Input;
 class DirectXCommon;
-class SpriteCommon;
-class LoggerManager;
 
+/// <summary>
+/// エンジン共有コンテキスト。
+/// </summary>
 struct EngineContext {
+	Input *input = nullptr;
 	DirectXCommon *directXCommon = nullptr;
-	ID3D12Device *device = nullptr;
-	SpriteCommon *spriteCommon = nullptr;
-	LoggerManager *loggerManager = nullptr;
 };

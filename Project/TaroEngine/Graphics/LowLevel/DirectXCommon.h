@@ -2,18 +2,19 @@
 #include <cassert>
 #include <chrono>
 #include <cstdint>
-#include <d3d12.h>
-#include <dxcapi.h>
-#include <dxgi1_6.h>
 #include <thread>
+
 #include <windows.h>
+#include <d3d12.h>
+#include <dxgi1_6.h>
+#include <dxcapi.h>
 #include <wrl.h>
 
 class WinApp;
 
 /// <summary>
 /// DirectX12 の初期化・描画・終了処理をまとめた基盤クラス。<br/>
-/// デバイスやコマンド、スワップチェーン、ImGui などを一括管理する。
+/// デバイス、コマンド、スワップチェーン、ImGui を一括管理する。
 /// </summary>
 class DirectXCommon {
 public:
@@ -21,31 +22,23 @@ public:
     // 定数
     // ===============================
 
-    /// <summary>
-    /// バックバッファ数（フレームリソース数）
-    /// </summary>
+    // バックバッファ数(フレームリソース数)。
     static constexpr uint32_t kBufferCount = 3;
 
-    /// <summary>
-    /// 目標フレーム時間（60FPSなら約16.666ms）
-    /// </summary>
-    static constexpr int64_t kTargetFrameMicroSec = 1000000 / 60;
+    // 目標フレーム時間(60FPS ≒ 16.666ms)。
+    static constexpr int64_t kTargetFrameMicroSec = 1'000'000 / 60;
 
 public:
     // ===============================
     // ライフサイクル
     // ===============================
 
-    /// <summary>
-    /// DirectX12 を初期化する。
-    /// </summary>
+    /// <summary>DirectX12 を初期化する。</summary>
     /// <param name="winApp">ウィンドウ管理クラス。</param>
     void Initialize(WinApp *winApp);
 
-    /// <summary>
-    /// DirectX12 の終了処理を行う（必要に応じてGPUとの同期を実施）。
-    /// </summary>
-    void Finalize();
+    /// <summary>DirectX12 の終了処理を行う（必要に応じて GPU 同期）。</summary>
+    void Finalize() noexcept;
 
     // ===============================
     // 毎フレーム処理
@@ -56,13 +49,13 @@ public:
     /// RTV/DSV 設定・クリア・ImGui NewFrame を行う。
     /// </summary>
     /// <param name="clearColor">RTV クリアカラー（RGBA）。</param>
-    void PreDraw(const float clearColor[4]);
+    void PreDraw(const float clearColor[4]) noexcept;
 
     /// <summary>
     /// フレーム終了処理。<br/>
-    /// ImGui 描画、Present、フェンス Signal、60FPS 固定のためのスリープ調整を行う。
+    /// ImGui 描画、Present、フェンス Signal、60FPS 固定のスリープ調整を行う。
     /// </summary>
-    void PostDraw();
+    void PostDraw() noexcept;
 
     // ===============================
     // 画面サイズ変更
@@ -82,43 +75,41 @@ public:
 
     /// <summary>DirectX12 デバイスを取得する。</summary>
     /// <returns>ID3D12Device のポインタ。</returns>
-    ID3D12Device *GetDevice() const { return device_.Get(); }
+    [[nodiscard]] ID3D12Device *GetDevice() const noexcept { return device_.Get(); }
 
     /// <summary>グラフィックスコマンドリストを取得する。</summary>
     /// <returns>ID3D12GraphicsCommandList のポインタ。</returns>
-    ID3D12GraphicsCommandList *GetCommandList() const { return commandList_.Get(); }
+    [[nodiscard]] ID3D12GraphicsCommandList *GetCommandList() const noexcept { return commandList_.Get(); }
 
     /// <summary>SRV 用ディスクリプタヒープを取得する。</summary>
     /// <returns>ID3D12DescriptorHeap のポインタ。</returns>
-    ID3D12DescriptorHeap *GetSrvHeap() const { return srvHeap_.Get(); }
+    [[nodiscard]] ID3D12DescriptorHeap *GetSrvHeap() const noexcept { return srvHeap_.Get(); }
 
     /// <summary>現在のバックバッファに対応する RTV を取得する。</summary>
     /// <returns>CPU ディスクリプタハンドル。</returns>
-    D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const { return rtvHandles_[currentBackBufferIndex_]; }
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRTV() const noexcept { return rtvHandles_[currentBackBufferIndex_]; }
 
     /// <summary>DSV を取得する。</summary>
     /// <returns>CPU ディスクリプタハンドル。</returns>
-    D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const { return dsvHeap_->GetCPUDescriptorHandleForHeapStart(); }
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const noexcept { return dsvHeap_->GetCPUDescriptorHandleForHeapStart(); }
 
     /// <summary>現在のバックバッファインデックスを取得する。</summary>
     /// <returns>バックバッファインデックス。</returns>
-    UINT GetCurrentBackBufferIndex() const { return currentBackBufferIndex_; }
+    [[nodiscard]] UINT GetCurrentBackBufferIndex() const noexcept { return currentBackBufferIndex_; }
 
-    /// <summary>現在のクライアント幅を取得する。</summary>
-    /// <returns>幅（ピクセル）。</returns>
-    uint32_t GetWidth() const { return width_; }
+    /// <summary>現在のクライアント幅（px）。</summary>
+    [[nodiscard]] uint32_t GetWidth()  const noexcept { return width_; }
 
-    /// <summary>現在のクライアント高さを取得する。</summary>
-    /// <returns>高さ（ピクセル）。</returns>
-    uint32_t GetHeight() const { return height_; }
+    /// <summary>現在のクライアント高さ（px）。</summary>
+    [[nodiscard]] uint32_t GetHeight() const noexcept { return height_; }
 
 private:
     // ===============================
     // 初期化処理
     // ===============================
 
-    /// <summary>FPS 固定のための初期化。現在時刻を基準として記録する。</summary>
-    void InitializeFixFPS();
+    /// <summary>FPS 固定のための初期化（基準時刻の記録）。</summary>
+    void InitializeFixFPS() noexcept;
 
     /// <summary>デバイスを初期化する。</summary>
     void InitializeDevice();
@@ -148,10 +139,10 @@ private:
     void InitializeFence();
 
     /// <summary>ビューポートを初期化する。</summary>
-    void InitializeViewport();
+    void InitializeViewport() noexcept;
 
     /// <summary>シザーレクトを初期化する。</summary>
-    void InitializeScissorRect();
+    void InitializeScissorRect() noexcept;
 
     /// <summary>DXC コンパイラを初期化する。</summary>
     void InitializeDXCCompiler();
@@ -160,54 +151,32 @@ private:
     void InitializeImGui();
 
     // ===============================
-    // FPS固定
+    // FPS 固定
     // ===============================
 
     /// <summary>
     /// FPS 固定のための更新。<br/>
-    /// 1/60 秒に満たない場合は 1ms スリープを繰り返して調整する。
+    /// 1/60 秒に満たない場合は 1ms スリープで調整する。
     /// </summary>
-    void UpdateFixFPS();
+    void UpdateFixFPS() noexcept;
 
     // ===============================
     // ユーティリティ
     // ===============================
 
-    /// <summary>
-    /// ディスクリプタヒープを生成する。
-    /// </summary>
-    /// <param name="type">ヒープ種別。</param>
-    /// <param name="numDescriptors">ディスクリプタ数。</param>
-    /// <param name="shaderVisible">シェーダ可視にするか。</param>
-    /// <returns>生成されたヒープ（所有権は本クラスで管理）。</returns>
+    /// <summary>ディスクリプタヒープを生成する。</summary>
     ID3D12DescriptorHeap *CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type, UINT numDescriptors, bool shaderVisible);
 
-    /// <summary>
-    /// CPU ディスクリプタハンドルを取得する。
-    /// </summary>
-    /// <param name="heap">対象ヒープ。</param>
-    /// <param name="index">先頭からのインデックス。</param>
-    /// <returns>CPU ディスクリプタハンドル。</returns>
-    D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(ID3D12DescriptorHeap *heap, UINT index) const;
+    /// <summary>CPU ディスクリプタハンドルを取得する。</summary>
+    [[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(ID3D12DescriptorHeap *heap, UINT index) const noexcept;
 
-    /// <summary>
-    /// GPU ディスクリプタハンドルを取得する。
-    /// </summary>
-    /// <param name="heap">対象ヒープ。</param>
-    /// <param name="index">先頭からのインデックス。</param>
-    /// <returns>GPU ディスクリプタハンドル。</returns>
-    D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(ID3D12DescriptorHeap *heap, UINT index) const;
+    /// <summary>GPU ディスクリプタハンドルを取得する。</summary>
+    [[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(ID3D12DescriptorHeap *heap, UINT index) const noexcept;
 
-    /// <summary>
-    /// 指定インデックスのフレームリソースが完了していなければ待機する。
-    /// </summary>
-    /// <param name="frameIndex">待機対象のフレームインデックス。</param>
+    /// <summary>指定インデックスのフレームリソースが未完了なら待機する。</summary>
     void WaitForFrame(UINT frameIndex);
 
-    /// <summary>
-    /// 現在発行中の全コマンドをフラッシュして待機する。<br/>
-    /// （終了時やリサイズ時専用）
-    /// </summary>
+    /// <summary>現在発行中の全コマンドをフラッシュして待機する（終了/リサイズ専用）。</summary>
     void WaitForGpu();
 
 private:
@@ -218,7 +187,7 @@ private:
     WinApp *winApp_ = nullptr; // ウィンドウ管理クラスへの参照
 
     uint32_t width_ = 0;  // 現在のクライアント幅
-    uint32_t height_ = 0; // 現在のクライアント高さ
+    uint32_t height_ = 0;  // 現在のクライアント高さ
 
     // DXGI / Device
     Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_;
@@ -242,7 +211,7 @@ private:
     UINT descriptorSizeRTV_ = 0;
     UINT descriptorSizeDSV_ = 0;
     UINT descriptorSizeSRV_ = 0;
-    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles_[kBufferCount] = {};
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandles_[kBufferCount]{};
     Microsoft::WRL::ComPtr<ID3D12Resource> depthStencil_;
 
     // View
@@ -252,7 +221,7 @@ private:
     // Fence
     Microsoft::WRL::ComPtr<ID3D12Fence> fence_;
     uint64_t nextFenceValue_ = 0;
-    uint64_t fenceValues_[kBufferCount] = {};
+    uint64_t fenceValues_[kBufferCount]{};
     HANDLE fenceEvent_ = nullptr;
 
     // DXC (シェーダコンパイラ関連)
@@ -260,6 +229,6 @@ private:
     Microsoft::WRL::ComPtr<IDxcCompiler3> dxcCompiler_;
     Microsoft::WRL::ComPtr<IDxcIncludeHandler> includeHandler_;
 
-    // FPS固定用
+    // FPS 固定用
     std::chrono::steady_clock::time_point fpsReference_{};
 };

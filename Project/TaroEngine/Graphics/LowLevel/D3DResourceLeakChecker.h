@@ -5,15 +5,14 @@
 #include <wrl.h>
 
 /// <summary>
-/// DXGI の ReportLiveObjects をデストラクタで呼ぶだけのクラス。<br/>
-/// スコープ終了時（デストラクション時）に、DXGI
-/// 管理リソースのリークを検出する。
+/// DXGIのReportLiveObjectsをデストラクタで呼ぶだけのクラス。<br/>
+/// スコープ終了時(デストラクション時)に、DXGI管理リソースのリークを検出する。
 /// </summary>
 class D3DResourceLeakChecker {
 public:
   /// <summary>
   /// デストラクタ。<br/>
-  /// _DEBUG ビルドで DXGI の ReportLiveObjects を実行する。
+  /// _DEBUGビルドでDXGIのReportLiveObjectsを実行する。
   /// </summary>
   ~D3DResourceLeakChecker();
 };

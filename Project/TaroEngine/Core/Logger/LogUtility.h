@@ -24,6 +24,23 @@ namespace LogUtility {
 	}
 
 	/// <summary>
+	/// ログレベルをワイド文字列に変換
+	/// </summary>
+	/// <param name="level">変換するログレベル</param>
+	/// <returns>ログレベルを表すワイド文字列</returns>
+	inline const wchar_t *ToStringW(LogLevel level) {
+		switch (level) {
+		case LogLevel::TRACE: return L"TRACE";
+		case LogLevel::DEBUG: return L"DEBUG";
+		case LogLevel::INFO:  return L"INFO";
+		case LogLevel::WARN:  return L"WARN";
+		case LogLevel::ERR:   return L"ERROR";
+		case LogLevel::FATAL: return L"FATAL";
+		default:              return L"UNKNOWN";
+		}
+	}
+
+	/// <summary>
 	/// 現在時刻を"HH:MM:SS.mmm"形式で取得
 	/// </summary>
 	/// <returns>フォーマット済みの時刻文字列</returns>
@@ -41,6 +58,23 @@ namespace LogUtility {
 	}
 
 	/// <summary>
+	/// 現在時刻を"HH:MM:SS.mmm"形式で取得
+	/// </summary>
+	/// <returns>フォーマット済みの時刻ワイド文字列</returns>
+	inline std::wstring GetTimeStampW() {
+		using namespace std::chrono;
+		const auto now = system_clock::now();
+		const auto time = system_clock::to_time_t(now);
+		const auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+		std::tm local{};
+		localtime_s(&local, &time);
+
+		return std::format(L"{:02}:{:02}:{:02}.{:03}",
+			local.tm_hour, local.tm_min, local.tm_sec, static_cast<int>(ms.count()));
+	}
+
+	/// <summary>
 	/// ログ出力用の共通フォーマット文字列を生成
 	/// </summary>
 	/// <param name="level">ログレベル</param>
@@ -48,6 +82,16 @@ namespace LogUtility {
 	/// <returns>フォーマット済みのログ文字列</returns>
 	inline std::string Format(LogLevel level, std::string_view message) {
 		return std::format("[{}][{}] {}", GetTimeStamp(), ToString(level), message);
+	}
+
+	/// <summary>
+	/// ログ出力用の共通フォーマット文字列を生成
+	/// </summary>
+	/// <param name="level">ログレベル</param>
+	/// <param name="message">ログメッセージ</param>
+	/// <returns>フォーマット済みのログ文字列</returns>
+	inline std::wstring FormatW(LogLevel level, std::wstring_view message) {
+		return std::format(L"[{}][{}] {}", GetTimeStampW(), ToStringW(level), message);
 	}
 
 }

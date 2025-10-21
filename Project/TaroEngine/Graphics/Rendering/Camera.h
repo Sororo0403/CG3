@@ -1,66 +1,60 @@
+// Camera.h
 #pragma once
-
-#include "Matrix4x4.h"
-#include "Vector3.h"
-#include <numbers>
+#include <DirectXMath.h>
+#include <cstdint>
 
 class Camera {
 public:
-	/// <summary>
-	/// コンストラクタ。
-	/// </summary>
-	Camera() = default;
+    Camera();
 
-	/// <summary>
-	/// デストラクタ。
-	/// </summary>
-	~Camera() = default;
+    // --- 構築 / リセット ---
+    void Reset() noexcept;
 
-	/// <summary>
-	/// 初期化。
-	/// </summary>
-	/// <param name="viewportWidth">ビューポート幅</param>
-	/// <param name="viewportHeight">ビューポート高さ</param>
-	/// <param name="fovYRadians">垂直 FOV（ラジアン）</param>
-	/// <param name="nearZ">ニア平面</param>
-	/// <param name="farZ">ファー平面</param>
-	void Initialize(
-		float viewportWidth,
-		float viewportHeight,
-		float fovYRadians = 60.0f * std::numbers::pi_v<float> / 180.0f,
-		float nearZ = 0.1f,
-		float farZ = 1000.0f);
+    // --- レンズ / ビューポート設定 ---
+    void SetPerspective(float fovYDeg, float aspect, float nearZ, float farZ) noexcept;
+    void SetViewportSize(uint32_t w, uint32_t h) noexcept;
 
-	/// <summary>
-	/// 毎フレーム更新。dirty のとき行列を再計算する。
-	/// </summary>
-	void Update();
+    // --- 位置 / 姿勢 ---
+    void LookAt(DirectX::FXMVECTOR eye, DirectX::FXMVECTOR target, DirectX::FXMVECTOR up) noexcept;
+    void SetEye(const DirectX::XMFLOAT3 &e) noexcept;
+    void SetTarget(const DirectX::XMFLOAT3 &t) noexcept;
+    void SetUp(const DirectX::XMFLOAT3 &u) noexcept;
+
+    const DirectX::XMFLOAT3 &GetEye()    const noexcept { return eye_; }
+    const DirectX::XMFLOAT3 &GetTarget() const noexcept { return tgt_; }
+    const DirectX::XMFLOAT3 &GetUp()     const noexcept { return up_; }
+
+    float GetFovYDeg() const noexcept { return fovYDeg_; }
+    float GetNearZ()   const noexcept { return nearZ_; }
+    float GetFarZ()    const noexcept { return farZ_; }
+    float GetAspect()  const noexcept { return aspect_; }
+
+    // --- 操作 ---
+    void YawPitch(float yawRad, float pitchRad) noexcept;
+    void Orbit(float yawRad, float pitchRad, float radiusScale = 1.0f) noexcept;
+    void Dolly(float delta) noexcept;
+    void Pan(float dx, float dy) noexcept;
+
+    const DirectX::XMMATRIX &GetViewMatrix() const noexcept;
+    const DirectX::XMMATRIX &GetProjMatrix() const noexcept;
 
 private:
-	// パラメータ
-	Vector3 position_{0.0f, 0.0f, -5.0f};
-	Vector3 target_{0.0f, 0.0f,  0.0f};
-	Vector3 up_{0.0f, 1.0f,  0.0f};
+    void RecalcViewMatrix_() const noexcept;
+    void RecalcProjMatrix_() const noexcept;
 
-	float fovY_ = 60.0f * std::numbers::pi_v<float> / 180.0f;
-	float aspect_ = 16.0f / 9.0f;
-	float nearZ_ = 0.1f;
-	float farZ_ = 1000.0f;
+private:
+    DirectX::XMFLOAT3 eye_{};
+    DirectX::XMFLOAT3 tgt_{};
+    DirectX::XMFLOAT3 up_{};
 
-	// 行列
-	Matrix4x4 view_;
-	Matrix4x4 proj_;
-	Matrix4x4 viewProj_;
+    float fovYDeg_ = 60.0f;
+    float aspect_ = 16.0f / 9.0f;
+    float nearZ_ = 0.1f;
+    float farZ_ = 100.0f;
 
-	bool dirty_ = true;
-
-	/// <summary>
-	/// 内部計算：View/Proj/ViewProj を再生成。
-	/// </summary>
-	void Recalculate_();
-
-	/// <summary>
-	/// Yaw/Pitch から forward を作って target を更新。
-	/// </summary>
-	void ApplyYawPitch_(float yaw, float pitch);
+    // 遅延更新（constメソッドでも更新できるようにmutable）
+    mutable DirectX::XMMATRIX view_{DirectX::XMMatrixIdentity()};
+    mutable DirectX::XMMATRIX proj_{DirectX::XMMatrixIdentity()};
+    mutable bool viewDirty_ = true;
+    mutable bool projDirty_ = true;
 };
