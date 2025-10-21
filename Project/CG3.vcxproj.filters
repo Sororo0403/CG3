@@ -146,6 +146,9 @@
     <ClCompile Include="TaroEngine\Actor\Player.cpp">
       <Filter>Source\Actor</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Actor\SolidBlock.cpp">
+      <Filter>Source\Actor</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -248,6 +251,12 @@
       <Filter>Include\Graphics\Rendering</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Actor\Player.h">
+      <Filter>Include\Actor</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Actor\IBlock.h">
+      <Filter>Include\Actor</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Actor\SolidBlock.h">
       <Filter>Include\Actor</Filter>
     </ClInclude>
   </ItemGroup>

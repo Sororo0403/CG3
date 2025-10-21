@@ -12,7 +12,9 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
 	auto *directXCommon = engineContext_->directXCommon;
 
 	// モデル読み込み（相対パスはワーキングディレクトリに依存）
-	player_.Initialize(directXCommon->GetDevice(), "Resources/Model/Player/player.obj");
+	player_.Initialize(directXCommon->GetDevice(), "Resources/Model/Player/player.obj", engineContext->input);
+
+	solidBlock_.Initialize(directXCommon->GetDevice(), "Resources/Model/Block/solid_block.obj");
 
 	// カメラ：原点(0,0,0) を見つつ、原点から少し手前（-Z）に配置
 	// 目安：Blender既定スケール(1=1m)で少し引き、軽く見下ろさない設定
@@ -24,12 +26,17 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
 	camera_.SetPerspective(60.0f, camera_.GetAspect(), 0.1f, 1000.0f);
 }
 
+void GameScene::Update(float deltaTime) {
+	player_.Update(deltaTime);
+}
+
+
 void GameScene::Draw() {
-	auto *dx = engineContext_->directXCommon;
-	auto *cmd = dx->GetCommandList();
+	auto *directXCommon = engineContext_->directXCommon;
+	auto *commandList = directXCommon->GetCommandList();
 
 	// 画面サイズが変わっても安全
-	camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
+	camera_.SetViewportSize(directXCommon->GetWidth(), directXCommon->GetHeight());
 
 	// 転置済み VP を用意（ModelRenderer の HLSL 仕様に合わせる）
 	float vT[16], pT[16];
@@ -45,9 +52,10 @@ void GameScene::Draw() {
 	// ベタ色（白）
 	constexpr float kWhite[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-	renderContext_->modelRenderer->Begin(cmd, vT, pT);
-	renderContext_->modelRenderer->Draw(cmd, player_.GetMesh(), wT, kWhite);
-	renderContext_->modelRenderer->End(cmd);
+	renderContext_->modelRenderer->Begin(commandList, vT, pT);
+	renderContext_->modelRenderer->Draw(commandList, player_.GetModel(),player_.GetTransform());
+	renderContext_->modelRenderer->Draw(commandList, solidBlock_.GetModel(), solidBlock_.GetTransform());
+	renderContext_->modelRenderer->End(commandList);
 }
 
 void GameScene::Finalize() {

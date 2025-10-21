@@ -1,30 +1,35 @@
 #define NOMINMAX
 #include "ModelRenderer.h"
-#include "ShaderCompiler.h"      
+#include "ShaderCompiler.h"
 #include "BufferUtility.h"
 #include "Mesh.h"
+#include "Model.h"
+
 #include <d3d12.h>
 #include <wrl.h>
 #include <cassert>
+#include <cstring>   // std::memcpy
 
 using Microsoft::WRL::ComPtr;
+using namespace DirectX;
 
-void ModelRenderer::Initialize(
-	ID3D12Device *device,
-	ShaderCompiler *shader) {
+void ModelRenderer::Initialize(ID3D12Device *device, ShaderCompiler *shader) {
 	device_.Reset();
 	device_ = device;
-	shader_ = shader;         
+	shader_ = shader;
 
 	CreateRootSignature();
 	CreatePipelineState();
 
-	// シーン/Object のCB確保（256Bアライン）
+	// SceneCB: 1個分（256B整列でOK）
 	sceneCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), BufferUtility::AlignCB(sizeof(SceneCB)));
-	objectCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), BufferUtility::AlignCB(sizeof(ObjectCB)));
 
-	sceneCB_->Map(0, nullptr, reinterpret_cast<void **>(&sceneCBMapped_));
-	objectCB_->Map(0, nullptr, reinterpret_cast<void **>(&objectCBMapped_));
+	// ObjectCB: 1フレームぶんリング容量
+	objectCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), kObjectCBTotalBytes);
+
+	// ★ Map固定は不要（WriteToUploadを使う）
+	sceneCBMapped_ = nullptr;
+	objectCBMapped_ = nullptr;
 }
 
 void ModelRenderer::Finalize() noexcept {
@@ -32,6 +37,7 @@ void ModelRenderer::Finalize() noexcept {
 	if (objectCB_) objectCB_->Unmap(0, nullptr);
 	sceneCBMapped_ = nullptr;
 	objectCBMapped_ = nullptr;
+
 	objectCB_.Reset();
 	sceneCB_.Reset();
 	pso_.Reset();
@@ -39,38 +45,62 @@ void ModelRenderer::Finalize() noexcept {
 	device_.Reset();
 }
 
-void ModelRenderer::Begin(ID3D12GraphicsCommandList *cmd,
+void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
 	const float view[16], const float proj[16]) noexcept {
-	for (int i = 0; i < 16; ++i) { sceneCBMapped_->view[i] = view[i]; sceneCBMapped_->proj[i] = proj[i]; }
+	// === SceneCB を即時書き込み ===
+	SceneCB scbTmp{};
+	for (int i = 0; i < 16; ++i) { scbTmp.view[i] = view[i]; scbTmp.proj[i] = proj[i]; }
+	BufferUtility::WriteToUpload(sceneCB_.Get(), &scbTmp, sizeof(SceneCB), 0);
 
-	cmd->SetGraphicsRootSignature(rootSig_.Get());
-	cmd->SetPipelineState(pso_.Get());
+	// ルート/PSO
+	commandList->SetGraphicsRootSignature(rootSig_.Get());
+	commandList->SetPipelineState(pso_.Get());
 
-	D3D12_GPU_VIRTUAL_ADDRESS scb = sceneCB_->GetGPUVirtualAddress();
-	cmd->SetGraphicsRootConstantBufferView(1, scb); // b1
+	// b1: SceneCB（先頭）
+	commandList->SetGraphicsRootConstantBufferView(1, sceneCB_->GetGPUVirtualAddress());
+
+	// リングをフレーム頭でリセット
+	objectCBOffset_ = 0;
 }
 
-void ModelRenderer::End(ID3D12GraphicsCommandList * /*cmd*/) noexcept {
+void ModelRenderer::End(ID3D12GraphicsCommandList *commandList) noexcept {
+	// 何もしない（将来的に統計/プロファイル等を入れるならここ）
+	(void)commandList;
 }
 
-void ModelRenderer::Draw(ID3D12GraphicsCommandList *cmd,
-	const Mesh &mesh,
-	const float world[16],
-	const float color[4]) const noexcept {
-	for (int i = 0; i < 16; ++i) objectCBMapped_->world[i] = world[i];
-	for (int i = 0; i < 4; ++i)  objectCBMapped_->color[i] = color[i];
-	D3D12_GPU_VIRTUAL_ADDRESS ocb = objectCB_->GetGPUVirtualAddress();
-	cmd->SetGraphicsRootConstantBufferView(0, ocb); // b0
+void ModelRenderer::Draw(ID3D12GraphicsCommandList *commandList,
+	const Model &model, const Transform &transform) noexcept {
+	const Mesh &mesh = model.GetMesh();
 
+	// === 今回の ObjectCB 書き込み先（256B境界） ===
+	const uint32_t myOffset = objectCBOffset_;
+	objectCBOffset_ += kObjectCBStride;
+	assert(objectCBOffset_ <= kObjectCBTotalBytes && "ObjectCB ring overflow: kMaxObjectsPerFrame を増やして");
+
+	// === 書き込むデータをローカルで組み立てて一発コピー ===
+	ObjectCB ocb{};
+	DirectX::XMFLOAT4X4 worldF{};
+	XMStoreFloat4x4(&worldF, transform.MakeWorldMatrix());
+	std::memcpy(ocb.world, &worldF, sizeof(float) * 16);
+	ocb.color[0] = ocb.color[1] = ocb.color[2] = ocb.color[3] = 1.0f;
+
+	BufferUtility::WriteToUpload(objectCB_.Get(), &ocb, sizeof(ObjectCB), myOffset);
+
+	// === b0: ObjectCB（GPU仮想アドレス + オフセット）===
+	const auto base = objectCB_->GetGPUVirtualAddress();
+	commandList->SetGraphicsRootConstantBufferView(0, base + myOffset);
+
+	// === IA & Draw ===
 	const auto &vbv = mesh.GetVBV();
 	const auto &ibv = mesh.GetIBV();
-	cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	cmd->IASetVertexBuffers(0, 1, &vbv);
-	cmd->IASetIndexBuffer(&ibv);
-	cmd->DrawIndexedInstanced(mesh.GetIndexCount(), 1, 0, 0, 0);
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	commandList->IASetVertexBuffers(0, 1, &vbv);
+	commandList->IASetIndexBuffer(&ibv);
+	commandList->DrawIndexedInstanced(mesh.GetIndexCount(), 1, 0, 0, 0);
 }
 
 void ModelRenderer::CreateRootSignature() {
+	// b0: ObjectCB, b1: SceneCB
 	D3D12_ROOT_PARAMETER params[2]{};
 	params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 	params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
@@ -91,7 +121,7 @@ void ModelRenderer::CreateRootSignature() {
 
 	ComPtr<ID3DBlob> blob, err;
 	HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &err);
-	if (FAILED(hr) && err) OutputDebugStringA((char *)err->GetBufferPointer());
+	if (FAILED(hr) && err) ::OutputDebugStringA((const char *)err->GetBufferPointer());
 	assert(SUCCEEDED(hr));
 
 	hr = device_->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rootSig_));
@@ -101,11 +131,12 @@ void ModelRenderer::CreateRootSignature() {
 void ModelRenderer::CreatePipelineState() {
 	assert(shader_ && "ShaderCompiler is null. Pass it to Initialize().");
 
-	// 入力レイアウト（pos, normal, uv）
+	// 入力レイアウト（pos, normal, uv, color）
 	D3D12_INPUT_ELEMENT_DESC layout[] = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 	};
 
 	// ShaderCompiler を使用してコンパイル
@@ -118,16 +149,15 @@ void ModelRenderer::CreatePipelineState() {
 #endif
 
 	auto vsb = shader_->CompileFromFile(
-		L"Resources/Shaders/ModelVS.hlsl", L"VSMain", L"vs_6_0", {}, kOptimize, kDebug);
+		L"Resources/Shaders/ModelVS.hlsl", L"ModelVS", L"vs_6_0", {}, kOptimize, kDebug);
 	auto psb = shader_->CompileFromFile(
-		L"Resources/Shaders/ModelPS.hlsl", L"PSMain", L"ps_6_0", {}, kOptimize, kDebug);
-
+		L"Resources/Shaders/ModelPS.hlsl", L"ModelPS", L"ps_6_0", {}, kOptimize, kDebug);
 	assert(vsb && psb && "Shader compile failed. See logs.");
 
 	D3D12_RASTERIZER_DESC rs{};
 	rs.FillMode = D3D12_FILL_MODE_SOLID;
 	rs.CullMode = D3D12_CULL_MODE_BACK;
-	rs.FrontCounterClockwise = FALSE;
+	rs.FrontCounterClockwise = FALSE; // OBJ が CCW なら FALSE でOK
 	rs.DepthClipEnable = TRUE;
 
 	D3D12_DEPTH_STENCIL_DESC ds{};

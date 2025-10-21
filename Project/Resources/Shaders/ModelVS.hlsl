@@ -1,16 +1,20 @@
+// ===== cbuffers =====
 cbuffer ObjectCB : register(b0) {
     float4x4 gWorld;
-    float4 gColor;
+    // ティントを使いたい場合だけコメント解除
+    // float4 gColor;
 };
 cbuffer SceneCB : register(b1) {
     float4x4 gView;
     float4x4 gProj;
 };
 
+// ===== VS I/O =====
 struct VSIn {
     float3 pos : POSITION;
     float3 nrm : NORMAL;
     float2 uv : TEXCOORD0;
+    float4 col : COLOR0; // MTL(Kd/d)→頂点に焼いておく
 };
 
 struct VSOut {
@@ -21,15 +25,25 @@ struct VSOut {
     float4 color : COLOR0;
 };
 
-VSOut VSMain(VSIn i) {
+// ===== VS =====
+VSOut ModelVS(VSIn i) {
     VSOut o;
-    float4 pw = mul(float4(i.pos, 1), gWorld);
-    float4 pv = mul(pw, gView);
-    float4 pp = mul(pv, gProj);
-    o.svpos = pp;
+
+    float4 pw = mul(float4(i.pos, 1.0), gWorld);
+    o.svpos = mul(mul(pw, gView), gProj);
     o.posW = pw.xyz;
-    o.nrmW = mul(float4(i.nrm, 0), gWorld).xyz;
+
+    // 法線は w=0 でワールドへ
+    o.nrmW = mul(float4(i.nrm, 0.0), gWorld).xyz;
+
     o.uv = i.uv;
-    o.color = gColor;
+
+    // MTL色（i.col）をそのまま流す
+    float4 matColor = i.col;
+
+    // ティントを掛けたい場合は以下を有効化
+    // matColor *= gColor;
+
+    o.color = matColor;
     return o;
 }

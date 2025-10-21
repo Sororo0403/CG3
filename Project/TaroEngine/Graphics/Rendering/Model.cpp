@@ -44,9 +44,38 @@ static inline XMFLOAT3 FaceNormal(const XMFLOAT3 &p0, const XMFLOAT3 &p1, const 
     XMVECTOR e1 = XMVectorSubtract(P1, P0);
     XMVECTOR e2 = XMVectorSubtract(P2, P0);
     XMVECTOR n = XMVector3Normalize(XMVector3Cross(e1, e2));
-    XMFLOAT3 out{};
-    XMStoreFloat3(&out, n);
+    XMFLOAT3 out{}; XMStoreFloat3(&out, n);
     return out;
+}
+
+// ===== MTL（Kd / d / Tr）簡易ローダ =====
+struct MtlMat {
+    XMFLOAT3 Kd{1,1,1};
+    float d = 1.0f;
+};
+
+static std::unordered_map<std::string, MtlMat> LoadMtlFile_(const std::string &mtlPath) {
+    std::unordered_map<std::string, MtlMat> mats;
+    std::ifstream ifs(mtlPath);
+    if (!ifs) return mats;
+
+    std::string line, cur;
+    while (std::getline(ifs, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        std::istringstream iss(line);
+        std::string tag; iss >> tag;
+        if (tag == "newmtl") {
+            iss >> cur;
+            mats[cur] = MtlMat{};
+        } else if (tag == "Kd" && !cur.empty()) {
+            float r, g, b; iss >> r >> g >> b;
+            mats[cur].Kd = {r, g, b};
+        } else if ((tag == "d" || tag == "Tr") && !cur.empty()) {
+            float v; iss >> v;
+            mats[cur].d = (tag == "Tr") ? (1.0f - v) : v;
+        }
+    }
+    return mats;
 }
 
 void Model::Initialize(ID3D12Device *device, const std::string &path) {
@@ -59,6 +88,10 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
     std::ifstream ifs(path);
     assert(ifs && "Failed to open OBJ file. Check path.");
 
+    // OBJ のあるディレクトリ（mtllibの解決に使う）
+    const auto slash = path.find_last_of("/\\");
+    const std::string dir = (slash == std::string::npos) ? "" : path.substr(0, slash + 1);
+
     std::vector<XMFLOAT3> positions;
     std::vector<XMFLOAT3> normals;
     std::vector<XMFLOAT2> texcoords;
@@ -70,6 +103,10 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
 
     std::unordered_map<VertexRef, uint32_t, VertexRefHash> dedup;
 
+    // MTL 関連
+    std::unordered_map<std::string, MtlMat> materials;
+    std::string currentMtl; // usemtlで設定
+
     std::string line;
     while (std::getline(ifs, line)) {
         if (line.empty() || line[0] == '#') continue;
@@ -77,21 +114,28 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
         std::string tag; iss >> tag;
 
         if (tag == "v") {
-            XMFLOAT3 p{};
-            iss >> p.x >> p.y >> p.z;
-            positions.push_back(p);
+            XMFLOAT3 p{}; iss >> p.x >> p.y >> p.z; positions.push_back(p);
         } else if (tag == "vt") {
-            XMFLOAT2 t{};
-            iss >> t.x >> t.y;
-            texcoords.push_back(t);
+            XMFLOAT2 t{}; iss >> t.x >> t.y; texcoords.push_back(t);
         } else if (tag == "vn") {
-            XMFLOAT3 n{};
-            iss >> n.x >> n.y >> n.z;
-            normals.push_back(n);
+            XMFLOAT3 n{}; iss >> n.x >> n.y >> n.z; normals.push_back(n);
+        } else if (tag == "mtllib") {
+            std::string mtlFile; iss >> mtlFile;
+            auto m = LoadMtlFile_(dir + mtlFile);
+            materials.insert(m.begin(), m.end()); // マージ
+        } else if (tag == "usemtl") {
+            iss >> currentMtl;
         } else if (tag == "f") {
             std::vector<VertexRef> refs; std::string tok;
             while (iss >> tok) refs.push_back(ParseVertexRef(tok));
             if (refs.size() < 3) continue;
+
+            // 現在の材質（無ければ白）
+            MtlMat mat{};
+            if (!currentMtl.empty()) {
+                auto it = materials.find(currentMtl);
+                if (it != materials.end()) mat = it->second;
+            }
 
             // 多角形 → 三角形（扇形分割）
             for (size_t k = 1; k + 1 < refs.size(); ++k) {
@@ -130,6 +174,7 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
                         v.pos = P[m];
                         v.nrm = N[m];
                         v.uv = T[m];
+                        v.color = {mat.Kd.x, mat.Kd.y, mat.Kd.z, mat.d}; // ★ 材質色
                         idx = static_cast<uint32_t>(outVertices.size());
                         outVertices.push_back(v);
                         dedup.emplace(key, idx);

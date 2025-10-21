@@ -1,15 +1,17 @@
 #pragma once
+
 #include "EngineContext.h"
 #include "RenderContext.h"
 #include "Model.h"
 #include "IScene.h"
 #include "Camera.h"
 #include "Player.h"
+#include "SolidBlock.h"
 
 class GameScene : public IScene {
 public:
     void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
-    void Update(float /*deltaTime*/) override {}
+    void Update(float deltaTime) override;
     void Draw() override;
     void Finalize() override;
 
@@ -22,5 +24,6 @@ private:
     Camera camera_;
 
 	// ゲームオブジェクト
-	Model player_;
+	Player player_;
+	SolidBlock solidBlock_;
 };
