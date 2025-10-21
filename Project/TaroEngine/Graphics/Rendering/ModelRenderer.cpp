@@ -60,9 +60,9 @@ void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
 // === Camera 受け取り糖衣 ===
 void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
     const Camera &camera) noexcept {
-    const XMMATRIX V = camera.GetViewMatrix(); // 非転置
-    const XMMATRIX P = camera.GetProjMatrix(); // 非転置
-    Begin(commandList, camera.GetViewMatrix(), camera.GetProjMatrix());
+    const XMMATRIX V = camera.GetView(); // 非転置
+    const XMMATRIX P = camera.GetProj(); // 非転置
+    Begin(commandList, camera.GetView(), camera.GetProj());
 }
 
 void ModelRenderer::End(ID3D12GraphicsCommandList *commandList) noexcept {

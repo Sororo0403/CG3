@@ -1,17 +1,17 @@
-// Camera.cpp
 #include "Camera.h"
 #include <algorithm>
+#include <cmath>
 
 using namespace DirectX;
 
-Camera::Camera() { Reset(); }
+static constexpr float kPI = 3.14159265358979323846f;
 
-void Camera::Reset() noexcept {
-    eye_ = {0.0f, 1.5f, -3.0f};
-    tgt_ = {0.0f, 0.5f,  0.0f};
-    up_ = {0.0f, 1.0f,  0.0f};
-    fovYDeg_ = 60.0f; nearZ_ = 0.1f; farZ_ = 100.0f;
-    aspect_ = 16.0f / 9.0f;
+void Camera::Initialize(const XMFLOAT3 &eye,
+    const XMFLOAT3 &yawPitchRoll,
+    float fovYDeg, float aspect, float nearZ, float farZ) noexcept {
+    transform_.pos = eye;
+    transform_.rot = {yawPitchRoll.x, yawPitchRoll.y, yawPitchRoll.z}; // {pitch,yaw,roll}
+    fovYDeg_ = fovYDeg; aspect_ = aspect; nearZ_ = nearZ; farZ_ = farZ;
     viewDirty_ = projDirty_ = true;
 }
 
@@ -24,101 +24,128 @@ void Camera::SetPerspective(float fovYDeg, float aspect, float nearZ, float farZ
 }
 
 void Camera::SetViewportSize(uint32_t w, uint32_t h) noexcept {
-    const float fw = static_cast<float>(std::max(1u, w));
-    const float fh = static_cast<float>(std::max(1u, h));
+    float fw = static_cast<float>(std::max(1u, w));
+    float fh = static_cast<float>(std::max(1u, h));
     aspect_ = fw / fh;
     projDirty_ = true;
 }
 
-void Camera::LookAt(FXMVECTOR eye, FXMVECTOR target, FXMVECTOR up) noexcept {
-    XMStoreFloat3(&eye_, eye);
-    XMStoreFloat3(&tgt_, target);
-    XMStoreFloat3(&up_, up);
+void Camera::SetPos(const XMFLOAT3 &p) noexcept {
+    transform_.pos = p; viewDirty_ = true;
+}
+
+void Camera::SetRot(const XMFLOAT3 &pitchYawRollRad) noexcept {
+    transform_.rot = pitchYawRollRad; transform_.rot.x = ClampPitch_(transform_.rot.x); viewDirty_ = true;
+}
+
+void Camera::LookAt(const XMFLOAT3 &eye, const XMFLOAT3 &target, const XMFLOAT3 &up) noexcept {
+    // 位置
+    transform_.pos = eye;
+
+    // forward から pitch,yaw を復元（LH: +Z 前）
+    XMVECTOR f = XMVector3Normalize(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&eye)));
+    float fx = XMVectorGetX(f), fy = XMVectorGetY(f), fz = XMVectorGetZ(f);
+    float yaw = std::atan2(fx, fz);
+    float pitch = std::asin(std::clamp(fy, -1.0f, 1.0f));
+    transform_.rot = {ClampPitch_(pitch), yaw, 0.0f};
+
+    // up は roll 復元に使えるが、ここでは roll=0 とする
+    (void)up;
+
     viewDirty_ = true;
 }
 
-void Camera::SetEye(const XMFLOAT3 &e) noexcept { eye_ = e; viewDirty_ = true; }
-void Camera::SetTarget(const XMFLOAT3 &t) noexcept { tgt_ = t; viewDirty_ = true; }
-void Camera::SetUp(const XMFLOAT3 &u) noexcept { up_ = u; viewDirty_ = true; }
+XMVECTOR Camera::GetForward() const noexcept {
+    XMMATRIX r = XMMatrixRotationRollPitchYaw(transform_.rot.x, transform_.rot.y, transform_.rot.z);
+    return XMVector3TransformNormal(XMVectorSet(0, 0, 1, 0), r); // LH +Z
+}
 
-void Camera::YawPitch(float yawRad, float pitchRad) noexcept {
-    const XMVECTOR eyeV = XMLoadFloat3(&eye_);
-    const XMVECTOR tgtV = XMLoadFloat3(&tgt_);
-    const XMVECTOR upV = XMLoadFloat3(&up_);
+XMVECTOR Camera::GetRight() const noexcept {
+    XMMATRIX r = XMMatrixRotationRollPitchYaw(transform_.rot.x, transform_.rot.y, transform_.rot.z);
+    return XMVector3TransformNormal(XMVectorSet(1, 0, 0, 0), r);
+}
 
-    XMVECTOR view = XMVector3Normalize(XMVectorSubtract(tgtV, eyeV));
-    XMVECTOR right = XMVector3Normalize(XMVector3Cross(upV, view));
+XMVECTOR Camera::GetUp() const noexcept {
+    XMMATRIX r = XMMatrixRotationRollPitchYaw(transform_.rot.x, transform_.rot.y, transform_.rot.z);
+    return XMVector3TransformNormal(XMVectorSet(0, 1, 0, 0), r);
+}
 
-    // pitch -> yaw
-    view = XMVector3TransformNormal(view, XMMatrixRotationAxis(right, pitchRad));
-    view = XMVector3TransformNormal(view, XMMatrixRotationAxis(upV, yawRad));
-
-    XMVECTOR newTgt = XMVectorAdd(eyeV, XMVector3Normalize(view));
-    XMStoreFloat3(&tgt_, newTgt);
+void Camera::MoveLocal(float right, float up, float forward) noexcept {
+    XMVECTOR r = GetRight();
+    XMVECTOR u = GetUp();
+    XMVECTOR f = GetForward();
+    XMVECTOR delta = XMVectorAdd(XMVectorAdd(XMVectorScale(r, right), XMVectorScale(u, up)), XMVectorScale(f, forward));
+    XMVECTOR p = XMLoadFloat3(&transform_.pos);
+    p = XMVectorAdd(p, delta);
+    XMStoreFloat3(&transform_.pos, p);
     viewDirty_ = true;
 }
 
-void Camera::Orbit(float yawRad, float pitchRad, float radiusScale) noexcept {
-    XMVECTOR eyeV = XMLoadFloat3(&eye_);
-    XMVECTOR tgtV = XMLoadFloat3(&tgt_);
-    XMVECTOR upV = XMLoadFloat3(&up_);
+void Camera::MoveWorld(float dx, float dy, float dz) noexcept {
+    transform_.pos.x += dx; transform_.pos.y += dy; transform_.pos.z += dz; viewDirty_ = true;
+}
 
-    XMVECTOR toEye = XMVectorSubtract(eyeV, tgtV);
-    float r = XMVectorGetX(XMVector3Length(toEye));
-    XMVECTOR dir = XMVector3Normalize(toEye);
+void Camera::AddYawPitch(float yawRad, float pitchRad) noexcept {
+    transform_.rot.y += yawRad;                 // yaw (左右)
+    transform_.rot.x = ClampPitch_(transform_.rot.x + pitchRad); // pitch (上下)
+    viewDirty_ = true;
+}
 
-    XMVECTOR right = XMVector3Normalize(XMVector3Cross(upV, dir));
-    dir = XMVector3TransformNormal(dir, XMMatrixRotationAxis(right, pitchRad));
-    dir = XMVector3TransformNormal(dir, XMMatrixRotationAxis(upV, yawRad));
+void Camera::OrbitAround(const XMFLOAT3 &center, float yawDelta, float pitchDelta, float radiusScale) noexcept {
+    XMVECTOR c = XMLoadFloat3(&center);
+    XMVECTOR p = XMLoadFloat3(&transform_.pos);
+    XMVECTOR v = XMVectorSubtract(p, c); // center->eye
+
+    float r = XMVectorGetX(XMVector3Length(v));
+    if (r < 1e-6f) r = 1e-6f;
+    v = XMVectorScale(v, 1.0f / r);
+
+    // 回転用に現在の up/right を作る（ワールドY基準の簡易版）
+    // より自然にするなら "現在の姿勢の up" を使う。
+    XMVECTOR worldUp = XMVectorSet(0, 1, 0, 0);
+    XMVECTOR right = XMVector3Normalize(XMVector3Cross(worldUp, v));
+    XMMATRIX Rpitch = XMMatrixRotationAxis(right, pitchDelta);
+    XMMATRIX Ryaw = XMMatrixRotationY(yawDelta);
+
+    v = XMVector3TransformNormal(v, Rpitch);
+    v = XMVector3TransformNormal(v, Ryaw);
+
     r *= std::max(0.0001f, radiusScale);
+    p = XMVectorAdd(c, XMVectorScale(v, r));
 
-    XMVECTOR newEye = XMVectorAdd(tgtV, XMVectorScale(dir, r));
-    XMStoreFloat3(&eye_, newEye);
+    XMStoreFloat3(&transform_.pos, p);
+
+    // つねに center を見る
+    LookAt(transform_.pos, center);
     viewDirty_ = true;
 }
 
-void Camera::Dolly(float delta) noexcept {
-    XMVECTOR eyeV = XMLoadFloat3(&eye_);
-    XMVECTOR tgtV = XMLoadFloat3(&tgt_);
-    XMVECTOR dir = XMVector3Normalize(XMVectorSubtract(tgtV, eyeV));
-    XMVECTOR off = XMVectorScale(dir, delta);
-    eyeV = XMVectorAdd(eyeV, off);
-    tgtV = XMVectorAdd(tgtV, off);
-    XMStoreFloat3(&eye_, eyeV);
-    XMStoreFloat3(&tgt_, tgtV);
-    viewDirty_ = true;
-}
-
-void Camera::Pan(float dx, float dy) noexcept {
-    XMVECTOR eyeV = XMLoadFloat3(&eye_);
-    XMVECTOR tgtV = XMLoadFloat3(&tgt_);
-    XMVECTOR upV = XMLoadFloat3(&up_);
-    XMVECTOR view = XMVector3Normalize(XMVectorSubtract(tgtV, eyeV));
-    XMVECTOR right = XMVector3Normalize(XMVector3Cross(upV, view));
-    XMVECTOR move = XMVectorAdd(XMVectorScale(right, dx), XMVectorScale(upV, dy));
-    eyeV = XMVectorAdd(eyeV, move);
-    tgtV = XMVectorAdd(tgtV, move);
-    XMStoreFloat3(&eye_, eyeV);
-    XMStoreFloat3(&tgt_, tgtV);
-    viewDirty_ = true;
-}
-
-// ---- const版（Rendererが const Camera& を受けられるように）----
-const XMMATRIX &Camera::GetViewMatrix() const noexcept {
-    if (viewDirty_) RecalcViewMatrix_();
+const XMMATRIX &Camera::GetView() const noexcept {
+    if (viewDirty_) RecalcView_();
     return view_;
 }
-const XMMATRIX &Camera::GetProjMatrix() const noexcept {
-    if (projDirty_) RecalcProjMatrix_();
+
+const XMMATRIX &Camera::GetProj() const noexcept {
+    if (projDirty_) RecalcProj_();
     return proj_;
 }
 
-// ---- 内部再計算（LH：+Z 前）----
-void Camera::RecalcViewMatrix_() const noexcept {
-    view_ = XMMatrixLookAtLH(XMLoadFloat3(&eye_), XMLoadFloat3(&tgt_), XMLoadFloat3(&up_));
+void Camera::RecalcView_() const noexcept {
+    XMVECTOR eye = XMLoadFloat3(&transform_.pos);
+    XMVECTOR fwd = GetForward();
+    XMVECTOR up = GetUp();
+    XMVECTOR tgt = XMVectorAdd(eye, fwd);
+    view_ = XMMatrixLookAtLH(eye, tgt, up);
     viewDirty_ = false;
 }
-void Camera::RecalcProjMatrix_() const noexcept {
+
+void Camera::RecalcProj_() const noexcept {
     proj_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovYDeg_), aspect_, nearZ_, farZ_);
     projDirty_ = false;
+}
+
+float Camera::ClampPitch_(float pitch) noexcept {
+    // 真上/真下での万歳ロックを回避（±89.9 度）
+    const float limit = 0.5f * kPI - 0.0015f;
+    return std::clamp(pitch, -limit, limit);
 }

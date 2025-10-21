@@ -36,9 +36,6 @@
     <Filter Include="Source\Scene">
       <UniqueIdentifier>{483fc31a-9852-40a0-aa41-0a87c3f3caf2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Platform">
-      <UniqueIdentifier>{ee0b124e-5bda-462c-8c64-41fe3957d0d8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Include\Graphics\LowLevel">
       <UniqueIdentifier>{7ea6e075-2f56-4c03-8737-c44dd29a06ba}</UniqueIdentifier>
     </Filter>
@@ -143,12 +140,6 @@
     <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Actor\Player.cpp">
-      <Filter>Source\Actor</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Actor\SolidBlock.cpp">
-      <Filter>Source\Actor</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -186,12 +177,6 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Scene\SceneManager.h">
       <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Platform\Input.h">
-      <Filter>Include\Platform</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Platform\WinApp.h">
-      <Filter>Include\Platform</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\LowLevel\DirectXCommon.h">
       <Filter>Include\Graphics\LowLevel</Filter>
@@ -250,14 +235,11 @@
     <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h">
       <Filter>Include\Graphics\Rendering</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Actor\Player.h">
-      <Filter>Include\Actor</Filter>
+    <ClInclude Include="TaroEngine\Platform\Input.h">
+      <Filter>Include\Core</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Actor\IBlock.h">
-      <Filter>Include\Actor</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Actor\SolidBlock.h">
-      <Filter>Include\Actor</Filter>
+    <ClInclude Include="TaroEngine\Platform\WinApp.h">
+      <Filter>Include\Core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
