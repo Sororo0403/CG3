@@ -25,25 +25,19 @@ void Player::Update(float deltaTime) {
 void Player::Finalize() {}
 
 void Player::Move_(float deltaTime) {
-    // 入力ベクトル
     XMFLOAT3 moveDir = {0.0f, 0.0f, 0.0f};
 
-    if (input_->IsKeyDown(DIK_D)) moveDir.x += 1.0f;
-    if (input_->IsKeyDown(DIK_A)) moveDir.x -= 1.0f;
+    if (input_->IsKeyDown(DIK_D)) moveDir.x += 1.0f; // → 右 (+X)
+    if (input_->IsKeyDown(DIK_A)) moveDir.x -= 1.0f; // ← 左 (-X)
 
-    // ベクトル長を計算して正規化
     XMVECTOR v = XMLoadFloat3(&moveDir);
     float len = XMVectorGetX(XMVector3Length(v));
 
     if (len > 0.0001f) {
         v = XMVector3Normalize(v);
-
-        // 移動速度
         v = XMVectorScale(v, speed_ * deltaTime);
-
         XMStoreFloat3(&velocity_, v);
     } else {
-        // 入力がなければ止まる
         velocity_ = {0.0f, 0.0f, 0.0f};
     }
 }

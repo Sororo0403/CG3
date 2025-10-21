@@ -1,74 +1,72 @@
 #pragma once
-
 #include <d3d12.h>
 #include <wrl.h>
+#include <DirectXMath.h>
 #include <cstdint>
 #include "Transform.h"
+#include "Model.h"
 
-class Model;
 class ShaderCompiler;
+class Camera; // 前方宣言だけでOK
 
 /// <summary>
-/// 単純なモデル描画器（シーンCB + オブジェクトCB）
-/// - ObjectCB は 256B 整列のリングバッファ（1フレーム中に複数 Draw 可）
+/// 3Dモデル描画の基本レンダラ。
+/// View/Proj を毎フレーム受け取り、ModelごとのWorld行列を更新して描画。
 /// </summary>
 class ModelRenderer {
 public:
-    /// <summary>
-    /// 初期化（デバイスとシェーダコンパイラを受け取る）
-    /// </summary>
     void Initialize(ID3D12Device *device, ShaderCompiler *shader);
-
-    /// <summary>
-    /// 終了処理
-    /// </summary>
     void Finalize() noexcept;
 
     /// <summary>
-    /// フレーム先頭。VP を設定して PSO/RootSig をバインド
+    /// ビュー行列・射影行列を渡して描画を開始します。
     /// </summary>
-    void Begin(ID3D12GraphicsCommandList *commandList, const float view[16], const float proj[16]) noexcept;
+    void Begin(ID3D12GraphicsCommandList *commandList,
+        const DirectX::XMMATRIX &view,
+        const DirectX::XMMATRIX &proj) noexcept;
 
     /// <summary>
-    /// フレーム末尾（現在は何もしない）
+    /// Camera を直接渡して Begin を呼べる糖衣構文。
+    /// </summary>
+    void Begin(ID3D12GraphicsCommandList *commandList,
+        const Camera &camera) noexcept;
+
+    /// <summary>
+    /// 描画終了。
     /// </summary>
     void End(ID3D12GraphicsCommandList *commandList) noexcept;
 
     /// <summary>
-    /// 1 つのモデルを描画
+    /// 指定したモデルを現在のビュー/射影設定で描画。
     /// </summary>
-    void Draw(ID3D12GraphicsCommandList *commandList, const Model &model, const Transform &transform) noexcept;
+    void Draw(ID3D12GraphicsCommandList *commandList,
+        const Model &model, const Transform &transform) noexcept;
 
 private:
     void CreateRootSignature();
     void CreatePipelineState();
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12Device>         device_;
-    Microsoft::WRL::ComPtr<ID3D12RootSignature>  rootSig_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState>  pso_;
-
-    struct SceneCB { float view[16]; float proj[16]; };
-    struct ObjectCB { float world[16]; float color[4]; }; // sizeof= (16+4)*16 = 320B ではない。float=4Bなので 16*4*? 注意: 実配列なので後述の256B整列で送る
-
-    // ====== 定数バッファ ======
+    Microsoft::WRL::ComPtr<ID3D12Device> device_;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSig_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> pso_;
     Microsoft::WRL::ComPtr<ID3D12Resource> sceneCB_;
     Microsoft::WRL::ComPtr<ID3D12Resource> objectCB_;
-
-    // Map 先頭ポインタ
-    SceneCB *sceneCBMapped_ = nullptr;
-    uint8_t *objectCBMapped_ = nullptr; // リングの先頭（生ポインタ）
-
-    // ====== リングバッファ制御 ======
-    // 256B 整列サイズ（ハード要件）
-    static constexpr uint32_t kObjectCBStride = ((sizeof(ObjectCB) + 255u) & ~255u);
-    // 1 フレーム内で最大この回数の Draw を想定（必要に応じて増やしてください）
-    static constexpr uint32_t kMaxObjectsPerFrame = 2048;
-    // 総バイト数
-    static constexpr uint32_t kObjectCBTotalBytes = kObjectCBStride * kMaxObjectsPerFrame;
-
-    // 現フレームの書き込みオフセット
-    uint32_t objectCBOffset_ = 0;
-
     ShaderCompiler *shader_ = nullptr;
+
+    // ObjectCB リングバッファ管理
+    static constexpr uint32_t kMaxObjectsPerFrame = 4096;
+    uint32_t objectCBStride_ = 0; // AlignCB(sizeof(ObjectCB))
+    uint32_t objectCBTotalBytes_ = 0; // objectCBStride_ * kMaxObjectsPerFrame
+    uint32_t objectCBOffset_ = 0; // 現在の書き込みカーソル
+
+    // === 定数バッファ構造 ===
+    struct alignas(16) SceneCB {
+        DirectX::XMFLOAT4X4 view; // 転置済み
+        DirectX::XMFLOAT4X4 proj; // 転置済み
+    };
+    struct alignas(16) ObjectCB {
+        DirectX::XMFLOAT4X4 world; // 転置済み
+        float color[4];
+    };
 };

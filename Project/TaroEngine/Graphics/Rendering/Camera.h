@@ -35,18 +35,12 @@ public:
     void Dolly(float delta) noexcept;
     void Pan(float dx, float dy) noexcept;
 
-    // --- 行列アクセス（遅延更新） ---
-    const DirectX::XMMATRIX &View() noexcept;
-    const DirectX::XMMATRIX &Proj() noexcept;
-    DirectX::XMMATRIX ViewProj() noexcept;
-
-    // HLSL (column_major 既定) 用に転置ストア
-    static void StoreT(float out16[16], const DirectX::XMMATRIX &m) noexcept;
-    void GetTransposeVP(float vT[16], float pT[16]) noexcept;
+    const DirectX::XMMATRIX &GetViewMatrix() const noexcept;
+    const DirectX::XMMATRIX &GetProjMatrix() const noexcept;
 
 private:
-    void RecalcView_() noexcept;
-    void RecalcProj_() noexcept;
+    void RecalcViewMatrix_() const noexcept;
+    void RecalcProjMatrix_() const noexcept;
 
 private:
     DirectX::XMFLOAT3 eye_{};
@@ -58,8 +52,9 @@ private:
     float nearZ_ = 0.1f;
     float farZ_ = 100.0f;
 
-    DirectX::XMMATRIX view_{DirectX::XMMatrixIdentity()};
-    DirectX::XMMATRIX proj_{DirectX::XMMatrixIdentity()};
-    bool viewDirty_ = true;
-    bool projDirty_ = true;
+    // 遅延更新（constメソッドでも更新できるようにmutable）
+    mutable DirectX::XMMATRIX view_{DirectX::XMMatrixIdentity()};
+    mutable DirectX::XMMATRIX proj_{DirectX::XMMatrixIdentity()};
+    mutable bool viewDirty_ = true;
+    mutable bool projDirty_ = true;
 };

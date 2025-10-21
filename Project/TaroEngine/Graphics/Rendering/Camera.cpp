@@ -1,5 +1,8 @@
+// Camera.cpp
 #include "Camera.h"
 #include <algorithm>
+
+using namespace DirectX;
 
 Camera::Camera() { Reset(); }
 
@@ -27,19 +30,18 @@ void Camera::SetViewportSize(uint32_t w, uint32_t h) noexcept {
     projDirty_ = true;
 }
 
-void Camera::LookAt(DirectX::FXMVECTOR eye, DirectX::FXMVECTOR target, DirectX::FXMVECTOR up) noexcept {
-    DirectX::XMStoreFloat3(&eye_, eye);
-    DirectX::XMStoreFloat3(&tgt_, target);
-    DirectX::XMStoreFloat3(&up_, up);
+void Camera::LookAt(FXMVECTOR eye, FXMVECTOR target, FXMVECTOR up) noexcept {
+    XMStoreFloat3(&eye_, eye);
+    XMStoreFloat3(&tgt_, target);
+    XMStoreFloat3(&up_, up);
     viewDirty_ = true;
 }
 
-void Camera::SetEye(const DirectX::XMFLOAT3 &e) noexcept { eye_ = e; viewDirty_ = true; }
-void Camera::SetTarget(const DirectX::XMFLOAT3 &t) noexcept { tgt_ = t; viewDirty_ = true; }
-void Camera::SetUp(const DirectX::XMFLOAT3 &u) noexcept { up_ = u; viewDirty_ = true; }
+void Camera::SetEye(const XMFLOAT3 &e) noexcept { eye_ = e; viewDirty_ = true; }
+void Camera::SetTarget(const XMFLOAT3 &t) noexcept { tgt_ = t; viewDirty_ = true; }
+void Camera::SetUp(const XMFLOAT3 &u) noexcept { up_ = u; viewDirty_ = true; }
 
 void Camera::YawPitch(float yawRad, float pitchRad) noexcept {
-    using namespace DirectX;
     const XMVECTOR eyeV = XMLoadFloat3(&eye_);
     const XMVECTOR tgtV = XMLoadFloat3(&tgt_);
     const XMVECTOR upV = XMLoadFloat3(&up_);
@@ -47,7 +49,7 @@ void Camera::YawPitch(float yawRad, float pitchRad) noexcept {
     XMVECTOR view = XMVector3Normalize(XMVectorSubtract(tgtV, eyeV));
     XMVECTOR right = XMVector3Normalize(XMVector3Cross(upV, view));
 
-    // pitch then yaw
+    // pitch -> yaw
     view = XMVector3TransformNormal(view, XMMatrixRotationAxis(right, pitchRad));
     view = XMVector3TransformNormal(view, XMMatrixRotationAxis(upV, yawRad));
 
@@ -57,7 +59,6 @@ void Camera::YawPitch(float yawRad, float pitchRad) noexcept {
 }
 
 void Camera::Orbit(float yawRad, float pitchRad, float radiusScale) noexcept {
-    using namespace DirectX;
     XMVECTOR eyeV = XMLoadFloat3(&eye_);
     XMVECTOR tgtV = XMLoadFloat3(&tgt_);
     XMVECTOR upV = XMLoadFloat3(&up_);
@@ -77,7 +78,6 @@ void Camera::Orbit(float yawRad, float pitchRad, float radiusScale) noexcept {
 }
 
 void Camera::Dolly(float delta) noexcept {
-    using namespace DirectX;
     XMVECTOR eyeV = XMLoadFloat3(&eye_);
     XMVECTOR tgtV = XMLoadFloat3(&tgt_);
     XMVECTOR dir = XMVector3Normalize(XMVectorSubtract(tgtV, eyeV));
@@ -90,7 +90,6 @@ void Camera::Dolly(float delta) noexcept {
 }
 
 void Camera::Pan(float dx, float dy) noexcept {
-    using namespace DirectX;
     XMVECTOR eyeV = XMLoadFloat3(&eye_);
     XMVECTOR tgtV = XMLoadFloat3(&tgt_);
     XMVECTOR upV = XMLoadFloat3(&up_);
@@ -104,39 +103,22 @@ void Camera::Pan(float dx, float dy) noexcept {
     viewDirty_ = true;
 }
 
-const DirectX::XMMATRIX &Camera::View() noexcept {
-    if (viewDirty_) RecalcView_();
+// ---- const版（Rendererが const Camera& を受けられるように）----
+const XMMATRIX &Camera::GetViewMatrix() const noexcept {
+    if (viewDirty_) RecalcViewMatrix_();
     return view_;
 }
-
-const DirectX::XMMATRIX &Camera::Proj() noexcept {
-    if (projDirty_) RecalcProj_();
+const XMMATRIX &Camera::GetProjMatrix() const noexcept {
+    if (projDirty_) RecalcProjMatrix_();
     return proj_;
 }
 
-DirectX::XMMATRIX Camera::ViewProj() noexcept {
-    return DirectX::XMMatrixMultiply(View(), Proj());
-}
-
-void Camera::StoreT(float out16[16], const DirectX::XMMATRIX &m) noexcept {
-    using namespace DirectX;
-    const XMMATRIX mt = XMMatrixTranspose(m);
-    XMStoreFloat4x4(reinterpret_cast<XMFLOAT4X4 *>(out16), mt);
-}
-
-void Camera::GetTransposeVP(float vT[16], float pT[16]) noexcept {
-    StoreT(vT, View());
-    StoreT(pT, Proj());
-}
-
-void Camera::RecalcView_() noexcept {
-    using namespace DirectX;
+// ---- 内部再計算（LH：+Z 前）----
+void Camera::RecalcViewMatrix_() const noexcept {
     view_ = XMMatrixLookAtLH(XMLoadFloat3(&eye_), XMLoadFloat3(&tgt_), XMLoadFloat3(&up_));
     viewDirty_ = false;
 }
-
-void Camera::RecalcProj_() noexcept {
-    using namespace DirectX;
+void Camera::RecalcProjMatrix_() const noexcept {
     proj_ = XMMatrixPerspectiveFovLH(XMConvertToRadians(fovYDeg_), aspect_, nearZ_, farZ_);
     projDirty_ = false;
 }

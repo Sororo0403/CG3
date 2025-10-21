@@ -4,185 +4,185 @@
 #include "BufferUtility.h"
 #include "Mesh.h"
 #include "Model.h"
+#include "Camera.h"
 
-#include <d3d12.h>
-#include <wrl.h>
 #include <cassert>
-#include <cstring>   // std::memcpy
-
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
 void ModelRenderer::Initialize(ID3D12Device *device, ShaderCompiler *shader) {
-	device_.Reset();
-	device_ = device;
-	shader_ = shader;
+    device_.Reset();
+    device_ = device;
+    shader_ = shader;
 
-	CreateRootSignature();
-	CreatePipelineState();
+    CreateRootSignature();
+    CreatePipelineState();
 
-	// SceneCB: 1個分（256B整列でOK）
-	sceneCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), BufferUtility::AlignCB(sizeof(SceneCB)));
+    // SceneCB: 1個ぶん（256Bアライン）
+    sceneCB_ = BufferUtility::CreateUploadBuffer(device_.Get(),
+        BufferUtility::AlignCB(sizeof(SceneCB)));
 
-	// ObjectCB: 1フレームぶんリング容量
-	objectCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), kObjectCBTotalBytes);
-
-	// ★ Map固定は不要（WriteToUploadを使う）
-	sceneCBMapped_ = nullptr;
-	objectCBMapped_ = nullptr;
+    // ObjectCB: 実サイズに基づいて256Bアライン
+    objectCBStride_ = BufferUtility::AlignCB(sizeof(ObjectCB));
+    objectCBTotalBytes_ = objectCBStride_ * kMaxObjectsPerFrame;
+    objectCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), objectCBTotalBytes_);
 }
 
 void ModelRenderer::Finalize() noexcept {
-	if (sceneCB_)  sceneCB_->Unmap(0, nullptr);
-	if (objectCB_) objectCB_->Unmap(0, nullptr);
-	sceneCBMapped_ = nullptr;
-	objectCBMapped_ = nullptr;
-
-	objectCB_.Reset();
-	sceneCB_.Reset();
-	pso_.Reset();
-	rootSig_.Reset();
-	device_.Reset();
+    if (sceneCB_)  sceneCB_->Unmap(0, nullptr);
+    if (objectCB_) objectCB_->Unmap(0, nullptr);
+    objectCB_.Reset();
+    sceneCB_.Reset();
+    pso_.Reset();
+    rootSig_.Reset();
+    device_.Reset();
 }
 
 void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
-	const float view[16], const float proj[16]) noexcept {
-	// === SceneCB を即時書き込み ===
-	SceneCB scbTmp{};
-	for (int i = 0; i < 16; ++i) { scbTmp.view[i] = view[i]; scbTmp.proj[i] = proj[i]; }
-	BufferUtility::WriteToUpload(sceneCB_.Get(), &scbTmp, sizeof(SceneCB), 0);
+    const XMMATRIX &view, const XMMATRIX &proj) noexcept {
+    // === SceneCB 更新 ===
+    SceneCB scb{};
+    XMStoreFloat4x4(&scb.view, XMMatrixTranspose(view));
+    XMStoreFloat4x4(&scb.proj, XMMatrixTranspose(proj));
+    BufferUtility::WriteToUpload(sceneCB_.Get(), &scb, sizeof(SceneCB), 0);
 
-	// ルート/PSO
-	commandList->SetGraphicsRootSignature(rootSig_.Get());
-	commandList->SetPipelineState(pso_.Get());
+    // ルート/PSO設定
+    commandList->SetGraphicsRootSignature(rootSig_.Get());
+    commandList->SetPipelineState(pso_.Get());
 
-	// b1: SceneCB（先頭）
-	commandList->SetGraphicsRootConstantBufferView(1, sceneCB_->GetGPUVirtualAddress());
+    // b1: SceneCB
+    commandList->SetGraphicsRootConstantBufferView(1, sceneCB_->GetGPUVirtualAddress());
 
-	// リングをフレーム頭でリセット
-	objectCBOffset_ = 0;
+    // リングをリセット
+    objectCBOffset_ = 0;
+}
+
+// === Camera 受け取り糖衣 ===
+void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
+    const Camera &camera) noexcept {
+    const XMMATRIX V = camera.GetViewMatrix(); // 非転置
+    const XMMATRIX P = camera.GetProjMatrix(); // 非転置
+    Begin(commandList, camera.GetViewMatrix(), camera.GetProjMatrix());
 }
 
 void ModelRenderer::End(ID3D12GraphicsCommandList *commandList) noexcept {
-	// 何もしない（将来的に統計/プロファイル等を入れるならここ）
-	(void)commandList;
+    (void)commandList;
 }
 
 void ModelRenderer::Draw(ID3D12GraphicsCommandList *commandList,
-	const Model &model, const Transform &transform) noexcept {
-	const Mesh &mesh = model.GetMesh();
+    const Model &model, const Transform &transform) noexcept {
+    const Mesh &mesh = model.GetMesh();
 
-	// === 今回の ObjectCB 書き込み先（256B境界） ===
-	const uint32_t myOffset = objectCBOffset_;
-	objectCBOffset_ += kObjectCBStride;
-	assert(objectCBOffset_ <= kObjectCBTotalBytes && "ObjectCB ring overflow: kMaxObjectsPerFrame を増やして");
+    // === ObjectCB 書き込み先確保（256B境界）===
+    const uint32_t myOffset = objectCBOffset_;
+    objectCBOffset_ += objectCBStride_;
+    assert(objectCBOffset_ <= objectCBTotalBytes_ && "ObjectCB ring overflow");
 
-	// === 書き込むデータをローカルで組み立てて一発コピー ===
-	ObjectCB ocb{};
-	DirectX::XMFLOAT4X4 worldF{};
-	XMStoreFloat4x4(&worldF, transform.MakeWorldMatrix());
-	std::memcpy(ocb.world, &worldF, sizeof(float) * 16);
-	ocb.color[0] = ocb.color[1] = ocb.color[2] = ocb.color[3] = 1.0f;
+    // === CB書き込み ===
+    ObjectCB ocb{};
+    const XMMATRIX W = transform.MakeWorldMatrix();
+    XMStoreFloat4x4(&ocb.world, XMMatrixTranspose(W));
+    ocb.color[0] = ocb.color[1] = ocb.color[2] = ocb.color[3] = 1.0f;
 
-	BufferUtility::WriteToUpload(objectCB_.Get(), &ocb, sizeof(ObjectCB), myOffset);
+    BufferUtility::WriteToUpload(objectCB_.Get(), &ocb, sizeof(ObjectCB), myOffset);
 
-	// === b0: ObjectCB（GPU仮想アドレス + オフセット）===
-	const auto base = objectCB_->GetGPUVirtualAddress();
-	commandList->SetGraphicsRootConstantBufferView(0, base + myOffset);
+    // === b0: ObjectCB ===
+    const auto base = objectCB_->GetGPUVirtualAddress();
+    commandList->SetGraphicsRootConstantBufferView(0, base + myOffset);
 
-	// === IA & Draw ===
-	const auto &vbv = mesh.GetVBV();
-	const auto &ibv = mesh.GetIBV();
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	commandList->IASetVertexBuffers(0, 1, &vbv);
-	commandList->IASetIndexBuffer(&ibv);
-	commandList->DrawIndexedInstanced(mesh.GetIndexCount(), 1, 0, 0, 0);
+    // === IA & Draw ===
+    const auto &vbv = mesh.GetVBV();
+    const auto &ibv = mesh.GetIBV();
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->IASetVertexBuffers(0, 1, &vbv);
+    commandList->IASetIndexBuffer(&ibv);
+    commandList->DrawIndexedInstanced(mesh.GetIndexCount(), 1, 0, 0, 0);
 }
 
 void ModelRenderer::CreateRootSignature() {
-	// b0: ObjectCB, b1: SceneCB
-	D3D12_ROOT_PARAMETER params[2]{};
-	params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	params[0].Descriptor.ShaderRegister = 0; // b0
+    // b0: ObjectCB, b1: SceneCB
+    D3D12_ROOT_PARAMETER params[2]{};
+    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    params[0].Descriptor.ShaderRegister = 0;
 
-	params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-	params[1].Descriptor.ShaderRegister = 1; // b1
+    params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    params[1].Descriptor.ShaderRegister = 1;
 
-	D3D12_ROOT_SIGNATURE_DESC desc{};
-	desc.NumParameters = 2;
-	desc.pParameters = params;
-	desc.Flags =
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+    D3D12_ROOT_SIGNATURE_DESC desc{};
+    desc.NumParameters = 2;
+    desc.pParameters = params;
+    desc.Flags =
+        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+        D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
-	ComPtr<ID3DBlob> blob, err;
-	HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &err);
-	if (FAILED(hr) && err) ::OutputDebugStringA((const char *)err->GetBufferPointer());
-	assert(SUCCEEDED(hr));
+    ComPtr<ID3DBlob> blob, err;
+    HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &err);
+    if (FAILED(hr) && err) ::OutputDebugStringA((const char *)err->GetBufferPointer());
+    assert(SUCCEEDED(hr));
 
-	hr = device_->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(), IID_PPV_ARGS(&rootSig_));
-	assert(SUCCEEDED(hr));
+    hr = device_->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(),
+        IID_PPV_ARGS(&rootSig_));
+    assert(SUCCEEDED(hr));
 }
 
 void ModelRenderer::CreatePipelineState() {
-	assert(shader_ && "ShaderCompiler is null. Pass it to Initialize().");
+    assert(shader_ && "ShaderCompiler is null.");
 
-	// 入力レイアウト（pos, normal, uv, color）
-	D3D12_INPUT_ELEMENT_DESC layout[] = {
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-	};
+    D3D12_INPUT_ELEMENT_DESC layout[] = {
+        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    };
 
-	// ShaderCompiler を使用してコンパイル
-	const bool kOptimize = true;
-	const bool kDebug =
+    const bool kOptimize = true;
+    const bool kDebug =
 #ifdef _DEBUG
-		true;
+        true;
 #else
-		false;
+        false;
 #endif
 
-	auto vsb = shader_->CompileFromFile(
-		L"Resources/Shaders/ModelVS.hlsl", L"ModelVS", L"vs_6_0", {}, kOptimize, kDebug);
-	auto psb = shader_->CompileFromFile(
-		L"Resources/Shaders/ModelPS.hlsl", L"ModelPS", L"ps_6_0", {}, kOptimize, kDebug);
-	assert(vsb && psb && "Shader compile failed. See logs.");
+    auto vsb = shader_->CompileFromFile(
+        L"Resources/Shaders/ModelVS.hlsl", L"ModelVS", L"vs_6_0", {}, kOptimize, kDebug);
+    auto psb = shader_->CompileFromFile(
+        L"Resources/Shaders/ModelPS.hlsl", L"ModelPS", L"ps_6_0", {}, kOptimize, kDebug);
+    assert(vsb && psb && "Shader compile failed.");
 
-	D3D12_RASTERIZER_DESC rs{};
-	rs.FillMode = D3D12_FILL_MODE_SOLID;
-	rs.CullMode = D3D12_CULL_MODE_BACK;
-	rs.FrontCounterClockwise = FALSE; // OBJ が CCW なら FALSE でOK
-	rs.DepthClipEnable = TRUE;
+    D3D12_RASTERIZER_DESC rs{};
+    rs.FillMode = D3D12_FILL_MODE_SOLID;
+    rs.CullMode = D3D12_CULL_MODE_BACK;
+    rs.FrontCounterClockwise = FALSE;
+    rs.DepthClipEnable = TRUE;
 
-	D3D12_DEPTH_STENCIL_DESC ds{};
-	ds.DepthEnable = TRUE;
-	ds.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
-	ds.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    D3D12_DEPTH_STENCIL_DESC ds{};
+    ds.DepthEnable = TRUE;
+    ds.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    ds.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
-	D3D12_BLEND_DESC blend{};
-	blend.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    D3D12_BLEND_DESC blend{};
+    blend.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
-	pso.pRootSignature = rootSig_.Get();
-	pso.InputLayout = {layout, _countof(layout)};
-	pso.VS = {vsb->GetBufferPointer(), vsb->GetBufferSize()};
-	pso.PS = {psb->GetBufferPointer(), psb->GetBufferSize()};
-	pso.RasterizerState = rs;
-	pso.BlendState = blend;
-	pso.DepthStencilState = ds;
-	pso.NumRenderTargets = 1;
-	pso.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-	pso.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	pso.SampleDesc = {1, 0};
-	pso.SampleMask = UINT_MAX;
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
+    pso.pRootSignature = rootSig_.Get();
+    pso.InputLayout = {layout, _countof(layout)};
+    pso.VS = {vsb->GetBufferPointer(), vsb->GetBufferSize()};
+    pso.PS = {psb->GetBufferPointer(), psb->GetBufferSize()};
+    pso.RasterizerState = rs;
+    pso.BlendState = blend;
+    pso.DepthStencilState = ds;
+    pso.NumRenderTargets = 1;
+    pso.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    pso.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    pso.SampleDesc = {1, 0};
+    pso.SampleMask = UINT_MAX;
 
-	HRESULT hr = device_->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pso_));
-	assert(SUCCEEDED(hr));
+    HRESULT hr = device_->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pso_));
+    assert(SUCCEEDED(hr));
 }
