@@ -1,43 +1,37 @@
 #define NOMINMAX
 #include "Player.h"
-#include "Camera.h"
 #include "Input.h"
-
 using namespace DirectX;
 
 void Player::Initialize(ID3D12Device *device, const std::string &objPath, const Input *input) {
-	// プレイヤー
-	model_.Initialize(device, objPath);
-
-	// 入力
-	input_ = input;
+    model_.Initialize(device, objPath);
+    input_ = input;
+    transform_ = {};
+    transform_.scale = {1.0f,1.0f,1.0f};
+    sizeX_ = 1.0f; sizeY_ = 1.0f;
 }
 
-void Player::Update(float deltaTime) {
-    Move_(deltaTime);
-
-	// 位置更新
-	transform_.pos.x += velocity_.x;
-	transform_.pos.y += velocity_.y;
-	transform_.pos.z += velocity_.z;
+void Player::Update(float /*dt*/) {
+    MoveInputOnly_(0.0f);
 }
 
 void Player::Finalize() {}
 
-void Player::Move_(float deltaTime) {
-    XMFLOAT3 moveDir = {0.0f, 0.0f, 0.0f};
+void Player::MoveInputOnly_(float /*dt*/) {
+    moveAxisX_ = 0;
+    // A/D
+    if (input_->IsKeyDown(DIK_A)) moveAxisX_ -= 1;
+    if (input_->IsKeyDown(DIK_D)) moveAxisX_ += 1;
 
-    if (input_->IsKeyDown(DIK_D)) moveDir.x += 1.0f; // → 右 (+X)
-    if (input_->IsKeyDown(DIK_A)) moveDir.x -= 1.0f; // ← 左 (-X)
+    // SPACEエッジ
+    static bool prev = false;
+    bool now = input_->IsKeyDown(DIK_SPACE);
+    jumpPressedEdge_ = (now && !prev);
+    prev = now;
+}
 
-    XMVECTOR v = XMLoadFloat3(&moveDir);
-    float len = XMVectorGetX(XMVector3Length(v));
-
-    if (len > 0.0001f) {
-        v = XMVector3Normalize(v);
-        v = XMVectorScale(v, speed_ * deltaTime);
-        XMStoreFloat3(&velocity_, v);
-    } else {
-        velocity_ = {0.0f, 0.0f, 0.0f};
-    }
+bool Player::ConsumeJumpPressedEdge() {
+    bool r = jumpPressedEdge_;
+    jumpPressedEdge_ = false;
+    return r;
 }
