@@ -69,6 +69,12 @@
     <Filter Include="Source\Graphics\Rendering">
       <UniqueIdentifier>{cac204e3-d0ce-4f87-a056-0317c6c47b14}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Include\Actor">
+      <UniqueIdentifier>{837a8d5e-a527-4ac7-8e34-2e31011ef25d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Actor">
+      <UniqueIdentifier>{d3025542-028e-45e5-bf40-24786b7b9a85}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -136,6 +142,9 @@
     </ClCompile>
     <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Actor\Player.cpp">
+      <Filter>Source\Actor</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -237,6 +246,9 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h">
       <Filter>Include\Graphics\Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Actor\Player.h">
+      <Filter>Include\Actor</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

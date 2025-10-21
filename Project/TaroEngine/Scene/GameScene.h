@@ -1,14 +1,11 @@
 #pragma once
 #include "EngineContext.h"
 #include "RenderContext.h"
-#include "ModelRenderer.h"
 #include "Model.h"
 #include "IScene.h"
 #include "Camera.h"
+#include "Player.h"
 
-/// <summary>
-/// OBJ (player.obj) を 1 体だけ描画する最小シーン
-/// </summary>
 class GameScene : public IScene {
 public:
     void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
@@ -22,7 +19,8 @@ private:
     const RenderContext *renderContext_ = nullptr;
 
     // 描画リソース
-    ModelRenderer renderer_;
-    Model         player_;
-    Camera        camera_;
+    Camera camera_;
+
+	// ゲームオブジェクト
+	Model player_;
 };

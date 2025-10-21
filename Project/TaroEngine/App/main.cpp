@@ -9,6 +9,7 @@
 #include "LoggerManager.h"
 #include "ShaderCompiler.h"
 #include "Input.h"
+#include "ModelRenderer.h"
 
 #include <memory>
 #include <chrono>
@@ -51,6 +52,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	std::shared_ptr<ShaderCompiler> shaderCompiler = std::make_shared<ShaderCompiler>();
 	shaderCompiler->Initialize(&loggerManager);
 
+	std::shared_ptr<ModelRenderer> modelRenderer = std::make_shared<ModelRenderer>();
+	modelRenderer->Initialize(directXCommon->GetDevice(), shaderCompiler.get());
+
 	// ===============================
 	// インプット初期化
 	// ===============================
@@ -70,6 +74,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	RenderContext renderContext{};
 	renderContext.commandList = nullptr;
 	renderContext.shaderCompiler = shaderCompiler.get();
+	renderContext.modelRenderer = modelRenderer.get();
 
 	// ===============================
 	// シーンマネージャ初期化

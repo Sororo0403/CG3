@@ -3,6 +3,7 @@
 #include <d3d12.h>
 
 class ShaderCompiler;
+class ModelRenderer;
 
 /// <summary>
 /// 描画コンテキスト。
@@ -10,4 +11,5 @@ class ShaderCompiler;
 struct RenderContext {
     ID3D12GraphicsCommandList *commandList = nullptr;
 	ShaderCompiler *shaderCompiler = nullptr;
+	ModelRenderer *modelRenderer = nullptr;
 };
