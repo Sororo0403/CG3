@@ -109,77 +109,18 @@ bool GameScene::LoadCSV(const std::string &path) {
 
     std::string line;
     if (!std::getline(ifs, line)) return false;
-    {   // header
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        std::istringstream ss(line);
-        std::istringstream hs(line);
-        std::istringstream sss(line);
-        std::istringstream s(line);
-        std::istringstream header(line);
-        std::istringstream ss2(line);
-        std::istringstream ss3(line);
-        std::istringstream ss4(line);
-        std::istringstream ss5(line);
-        std::istringstream ss6(line);
-        std::istringstream ss7(line);
-        std::istringstream ss8(line);
-        std::istringstream ss9(line);
-        std::istringstream ss10(line);
-        std::istringstream ss11(line);
-        std::istringstream ss12(line);
-        std::istringstream ss13(line);
-        std::istringstream ss14(line);
-        std::istringstream ss15(line);
-        std::istringstream ss16(line);
-        std::istringstream ss17(line);
-        std::istringstream ss18(line);
-        std::istringstream ss19(line);
-        std::istringstream ss20(line);
-        std::istringstream ss21(line);
-        std::istringstream ss22(line);
-        std::istringstream ss23(line);
-        std::istringstream ss24(line);
-        std::istringstream ss25(line);
-        std::istringstream ss26(line);
-        std::istringstream ss27(line);
-        std::istringstream ss28(line);
-        std::istringstream ss29(line);
-        std::istringstream ss30(line);
-        std::istringstream ss31(line);
-        std::istringstream ss32(line);
-        std::istringstream ss33(line);
-        std::istringstream ss34(line);
-        std::istringstream ss35(line);
-        std::istringstream ss36(line);
-        std::istringstream ss37(line);
-        std::istringstream ss38(line);
-        std::istringstream ss39(line);
-        std::istringstream ss40(line);
-        std::istringstream ss41(line);
-        std::istringstream ss42(line);
-        std::istringstream ss43(line);
-        std::istringstream ss44(line);
-        std::istringstream ss45(line);
-        std::istringstream ss46(line);
-        std::istringstream ss47(line);
-        std::istringstream ss48(line);
-        std::istringstream ss49(line);
-        std::istringstream ss50(line);
-        std::istringstream ss51(line);
-        std::istringstream ss52(line);
-        std::istringstream ss53(line);
-        std::istringstream ss54(line);
-        std::istringstream ss55(line);
-        std::istringstream ss56(line);
-        std::istringstream ss57(line);
-        std::istringstream ss58(line);
-        std::istringstream ss59(line);
-        std::istringstream ss60(line);
 
+    // ---- header: "W,H,spawnTx,spawnTy" ----
+    {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
         std::istringstream ssHeader(line);
         std::string tok; std::vector<int> vals;
         while (std::getline(ssHeader, tok, ',')) {
-            int v = 0; if (!tok.empty()) { try { v = std::stoi(tok); } catch (...) { v = 0; } }
+            int v = 0;
+            if (!tok.empty()) {
+                try { v = std::stoi(tok); }
+                catch (...) { v = 0; }
+            }
             vals.push_back(v);
         }
         if (vals.size() >= 4) {
@@ -187,6 +128,7 @@ bool GameScene::LoadCSV(const std::string &path) {
             spawnTy_ = std::clamp(vals[3], 0, kMapH - 1);
         }
     }
+
     int y = 0;
     while (y < kMapH && std::getline(ifs, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
@@ -237,13 +179,17 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     playerModel_.Initialize(dx->GetDevice(), "Resources/Model/Player/player.obj");
     cubeModel_.Initialize(dx->GetDevice(), "Resources/Model/Block/solid_block.obj"); // 1タイルとして使う
 
-    // カメラ（DirectX LH: +Zを見る）
-    camera_.Reset();
+    // ==== カメラ（Transformベース / LH:+Z 前）====
+    camera_.Initialize(
+        /*eye*/{0.0f, 5.0f, -50.0f},
+        /*pitch,yaw,roll*/{0.0f, 0.0f,   0.0f},
+        /*fov*/             60.0f,
+        /*aspect*/          (float)dx->GetWidth() / std::max(1u, dx->GetHeight()),
+        /*near*/            0.1f,
+        /*far*/             1000.0f
+    );
     camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
-    camera_.SetEye({0.0f, 5.0f, -50.0f});   // 手前(-Z)
-    camera_.SetTarget({0.0f, 2.0f,   0.0f});
-    camera_.SetUp({0.0f, 1.0f,   0.0f});
-    camera_.SetPerspective(60.0f, camera_.GetAspect(), 0.1f, 1000.0f);
+    camera_.LookAt({0.0f, 5.0f, -50.0f}, {0.0f, 2.0f, 0.0f}); // 見たい方向に向ける
 
     // マップ
     const float mapW = kMapW * kTile;
@@ -550,7 +496,7 @@ void GameScene::Draw() {
     auto *cmd = dx->GetCommandList();
 
     auto *renderer = renderContext_->modelRenderer;
-    renderer->Begin(cmd, camera_);
+    renderer->Begin(cmd, camera_); // Camera は GetView()/GetProj() を持っている前提
 
     // ---- タイル（XY平面 / Z=0）----
     for (int y = 0; y < kMapH; ++y) {
