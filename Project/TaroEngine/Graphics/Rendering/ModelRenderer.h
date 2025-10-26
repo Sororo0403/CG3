@@ -12,6 +12,7 @@ class Camera; // 前方宣言だけでOK
 /// <summary>
 /// 3Dモデル描画の基本レンダラ。
 /// View/Proj を毎フレーム受け取り、ModelごとのWorld行列を更新して描画。
+/// テクスチャ(map_Kd)にも対応（t0 & s0）。
 /// </summary>
 class ModelRenderer {
 public:
@@ -67,6 +68,8 @@ private:
     };
     struct alignas(16) ObjectCB {
         DirectX::XMFLOAT4X4 world; // 転置済み
-        float color[4];
+        float color[4];            // 予備（ティント等）
+        uint32_t useTexture;       // 0=頂点色(Kd/d), 1=テクスチャ
+        uint32_t _pad_[3];         // 16Bアライン調整
     };
 };

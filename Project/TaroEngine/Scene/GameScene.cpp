@@ -11,13 +11,29 @@
 #include <ctime>
 #include <cstring>
 
+// ===== 追加インクルード（テクスチャ関連）=====
+#include "BufferUtility.h"  // ★ 追加：Uploadバッファ作成に使用
+#include <DirectXTex/d3dx12.h>
+#include <DirectXTex/DirectxTex.h>
+
 using namespace DirectX;
+using Microsoft::WRL::ComPtr;
 
 namespace {
     // 見た目の厚み（Z 方向）※当たり判定は 2D
     constexpr float kBlockDepth = 0.5f;
     constexpr float kPlayerDepth = 0.6f;
     constexpr float kPlayerZ = -0.26f; // -Z が手前
+}
+
+// ===== 小ユーティリティ =====
+std::wstring GameScene::Widen_(const std::string &u8) {
+    if (u8.empty()) return L"";
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, nullptr, 0);
+    std::wstring w(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, w.data(), wlen);
+    if (!w.empty() && w.back() == L'\0') w.pop_back();
+    return w;
 }
 
 // ===== AABB helpers =====
@@ -165,6 +181,128 @@ void GameScene::ClampSpawnToSafe() {
     spawnTx_ = tx; spawnTy_ = ty;
 }
 
+// ===== 画像→SRV ロード（sRGB）=====
+bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
+    ComPtr<ID3D12Resource> &outTex,
+    D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle) {
+    auto *dx = engineContext_->directXCommon;
+    ID3D12Device *device = dx->GetDevice();
+    if (!device || fileU16.empty()) return false;
+
+    // 1) 画像を読み込む（WIC / sRGB 変換）
+    DirectX::ScratchImage img, conv;
+    HRESULT hr = DirectX::LoadFromWICFile(fileU16.c_str(), DirectX::WIC_FLAGS_FORCE_SRGB, nullptr, img);
+    if (FAILED(hr)) return false;
+
+    const DirectX::TexMetadata &meta = img.GetMetadata();
+
+    DXGI_FORMAT targetFmt = meta.format;
+    if (!DirectX::IsCompressed(meta.format) && !DirectX::IsSRGB(meta.format)) {
+        // 非圧縮＆Linear の場合は RGBA8_sRGB に揃える
+        hr = DirectX::Convert(img.GetImages(), img.GetImageCount(), meta, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+            DirectX::TEX_FILTER_DEFAULT, DirectX::TEX_THRESHOLD_DEFAULT, conv);
+        if (FAILED(hr)) return false;
+    }
+    const DirectX::Image *srcImgs = conv.GetImages() ? conv.GetImages() : img.GetImages();
+    DirectX::TexMetadata useMeta = conv.GetMetadata().width ? conv.GetMetadata() : meta;
+    targetFmt = useMeta.format;
+
+    // 2) Default ヒープにテクスチャを確保
+    D3D12_RESOURCE_DESC texDesc{};
+    texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    texDesc.Width = static_cast<UINT>(useMeta.width);
+    texDesc.Height = static_cast<UINT>(useMeta.height);
+    texDesc.DepthOrArraySize = static_cast<UINT16>(useMeta.arraySize);
+    texDesc.MipLevels = static_cast<UINT16>(useMeta.mipLevels ? useMeta.mipLevels : 1);
+    texDesc.Format = targetFmt;
+    texDesc.SampleDesc = {1, 0};
+    texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+    D3D12_HEAP_PROPERTIES heapDef{};
+    heapDef.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+    hr = device->CreateCommittedResource(
+        &heapDef, D3D12_HEAP_FLAG_NONE, &texDesc,
+        D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&outTex));
+    if (FAILED(hr)) return false;
+
+    // 3) アップロードリソース作成 & サブリソースコピー
+    UINT64 uploadSize = GetRequiredIntermediateSize(outTex.Get(), 0, (UINT)useMeta.mipLevels);
+
+    // --- ★ ここを BufferUtility に置き換え ---
+    ComPtr<ID3D12Resource> upload = BufferUtility::CreateUploadBuffer(device, uploadSize);
+
+    // 4) 一時コマンド周り（専用キューで実行→待機）
+    ComPtr<ID3D12CommandQueue> queue;
+    {
+        D3D12_COMMAND_QUEUE_DESC qd{}; qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        device->CreateCommandQueue(&qd, IID_PPV_ARGS(&queue));
+    }
+    ComPtr<ID3D12CommandAllocator> alloc;
+    device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
+    ComPtr<ID3D12GraphicsCommandList> list;
+    device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc.Get(), nullptr, IID_PPV_ARGS(&list));
+
+    // 5) UpdateSubresources → COPY_DEST から PS 用へ遷移
+    {
+        std::vector<D3D12_SUBRESOURCE_DATA> subs(static_cast<size_t>(useMeta.mipLevels));
+        for (size_t m = 0; m < useMeta.mipLevels; ++m) {
+            const DirectX::Image &im = srcImgs[m];
+            subs[m].pData = im.pixels;
+            subs[m].RowPitch = im.rowPitch;
+            subs[m].SlicePitch = im.slicePitch;
+        }
+
+        // outTex は作成時 COPY_DEST なので、そのままアップロード
+        UpdateSubresources(list.Get(), outTex.Get(), upload.Get(),
+            0, 0, static_cast<UINT>(useMeta.mipLevels), subs.data());
+
+        // シェーダ読み取りへ 1 回だけ遷移
+        auto toSRV = CD3DX12_RESOURCE_BARRIER::Transition(
+            outTex.Get(),
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+        );
+        list->ResourceBarrier(1, &toSRV);
+    }
+
+    list->Close();
+    ID3D12CommandList *lists[] = {list.Get()};
+    queue->ExecuteCommandLists(1, lists);
+
+    // 6) フェンスで完了待機
+    ComPtr<ID3D12Fence> fence; device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+    HANDLE evt = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    queue->Signal(fence.Get(), 1);
+    if (fence->GetCompletedValue() < 1) {
+        fence->SetEventOnCompletion(1, evt);
+        WaitForSingleObject(evt, INFINITE);
+    }
+    CloseHandle(evt);
+
+    // 7) SRV を既存ヒープの指定 index に作成（sRGB）
+    ID3D12DescriptorHeap *srvHeap = dx->GetSrvHeap();
+    const UINT inc = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu = srvHeap->GetCPUDescriptorHandleForHeapStart();
+    cpu.ptr += SIZE_T(inc) * srvIndex;
+
+    D3D12_GPU_DESCRIPTOR_HANDLE gpu = srvHeap->GetGPUDescriptorHandleForHeapStart();
+    gpu.ptr += UINT64(inc) * srvIndex;
+    outGpuHandle = gpu;
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv{};
+    srv.Format = targetFmt; // すでに sRGB 化済み
+    srv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+    srv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv.Texture2D.MostDetailedMip = 0;
+    srv.Texture2D.MipLevels = texDesc.MipLevels;
+
+    device->CreateShaderResourceView(outTex.Get(), &srv, cpu);
+    return true;
+}
+
 // ===== Initialize =====
 void GameScene::Initialize(const EngineContext *engineContext, const RenderContext *renderContext) {
     engineContext_ = engineContext;
@@ -174,7 +312,25 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
 
     // モデル（OBJ: 原点中心/各軸2.0）
     playerModel_.Initialize(dx->GetDevice(), "Resources/Model/Player/player.obj");
-    cubeModel_.Initialize(dx->GetDevice(), "Resources/Model/Block/solid_block.obj");
+    cubeModel_.Initialize(dx->GetDevice(), "Resources/Model/Block/block.obj");
+
+    // === 画像マテリアル（map_Kd → SRV 作成 → Model へ注入）===
+    {
+        // プレイヤー
+        if (!playerModel_.GetAlbedoPath().empty()) {
+            D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
+            if (LoadTextureSRV_(Widen_(playerModel_.GetAlbedoPath()), kSrvIndex_Player, texPlayer_, gpu)) {
+                playerModel_.SetAlbedoSRV(gpu);
+            }
+        }
+        // ブロック
+        if (!cubeModel_.GetAlbedoPath().empty()) {
+            D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
+            if (LoadTextureSRV_(Widen_(cubeModel_.GetAlbedoPath()), kSrvIndex_Block, texBlock_, gpu)) {
+                cubeModel_.SetAlbedoSRV(gpu);
+            }
+        }
+    }
 
     // カメラ（LH, +Z前）
     camera_.Initialize(
@@ -297,12 +453,12 @@ void GameScene::Update(float dt) {
     if (KeyPressed_(DIK_SPACE))  jumpBuffer_ = kJumpBufferFrames;
 
     // ===== 速度 =====
-    vel_.x += 0.0f; // 物理外力があればここに追加
+    vel_.x += 0.0f;
     vel_.x = (onGround_ ? kMoveGround : kMoveAir) * (float)ax;
-    vel_.y += -kGravity;                        // 重力は -Y（フレーム単位）
+    vel_.y += -kGravity;
     if (vel_.y < kMaxFallVy) vel_.y = kMaxFallVy;
 
-    // ===== X移動（細いAABBで解決） =====
+    // ===== X移動 =====
     {
         playerTr_.pos.x += vel_.x;
         AABB a = PlayerAabbX_();
@@ -326,7 +482,7 @@ void GameScene::Update(float dt) {
         }
     }
 
-    // ===== Y移動（上下 + ギミック；フル幅AABB） =====
+    // ===== Y移動（上下 + ギミック） =====
     bool switchOverlapNow = false;
     {
         const float yPrev = playerTr_.pos.y;
@@ -513,7 +669,7 @@ void GameScene::EditorUI_() {
     ImGui::Checkbox("HUD visible", &uiVisible_);
     ImGui::Separator();
 
-    // パレット（スライダ & 今の名前）
+    // パレット
     ImGui::SliderInt("Palette", &paletteSel_, 0, kMaxPalIndex);
     ImGui::SameLine();
     ImGui::Text("[%s]", kNames[std::clamp(paletteSel_, 0, kMaxPalIndex)]);
@@ -558,7 +714,7 @@ void GameScene::EditorUI_() {
     float hitWx = 0, hitWy = 0;
     bool hit = PickTileUnderMouse_(hoverTx_, hoverTy_, &hitWx, &hitWy);
 
-    // ===== 配置/消し/スポイト（ImGui ウィジェットがマウスを奪ってない時のみ） =====
+    // ===== 配置/消し/スポイト（ImGuiがマウスを奪ってない時のみ） =====
     if (hit && !io.WantCaptureMouse) {
         bool left = ImGui::IsMouseDown(0);
         bool right = ImGui::IsMouseDown(1);

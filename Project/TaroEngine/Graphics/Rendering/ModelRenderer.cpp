@@ -60,8 +60,6 @@ void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
 // === Camera 受け取り糖衣 ===
 void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
     const Camera &camera) noexcept {
-    const XMMATRIX V = camera.GetView(); // 非転置
-    const XMMATRIX P = camera.GetProj(); // 非転置
     Begin(commandList, camera.GetView(), camera.GetProj());
 }
 
@@ -84,11 +82,19 @@ void ModelRenderer::Draw(ID3D12GraphicsCommandList *commandList,
     XMStoreFloat4x4(&ocb.world, XMMatrixTranspose(W));
     ocb.color[0] = ocb.color[1] = ocb.color[2] = ocb.color[3] = 1.0f;
 
+    // テクスチャ有無フラグ
+    ocb.useTexture = model.HasAlbedoSRV() ? 1u : 0u;
+
     BufferUtility::WriteToUpload(objectCB_.Get(), &ocb, sizeof(ObjectCB), myOffset);
 
     // === b0: ObjectCB ===
     const auto base = objectCB_->GetGPUVirtualAddress();
     commandList->SetGraphicsRootConstantBufferView(0, base + myOffset);
+
+    // === t0: SRV（テクスチャがある場合のみセット）
+    if (model.HasAlbedoSRV()) {
+        commandList->SetGraphicsRootDescriptorTable(2, model.GetAlbedoSRV());
+    }
 
     // === IA & Draw ===
     const auto &vbv = mesh.GetVBV();
@@ -100,19 +106,45 @@ void ModelRenderer::Draw(ID3D12GraphicsCommandList *commandList,
 }
 
 void ModelRenderer::CreateRootSignature() {
-    // b0: ObjectCB, b1: SceneCB
-    D3D12_ROOT_PARAMETER params[2]{};
+    // b0: ObjectCB, b1: SceneCB, t0: SRV(Texture2D)
+
+    // t0 descriptor range
+    D3D12_DESCRIPTOR_RANGE srvRange{};
+    srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srvRange.NumDescriptors = 1;
+    srvRange.BaseShaderRegister = 0; // t0
+    srvRange.RegisterSpace = 0;
+    srvRange.OffsetInDescriptorsFromTableStart = 0;
+
+    D3D12_ROOT_PARAMETER params[3]{};
+    // b0
     params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     params[0].Descriptor.ShaderRegister = 0;
 
+    // b1
     params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     params[1].Descriptor.ShaderRegister = 1;
 
+    // t0 as descriptor table
+    params[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    params[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    params[2].DescriptorTable.NumDescriptorRanges = 1;
+    params[2].DescriptorTable.pDescriptorRanges = &srvRange;
+
+    // s0 static sampler
+    D3D12_STATIC_SAMPLER_DESC samp{};
+    samp.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+    samp.AddressU = samp.AddressV = samp.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+    samp.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+    samp.ShaderRegister = 0; // s0
+
     D3D12_ROOT_SIGNATURE_DESC desc{};
-    desc.NumParameters = 2;
+    desc.NumParameters = _countof(params);
     desc.pParameters = params;
+    desc.NumStaticSamplers = 1;
+    desc.pStaticSamplers = &samp;
     desc.Flags =
         D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
         D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |

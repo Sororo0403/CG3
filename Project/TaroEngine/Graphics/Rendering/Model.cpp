@@ -48,10 +48,11 @@ static inline XMFLOAT3 FaceNormal(const XMFLOAT3 &p0, const XMFLOAT3 &p1, const 
     return out;
 }
 
-// ===== MTL（Kd / d / Tr）簡易ローダ =====
+// ===== MTL（Kd / d / Tr / map_Kd）簡易ローダ =====
 struct MtlMat {
     XMFLOAT3 Kd{1,1,1};
     float d = 1.0f;
+    std::string map_Kd; // ★ 追加
 };
 
 static std::unordered_map<std::string, MtlMat> LoadMtlFile_(const std::string &mtlPath) {
@@ -73,6 +74,11 @@ static std::unordered_map<std::string, MtlMat> LoadMtlFile_(const std::string &m
         } else if ((tag == "d" || tag == "Tr") && !cur.empty()) {
             float v; iss >> v;
             mats[cur].d = (tag == "Tr") ? (1.0f - v) : v;
+        } else if (tag == "map_Kd" && !cur.empty()) {
+            std::string tex; std::getline(iss, tex);
+            // 先頭スペースを除去
+            while (!tex.empty() && (tex[0] == ' ' || tex[0] == '\t')) tex.erase(tex.begin());
+            mats[cur].map_Kd = tex; // 相対パス想定
         }
     }
     return mats;
@@ -88,7 +94,7 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
     std::ifstream ifs(path);
     assert(ifs && "Failed to open OBJ file. Check path.");
 
-    // OBJ のあるディレクトリ（mtllibの解決に使う）
+    // OBJ のあるディレクトリ（mtllib / map_Kd の解決に使う）
     const auto slash = path.find_last_of("/\\");
     const std::string dir = (slash == std::string::npos) ? "" : path.substr(0, slash + 1);
 
@@ -125,6 +131,14 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
             materials.insert(m.begin(), m.end()); // マージ
         } else if (tag == "usemtl") {
             iss >> currentMtl;
+
+            // ★ 最初に見つけたテクスチャをモデルレベルで覚えておく（単一マテリアル前提の簡易仕様）
+            if (albedoPath_.empty()) {
+                auto it = materials.find(currentMtl);
+                if (it != materials.end() && !it->second.map_Kd.empty()) {
+                    albedoPath_ = dir + it->second.map_Kd; // 例: "model/" + "diffuse.png"
+                }
+            }
         } else if (tag == "f") {
             std::vector<VertexRef> refs; std::string tok;
             while (iss >> tok) refs.push_back(ParseVertexRef(tok));
@@ -174,7 +188,7 @@ void Model::LoadFromOBJ_(ID3D12Device *device, const std::string &path) {
                         v.pos = P[m];
                         v.nrm = N[m];
                         v.uv = T[m];
-                        v.color = {mat.Kd.x, mat.Kd.y, mat.Kd.z, mat.d}; // ★ 材質色
+                        v.color = {mat.Kd.x, mat.Kd.y, mat.Kd.z, mat.d}; // ★ Kd/d を頂点色に焼く（フォールバック用）
                         idx = static_cast<uint32_t>(outVertices.size());
                         outVertices.push_back(v);
                         dedup.emplace(key, idx);

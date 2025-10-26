@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <wrl.h>
 
 struct AABB { float x, y; float w, h; };
 
@@ -41,13 +42,13 @@ private:
     static constexpr int   kMapH = 15;
     static constexpr float kTile = 1.0f;
 
-    // 物理チューニング（Novice 48px/60fps 相当を 1.0/1frame 系へ）
-    static constexpr float kGravity = 0.55f / 48.0f;   // -Y へ加速
-    static constexpr float kMoveGround = 5.0f / 48.0f;   // 地上横速度
-    static constexpr float kMoveAir = 3.0f / 48.0f;   // 空中横速度
-    static constexpr float kJumpVy = 11.0f / 48.0f;   // +Y 初速
-    static constexpr float kSpringVy = 18.0f / 48.0f;   // +Y 初速（バネ）
-    static constexpr float kMaxFallVy = -18.0f / 48.0f;   // 落下速度下限
+    // 物理チューニング
+    static constexpr float kGravity = 0.55f / 48.0f;
+    static constexpr float kMoveGround = 5.0f / 48.0f;
+    static constexpr float kMoveAir = 3.0f / 48.0f;
+    static constexpr float kJumpVy = 11.0f / 48.0f;
+    static constexpr float kSpringVy = 18.0f / 48.0f;
+    static constexpr float kMaxFallVy = -18.0f / 48.0f;
 
     // スキン
     static constexpr float kSkinY = 0.01f;
@@ -83,6 +84,13 @@ private:
     Camera camera_;
     Model  playerModel_;
     Model  cubeModel_;     // タイル用（OBJは中心原点/サイズ2.0）
+
+    // --- テクスチャ（寿命保持 & SRVインデックス固定）
+    Microsoft::WRL::ComPtr<ID3D12Resource> texPlayer_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texBlock_;
+    static constexpr UINT kSrvIndex_ImGuiFont = 0; // ImGui が使う想定
+    static constexpr UINT kSrvIndex_Player = 1;
+    static constexpr UINT kSrvIndex_Block = 2;
 
     // ===== マップ（XY平面 / CSV互換） =====
     Tile         grid_[kMapH][kMapW]{};
@@ -131,4 +139,12 @@ private:
     }
     AABB PlayerAabbX_() const;
     AABB PlayerAabbFull_() const { return {playerTr_.pos.x, playerTr_.pos.y, pw_, ph_}; }
+
+    // ===== 画像→SRV ロード（sRGB） =====
+    bool LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
+        Microsoft::WRL::ComPtr<ID3D12Resource> &outTex,
+        D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle);
+
+    // 文字列ユーティリティ
+    static std::wstring Widen_(const std::string &u8);
 };

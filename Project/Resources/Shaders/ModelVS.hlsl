@@ -1,20 +1,21 @@
 // ===== cbuffers =====
 cbuffer ObjectCB : register(b0) {
     float4x4 gWorld;
-    // ティントを使いたい場合だけコメント解除
-    // float4 gColor;
-};
+    float4 gColor; // 使わないなら未使用でOK（将来のティント用）
+    uint gUseTex; // 0: 頂点色, 1: テクスチャ
+    uint3 _pad_;
+}
 cbuffer SceneCB : register(b1) {
     float4x4 gView;
     float4x4 gProj;
-};
+}
 
-// ===== VS I/O =====
+// VS I/O
 struct VSIn {
     float3 pos : POSITION;
     float3 nrm : NORMAL;
     float2 uv : TEXCOORD0;
-    float4 col : COLOR0; // MTL(Kd/d)→頂点に焼いておく
+    float4 col : COLOR0; // OBJ/MTLのKd/dを頂点色に焼いたもの（フォールバック用）
 };
 
 struct VSOut {
@@ -25,7 +26,6 @@ struct VSOut {
     float4 color : COLOR0;
 };
 
-// ===== VS =====
 VSOut ModelVS(VSIn i) {
     VSOut o;
 
@@ -38,12 +38,8 @@ VSOut ModelVS(VSIn i) {
 
     o.uv = i.uv;
 
-    // MTL色（i.col）をそのまま流す
-    float4 matColor = i.col;
+    // 頂点色はPSでのフォールバック用
+    o.color = i.col;
 
-    // ティントを掛けたい場合は以下を有効化
-    // matColor *= gColor;
-
-    o.color = matColor;
     return o;
 }
