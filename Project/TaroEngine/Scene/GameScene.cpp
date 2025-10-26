@@ -54,7 +54,6 @@ bool GameScene::IsSpring(Tile t) {
 }
 
 // 「ブロックとしてぶつかるか？」
-// スイッチ系はON/OFFで通れるか変わる。Fragileはgoneなら通れる。
 bool GameScene::IsBlockingAt(int tx, int ty) const {
     if (!InMap(tx, ty)) return false;
     Tile t = grid_[ty][tx];
@@ -62,7 +61,6 @@ bool GameScene::IsBlockingAt(int tx, int ty) const {
     // fragile
     if (IsFragile(t)) {
         if (frag_[ty][tx].gone) return false;
-        // 壊れる床自体は「床・壁」としてはブロック扱い
         return true;
     }
 
@@ -70,10 +68,10 @@ bool GameScene::IsBlockingAt(int tx, int ty) const {
     if (t == Tile::SwitchBlockOn)  return switchOn_;
     if (t == Tile::SwitchBlockOff) return !switchOn_;
 
-    // JumpOnly は完全な当たり判定アリ（足場/壁になる想定）
+    // JumpOnly 足場
     if (t == Tile::JumpOnly)       return true;
 
-    // ノーマルSolid
+    // Solid
     if (t == Tile::Solid)          return true;
 
     return false;
@@ -97,13 +95,13 @@ void GameScene::ResetGrid() {
 void GameScene::BuildSample() {
     ResetGrid();
 
-    // 地面 (下から2段目をSolidで埋める)
+    // 地面
     for (int x = 0; x < kMapW; ++x) {
         grid_[kMapH - 2][x] = Tile::Solid;
     }
 
-    // 壊れる床いろいろ
-    for (int x = 3; x <= 8; ++x)   grid_[kMapH - 5][x] = Tile::FragileAny;
+    // 壊れる床
+    for (int x = 3; x <= 8; ++x) grid_[kMapH - 5][x] = Tile::FragileAny;
     for (int x = 11; x <= 14; ++x) grid_[kMapH - 7][x] = Tile::FragileTop;
     for (int x = 16; x <= 19; ++x) grid_[kMapH - 9][x] = Tile::FragileBottom;
 
@@ -298,7 +296,7 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     UINT64 uploadSize = GetRequiredIntermediateSize(outTex.Get(), 0, (UINT)useMeta.mipLevels);
     ComPtr<ID3D12Resource> upload = BufferUtility::CreateUploadBuffer(device, uploadSize);
 
-    // ワンショットコマンドリスト
+    // ワンショットコマンド
     ComPtr<ID3D12CommandQueue> queue;
     {
         D3D12_COMMAND_QUEUE_DESC qd{};
@@ -309,8 +307,7 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
 
     ComPtr<ID3D12GraphicsCommandList> list;
-    device->CreateCommandList(
-        0,
+    device->CreateCommandList(0,
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         alloc.Get(),
         nullptr,
@@ -355,7 +352,7 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     }
     CloseHandle(evt);
 
-    // SRVを書き込む
+    // SRV
     ID3D12DescriptorHeap *srvHeap = dx->GetSrvHeap();
     const UINT inc = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -421,7 +418,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     setupTex(mdlSwitchBlockOff_, kSrvIndex_SwitchOff, texSwitchOff_);
     setupTex(mdlJumpOnly_, kSrvIndex_JumpOnly, texJumpOnly_);
 
-    // マップオフセット（中央に寄せる）
+    // マップオフセット（中央寄せ）
     const float mapW = kMapW * kTile;
     xOffset_ = -mapW * 0.5f;
 
@@ -432,7 +429,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     }
     ClampSpawnToSafe();
 
-    // プレイヤ初期化
+    // プレイヤ初期
     playerTr_ = {};
     playerTr_.scale = {1,1,1};
     playerTr_.pos = {
@@ -440,10 +437,6 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
         TyToWorldY(spawnTy_) + 0.5f,
         kPlayerZ
     };
-
-    // ★変更: pw_/ph_ は固定値を採用するのでここで再計算しない
-    // pw_ = 0.80f;
-    // ph_ = 0.90f;
 
     vel_ = {0,0,0};
     onGround_ = false;
@@ -541,10 +534,6 @@ bool GameScene::PickTileUnderMouse_(int &outTx, int &outTy, float *outWx, float 
 }
 
 // ====== スイープ式 横移動解決 ======
-// ★変更点まとめ：
-// ・縦の走査範囲(minY/maxY)を安全に計算し直し
-// ・overlapY判定とstopX計算を整理
-// ・kSkinXを小さくしたので壁との隙間が目立たない
 void GameScene::ResolveHorizontal_() {
     if (vel_.x == 0.0f) return;
 
@@ -556,8 +545,8 @@ void GameScene::ResolveHorizontal_() {
     const float minY = boxNow.y + kSkinY;
     const float maxY = boxNow.y + boxNow.h - 1e-4f;
 
-    int tyBottom = ToTy(minY); // ワールド下側ほどtyは大きい
-    int tyTop = ToTy(maxY); // 上側は小さい
+    int tyBottom = ToTy(minY);
+    int tyTop = ToTy(maxY);
     int tyMin = std::min(tyBottom, tyTop);
     int tyMax = std::max(tyBottom, tyTop);
 
@@ -581,14 +570,10 @@ void GameScene::ResolveHorizontal_() {
                 float bx = xOffset_ + col * kTile;
                 float by = TyToWorldY(ty);
 
-                float overlapY =
-                    std::min(maxY, by + kTile)
-                    - std::max(minY, by);
+                float overlapY = std::min(maxY, by + kTile) - std::max(minY, by);
                 if (overlapY <= 0.0f) continue;
 
                 float wallLeft = bx;
-
-                // 右端が壁の左端を超えようとしてる？
                 if (endRight > wallLeft) {
                     float candidate = wallLeft - pw_ - kSkinX;
                     if (!collided || candidate < stopX) {
@@ -615,14 +600,10 @@ void GameScene::ResolveHorizontal_() {
                 float bx = xOffset_ + col * kTile;
                 float by = TyToWorldY(ty);
 
-                float overlapY =
-                    std::min(maxY, by + kTile)
-                    - std::max(minY, by);
+                float overlapY = std::min(maxY, by + kTile) - std::max(minY, by);
                 if (overlapY <= 0.0f) continue;
 
                 float wallRight = bx + kTile;
-
-                // 左端が壁の右端を超えようとしてる？
                 if (endLeft < wallRight) {
                     float candidate = wallRight + kSkinX;
                     if (!collided || candidate > stopX) {
@@ -650,7 +631,7 @@ void GameScene::ResolveVertical_(float dt) {
     // AABBの現在形
     AABB boxNow = PlayerAabbFull_();
 
-    // ---- X方向にどのタイル列にかかってるか ----
+    // X方向の列
     float minX = boxNow.x;
     float maxX = boxNow.x + boxNow.w - 1e-4f;
     int txL = ToTx(minX);
@@ -662,18 +643,17 @@ void GameScene::ResolveVertical_(float dt) {
     bool switchOverlapNow = false;
 
     if (vel_.y <= 0.0f) {
-        // ====== 下向き（落下＋着地） ======
+        // ====== 落下・着地 ======
         float startBottom = startY;
         float endBottom = targetY;
 
-        // どの行まで下がろうとしてるか
         int rowStart = ToTy(startBottom - kSkinY);
         int rowEnd = ToTy(endBottom - kSkinY);
         int rowMin = std::min(rowStart, rowEnd);
         int rowMax = std::max(rowStart, rowEnd);
 
         bool  hitFloor = false;
-        float bestSnapY = targetY; // 最終的にここに置く
+        float bestSnapY = targetY;
 
         for (int row = rowMin; row <= rowMax; ++row) {
             for (int tx = txMin; tx <= txMax; ++tx) {
@@ -683,15 +663,14 @@ void GameScene::ResolveVertical_(float dt) {
 
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
-                float topY = by + kTile; // タイルの上面(床)
+                float topY = by + kTile; // タイル上面
 
-                // スプリング / スイッチ重なりチェック（着地後想定位置で）
+                // スプリング / スイッチ重なり（着地後想定位置）
                 {
                     AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
                     if (IsSpring(tt)) {
                         if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
                             vel_.y = kSpringVy;
-                            // スプリングは足場としては扱わないのでcontinueしない
                         }
                     }
                     if (tt == Tile::Switch) {
@@ -703,23 +682,21 @@ void GameScene::ResolveVertical_(float dt) {
 
                 if (!IsBlockingAt(tx, row)) continue;
 
-                // 「前フレームでは topY より上」「今回 topY より下まで落ちた」
+                // 下降で床にヒットした？
                 if ((startBottom - kSkinY) >= topY &&
                     (endBottom - kSkinY) < topY) {
 
-                    // 水平方向がちゃんと重なる？
                     float overlapX =
                         std::min(boxNow.x + boxNow.w, bx + kTile)
                         - std::max(boxNow.x, bx);
                     if (overlapX > kMinGroundOverlap) {
 
                         float snapY = topY + kSkinY;
-                        // 一番高い床の上に乗る（snapYが一番高いのを採用）
                         if (!hitFloor || snapY > bestSnapY) {
                             hitFloor = true;
                             bestSnapY = snapY;
 
-                            // 踏んだらfragile armed
+                            // fragile踏んだらarmed
                             if (IsFragile(tt) && !frag_[row][tx].gone) {
                                 frag_[row][tx].armed = true;
                             }
@@ -737,7 +714,7 @@ void GameScene::ResolveVertical_(float dt) {
             playerTr_.pos.y = targetY;
         }
     } else {
-        // ====== 上向き（ジャンプ中の頭ぶつけ） ======
+        // ====== 上昇・頭ぶつけ ======
         float startTop = startY + ph_;
         float endTop = targetY + ph_;
 
@@ -747,7 +724,7 @@ void GameScene::ResolveVertical_(float dt) {
         int rowMax = std::max(rowStart, rowEnd);
 
         bool  hitCeil = false;
-        float bestSnapY = targetY; // 衝突したらここより下にスナップ
+        float bestSnapY = targetY;
 
         for (int row = rowMin; row <= rowMax; ++row) {
             for (int tx = txMin; tx <= txMax; ++tx) {
@@ -757,9 +734,9 @@ void GameScene::ResolveVertical_(float dt) {
 
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
-                float bottomY = by; // このタイルの下面(天井)
+                float bottomY = by; // タイル下面
 
-                // 下から壊せるfragileはarmed化
+                // 下から壊せるfragileへのヒビ付与
                 if (IsFragile(tt) && !frag_[row][tx].gone) {
                     bool canFromBelow = (tt == Tile::FragileAny || tt == Tile::FragileBottom);
                     if (canFromBelow) {
@@ -774,7 +751,7 @@ void GameScene::ResolveVertical_(float dt) {
 
                 if (!IsBlockingAt(tx, row)) continue;
 
-                // 「前フレームでは bottomY より下」「今回 bottomY より上にめり込んだ」
+                // 上昇で天井にヒットした？
                 if ((startTop + kSkinY) <= bottomY &&
                     (endTop + kSkinY) > bottomY) {
 
@@ -784,8 +761,6 @@ void GameScene::ResolveVertical_(float dt) {
                     if (overlapX > kMinGroundOverlap) {
 
                         float snapY = bottomY - ph_ - kSkinY;
-
-                        // 一番低い天井に引っかかったら、その直下に押し戻す
                         if (!hitCeil || snapY < bestSnapY) {
                             hitCeil = true;
                             bestSnapY = snapY;
@@ -803,7 +778,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // ===== 足元を踏んだら fragile armed（微接地）
+    // 足元微接地でfragile armed化
     {
         int txL2 = ToTx(playerTr_.pos.x);
         int txR2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -831,14 +806,14 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // ===== スイッチON/OFF立ち上がり =====
+    // スイッチトグル
     static bool prevSw = false;
     if (switchOverlapNow && !prevSw) {
         switchOn_ = !switchOn_;
     }
     prevSw = switchOverlapNow;
 
-    // ===== ジャンプバッファ / コヨーテ =====
+    // コヨーテ/ジャンプバッファ
     if (onGround_) coyoteCounter_ = kCoyoteMaxFrames;
     else if (coyoteCounter_ > 0) --coyoteCounter_;
 
@@ -850,7 +825,7 @@ void GameScene::ResolveVertical_(float dt) {
         jumpBuffer_ = 0;
     }
 
-    // ===== 地面スナップでガクつき抑制 =====
+    // 接地時の床スナップ
     if (onGround_) {
         float stableY = std::floor((playerTr_.pos.y - kSkinY) / kTile) * kTile + kSkinY;
         if (std::fabs(playerTr_.pos.y - stableY) > 1e-4f) {
@@ -858,7 +833,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // ===== 壊れ床 / 復活床のタイマー進行 =====
+    // fragile / regen タイマー
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
@@ -886,7 +861,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // ===== デス判定（奈落 or スパイク） =====
+    // デス判定
     {
         bool killed = false;
 
@@ -1199,73 +1174,486 @@ void GameScene::Draw() {
 
     renderer->Begin(cmd, dx, camera_);
 
-    // タイル描画
-    for (int y = 0; y < kMapH; ++y) {
-        for (int x = 0; x < kMapW; ++x) {
-            Tile t = grid_[y][x];
+    const float worldW = kMapW * kTile;
+    const float worldH = kMapH * kTile;
 
-            // 消えてるfragileは描画しない（Regen以外）
-            if (IsFragile(t) && frag_[y][x].gone && t != Tile::Regen) {
-                continue;
-            }
-            // スイッチブロックのON/OFF可視
+    // -------------------------------------------------
+    // 0) 建設中の鉄骨フレーム（マップ全体を囲う足場）
+    //    -> 細長い柱や梁を複数本置く
+    // -------------------------------------------------
+    auto DrawBeam = [&](XMFLOAT3 pos, XMFLOAT3 scl, XMFLOAT3 rotDeg) {
+        Transform t{};
+        t.pos = pos;
+        t.scale = scl;
+        t.rot = {
+            XMConvertToRadians(rotDeg.x),
+            XMConvertToRadians(rotDeg.y),
+            XMConvertToRadians(rotDeg.z)
+        };
+        renderer->Draw(cmd, mdlSolid_, t);
+        };
+
+    // 縦の支柱を左右に何本か
+    for (int i = 0; i < 4; ++i) {
+        float xNorm = (i / 3.0f - 0.5f) * worldW * 0.9f; // -0.5～+0.5あたり
+        DrawBeam(
+            {xNorm, worldH * 0.5f, 2.8f},
+            {0.05f, worldH * 0.5f, 0.5f},
+            {0,0,0}
+        );
+    }
+    // 上下の梁
+    DrawBeam(
+        {0.0f, worldH * 0.95f, 2.8f},
+        {worldW * 0.5f, 0.04f, 0.5f},
+        {0,0,0}
+    );
+    DrawBeam(
+        {0.0f, worldH * 0.05f, 2.8f},
+        {worldW * 0.5f, 0.04f, 0.5f},
+        {0,0,0}
+    );
+
+    // 斜め補強（Xで交差してる感じ）
+    DrawBeam(
+        {-worldW * 0.4f, worldH * 0.2f, 2.7f},
+        {worldW * 0.45f, 0.03f, 0.5f},
+        {0,0,35.0f}
+    );
+    DrawBeam(
+        {worldW * 0.4f, worldH * 0.2f, 2.7f},
+        {worldW * 0.45f, 0.03f, 0.5f},
+        {0,0,-35.0f}
+    );
+
+    // -------------------------------------------------
+    // 1) 背景：夜空 + クレーンシルエット + 工事灯(投光器)
+    // -------------------------------------------------
+
+    // 夜空の大パネル（ちょい青っぽい暗い）
+    {
+        Transform sky{};
+        sky.pos = {0.0f, worldH * 0.5f, 5.0f};
+        sky.scale = {worldW * 0.7f, worldH * 0.7f, 1.0f};
+        sky.rot = {0,0,XMConvertToRadians(-1.5f)};
+        renderer->Draw(cmd, mdlSolid_, sky);
+    }
+
+    // クレーンのアーム（長い横ビーム＋垂れ下がるフック）
+    {
+        // アーム本体
+        Transform arm{};
+        arm.pos = {worldW * 0.15f, worldH * 0.8f, 4.5f};
+        arm.scale = {worldW * 0.4f, 0.05f, 0.5f};
+        arm.rot = {0,0,XMConvertToRadians(-10.0f)};
+        renderer->Draw(cmd, mdlSolid_, arm);
+
+        // 垂れ下がるケーブル
+        Transform cable{};
+        cable.pos = {worldW * 0.35f, worldH * 0.55f, 4.5f};
+        cable.scale = {0.03f, worldH * 0.2f, 0.5f};
+        cable.rot = {0,0,0};
+        renderer->Draw(cmd, mdlSolid_, cable);
+
+        // フックっぽい塊
+        Transform hook{};
+        hook.pos = {worldW * 0.35f, worldH * 0.4f, 4.4f};
+        hook.scale = {0.07f, 0.07f, 0.5f};
+        hook.rot = {0,0,0};
+        renderer->Draw(cmd, mdlSolid_, hook);
+    }
+
+    // 投光器(現場ライト)を2つ
+    auto DrawFloodLight = [&](XMFLOAT3 basePos) {
+        // ポール
+        Transform pole{};
+        pole.pos = basePos;
+        pole.scale = {0.05f, 0.4f, 0.5f};
+        pole.rot = {0,0,0};
+        renderer->Draw(cmd, mdlSolid_, pole);
+
+        // ヘッド(ライト)
+        Transform head{};
+        head.pos = {basePos.x, basePos.y + 0.25f, basePos.z - 0.1f};
+        head.scale = {0.15f, 0.07f, 0.4f};
+        head.rot = {0,0,XMConvertToRadians(5.0f)};
+        renderer->Draw(cmd, mdlSolid_, head);
+        };
+    DrawFloodLight({-worldW * 0.45f, worldH * 0.7f, 3.0f});
+    DrawFloodLight({worldW * 0.45f, worldH * 0.6f, 3.0f});
+
+    // -------------------------------------------------
+    // 2) タイル群：足場板＋支柱、壊れる足場はヒビ＋警告デコ
+    //    スパイク=バリケード, スプリング=油圧ジャッキ, スイッチ=電源ボックス
+    // -------------------------------------------------
+
+    // 疑似ランダム関数（タイルごとに安定したノイズ）
+    auto HashRands = [](int x, int y) {
+        uint32_t h = (uint32_t)(x * 73856093u) ^ (uint32_t)(y * 19349663u);
+        h ^= (h >> 13); h *= 0x5bd1e995u;
+        float r0 = (float)((h & 0xFF)) / 255.0f;
+        float r1 = (float)(((h >> 8) & 0xFF)) / 255.0f;
+        float r2 = (float)(((h >> 16) & 0xFF)) / 255.0f;
+        float r3 = (float)(((h >> 24) & 0xFF)) / 255.0f;
+        return XMFLOAT4(r0, r1, r2, r3);
+        };
+
+    // 小ユーティリティ: 板(=mdlSolid_)を1枚描く
+    auto DrawPlate = [&](XMFLOAT3 pos, XMFLOAT3 scl, XMFLOAT3 rotDeg) {
+        Transform t{};
+        t.pos = pos;
+        t.scale = scl;
+        t.rot = {
+            XMConvertToRadians(rotDeg.x),
+            XMConvertToRadians(rotDeg.y),
+            XMConvertToRadians(rotDeg.z)
+        };
+        renderer->Draw(cmd, mdlSolid_, t);
+        };
+
+    for (int ty = 0; ty < kMapH; ++ty) {
+        for (int tx = 0; tx < kMapW; ++tx) {
+            Tile t = grid_[ty][tx];
+
+            // 消えてるfragileは非表示（Regen以外）
+            if (IsFragile(t) && frag_[ty][tx].gone && t != Tile::Regen) continue;
+            // スイッチブロックON/OFF
             if (t == Tile::SwitchBlockOn && !switchOn_) continue;
             if (t == Tile::SwitchBlockOff && switchOn_) continue;
 
-            Model *drawModel = nullptr;
+            // どのベースモデルにするか
+            Model *mainModel = nullptr;
+            bool isFragileBlock = false;
             switch (t) {
-            case Tile::Solid:              drawModel = &mdlSolid_; break;
-            case Tile::FragileAny:         drawModel = &mdlFragileAny_; break;
-            case Tile::FragileTop:         drawModel = &mdlFragileTop_; break;
-            case Tile::FragileBottom:      drawModel = &mdlFragileBottom_; break;
-            case Tile::Regen:              drawModel = &mdlRegen_; break;
-            case Tile::Spring:             drawModel = &mdlSpring_; break;
-            case Tile::Spike:              drawModel = &mdlSpike_; break;
-            case Tile::Switch:             drawModel = &mdlSwitch_; break;
-            case Tile::SwitchBlockOn:      drawModel = &mdlSwitchBlockOn_; break;
-            case Tile::SwitchBlockOff:     drawModel = &mdlSwitchBlockOff_; break;
-            case Tile::JumpOnly:           drawModel = &mdlJumpOnly_; break;
+            case Tile::Solid:              mainModel = &mdlSolid_;            break;
+            case Tile::FragileAny:         mainModel = &mdlFragileAny_;       isFragileBlock = true; break;
+            case Tile::FragileTop:         mainModel = &mdlFragileTop_;       isFragileBlock = true; break;
+            case Tile::FragileBottom:      mainModel = &mdlFragileBottom_;    isFragileBlock = true; break;
+            case Tile::Regen:              mainModel = &mdlRegen_;            isFragileBlock = true; break;
+            case Tile::Spring:             mainModel = &mdlSpring_;           break;
+            case Tile::Spike:              mainModel = &mdlSpike_;            break;
+            case Tile::Switch:             mainModel = &mdlSwitch_;           break;
+            case Tile::SwitchBlockOn:      mainModel = &mdlSwitchBlockOn_;    break;
+            case Tile::SwitchBlockOff:     mainModel = &mdlSwitchBlockOff_;   break;
+            case Tile::JumpOnly:           mainModel = &mdlJumpOnly_;         break;
             default:
                 break;
             }
-            if (!drawModel) continue;
+            if (!mainModel) continue;
 
-            const float bx = xOffset_ + x * kTile;
-            const float by = TyToWorldY(y);
+            float wx = xOffset_ + tx * kTile;
+            float wy = TyToWorldY(ty);
 
+            // 基本ブロック Transform（足場の板本体）
             Transform tr{};
             tr.pos = {
-                bx + kTile * 0.5f,
-                by + kTile * 0.5f,
+                wx + kTile * 0.5f,
+                wy + kTile * 0.5f,
                 0.0f
             };
-            tr.scale = {0.5f, 0.5f, 0.5f * kBlockDepth};
+            tr.scale = {
+                0.5f,
+                0.5f,
+                0.5f * kBlockDepth
+            };
 
-            renderer->Draw(cmd, *drawModel, tr);
+            // タイル乱数で傾き/ゆがみ
+            {
+                XMFLOAT4 r = HashRands(tx, ty);
+
+                // ±4度くらいランダム傾ける
+                float rotDeg = (r.x * 2.0f - 1.0f) * 4.0f;
+
+                // ±5%スケール歪み
+                float sxJ = 1.0f + (r.y * 0.1f - 0.05f);
+                float syJ = 1.0f + (r.z * 0.1f - 0.05f);
+
+                tr.rot = {0.0f, 0.0f, XMConvertToRadians(rotDeg)};
+                tr.scale.x *= sxJ;
+                tr.scale.y *= syJ;
+            }
+
+            // まず元モデルを描画（足場の“板”）
+            renderer->Draw(cmd, *mainModel, tr);
+
+            // ==== 足場の支柱（SolidやJumpOnlyなど"乗れる"ブロックに足のパイプを4本くらい）
+            //     -> 固定足場感を強くする。ただしスパイク/スイッチ/スプリング等は別演出にするので除外
+            bool isPlatformLike =
+                (t == Tile::Solid ||
+                    t == Tile::JumpOnly ||
+                    t == Tile::FragileAny || t == Tile::FragileTop ||
+                    t == Tile::FragileBottom || t == Tile::Regen);
+
+            if (isPlatformLike) {
+                // 4隅に縦パイプ
+                float plateW = 0.35f;
+                float plateH = 0.35f;
+                float legZ = tr.pos.z + 0.05f; // ほんの奥/手前ずらしてもOK
+
+                float legH = 0.3f; // 柱高さ(ちょっと下に伸びる)
+                float legR = 0.03f;
+
+                struct Corner { float ox, oy; };
+                Corner corners[4] = {
+                    {-plateW, -plateH},
+                    { plateW, -plateH},
+                    { plateW,  plateH},
+                    {-plateW,  plateH},
+                };
+                for (auto &c : corners) {
+                    Transform leg{};
+                    leg.pos = {
+                        tr.pos.x + c.ox * tr.scale.x,
+                        tr.pos.y + c.oy * tr.scale.y - legH * 0.5f,
+                        legZ
+                    };
+                    leg.scale = {
+                        legR,
+                        legH * 0.5f,
+                        tr.scale.z * 0.8f
+                    };
+                    leg.rot = {0,0,0};
+                    renderer->Draw(cmd, mdlSolid_, leg);
+                }
+
+                // 足場の上辺に「黄色×黒テープ帯」っぽいバー
+                {
+                    Transform tape{};
+                    tape.pos = {
+                        tr.pos.x,
+                        tr.pos.y + tr.scale.y * 0.8f,
+                        tr.pos.z - 0.01f
+                    };
+                    tape.scale = {
+                        tr.scale.x * 0.8f,
+                        tr.scale.y * 0.15f,
+                        tr.scale.z
+                    };
+                    tape.rot = tr.rot;
+                    renderer->Draw(cmd, mdlSolid_, tape);
+                }
+            }
+
+            // ==== 壊れる系: ヒビ、注意サイン板
+            if (isFragileBlock) {
+                auto DrawCrackLine = [&](float cx, float cy, float hw, float hh, float rotDegZ) {
+                    Transform crack = tr;
+                    crack.pos.z = tr.pos.z - 0.02f;
+                    crack.pos.x = tr.pos.x + cx;
+                    crack.pos.y = tr.pos.y + cy;
+                    crack.scale.x = hw;
+                    crack.scale.y = hh;
+                    crack.scale.z = tr.scale.z * 0.5f;
+                    crack.rot.z = XMConvertToRadians(rotDegZ);
+                    renderer->Draw(cmd, mdlSolid_, crack);
+                    };
+
+                // ランダムパターン
+                {
+                    XMFLOAT4 r = HashRands(tx * 13 + 7, ty * 17 + 3);
+                    float cx1 = (r.x * 0.2f - 0.1f);
+                    float cy1 = (r.y * 0.2f - 0.1f);
+                    float rz1 = (r.z * 60.0f - 30.0f);
+                    DrawCrackLine(cx1, cy1, 0.28f, 0.03f, rz1);
+
+                    float cx2 = (r.y * 0.3f - 0.15f);
+                    float cy2 = (r.z * 0.3f - 0.15f);
+                    float rz2 = (r.w * 100.0f - 50.0f);
+                    DrawCrackLine(cx2, cy2, 0.18f, 0.02f, rz2);
+                }
+
+                // 「立入禁止」サイン板（赤い×マークがある感じの小さな板を手前に斜め立てる）
+                {
+                    Transform sign{};
+                    sign.pos = {
+                        tr.pos.x,
+                        tr.pos.y + tr.scale.y * 0.6f,
+                        tr.pos.z - 0.08f
+                    };
+                    sign.scale = {
+                        tr.scale.x * 0.4f,
+                        tr.scale.y * 0.3f,
+                        tr.scale.z
+                    };
+                    sign.rot = {
+                        XMConvertToRadians(0.0f),
+                        XMConvertToRadians(0.0f),
+                        XMConvertToRadians(10.0f)
+                    };
+                    renderer->Draw(cmd, mdlSolid_, sign);
+
+                    // サインの支え棒
+                    Transform stick{};
+                    stick.pos = {
+                        sign.pos.x,
+                        sign.pos.y - sign.scale.y * 0.8f,
+                        sign.pos.z + 0.01f
+                    };
+                    stick.scale = {
+                        sign.scale.x * 0.1f,
+                        sign.scale.y * 0.8f,
+                        sign.scale.z
+                    };
+                    stick.rot = {0,0,0};
+                    renderer->Draw(cmd, mdlSolid_, stick);
+                }
+            }
+
+            // ==== Spike → バリケード＋警告バー
+            if (t == Tile::Spike) {
+                // spike本体
+                renderer->Draw(cmd, *mainModel, tr);
+
+                // バリケードの横バー(黄色黒テープ想定)
+                Transform bar{};
+                bar.pos = {
+                    tr.pos.x,
+                    tr.pos.y + tr.scale.y * 0.4f,
+                    tr.pos.z - 0.05f
+                };
+                bar.scale = {
+                    tr.scale.x * 0.9f,
+                    tr.scale.y * 0.2f,
+                    tr.scale.z
+                };
+                bar.rot = {
+                    0,0,XMConvertToRadians(-5.0f)
+                };
+                renderer->Draw(cmd, mdlSolid_, bar);
+
+                // バリケードの脚(左右にAフレームっぽい支え)
+                {
+                    Transform legL{};
+                    legL.pos = {
+                        tr.pos.x - tr.scale.x * 0.6f,
+                        tr.pos.y - tr.scale.y * 0.1f,
+                        tr.pos.z - 0.03f
+                    };
+                    legL.scale = {
+                        tr.scale.x * 0.15f,
+                        tr.scale.y * 0.6f,
+                        tr.scale.z
+                    };
+                    legL.rot = {0,0,XMConvertToRadians(-15.0f)};
+                    renderer->Draw(cmd, mdlSolid_, legL);
+
+                    Transform legR = legL;
+                    legR.pos.x = tr.pos.x + tr.scale.x * 0.6f;
+                    legR.rot.z = XMConvertToRadians(15.0f);
+                    renderer->Draw(cmd, mdlSolid_, legR);
+                }
+            }
+
+            // ==== Spring → 油圧ジャッキ風
+            if (t == Tile::Spring) {
+                // まず元のスプリング本体
+                renderer->Draw(cmd, *mainModel, tr);
+
+                // 台座（厚めの板）
+                DrawPlate(
+                    {tr.pos.x, tr.pos.y - tr.scale.y * 0.5f, tr.pos.z - 0.03f},
+                    {tr.scale.x * 0.8f, tr.scale.y * 0.3f, tr.scale.z},
+                    {0,0,0}
+                );
+                // ジャッキ柱（縦棒）
+                DrawPlate(
+                    {tr.pos.x, tr.pos.y + tr.scale.y * 0.2f, tr.pos.z - 0.04f},
+                    {tr.scale.x * 0.2f, tr.scale.y * 0.8f, tr.scale.z},
+                    {0,0,0}
+                );
+                // ヘッド（上で押し上げるプレート）
+                DrawPlate(
+                    {tr.pos.x, tr.pos.y + tr.scale.y * 0.8f, tr.pos.z - 0.05f},
+                    {tr.scale.x * 0.6f, tr.scale.y * 0.2f, tr.scale.z},
+                    {0,0,5.0f}
+                );
+            }
+
+            // ==== Switch → 仮設電源ボックス + レバー
+            if (t == Tile::Switch) {
+                // スイッチ本体
+                renderer->Draw(cmd, *mainModel, tr);
+
+                // 電源ボックス本体(ちょい右に張り付け)
+                Transform box{};
+                box.pos = {
+                    tr.pos.x + tr.scale.x * 0.6f,
+                    tr.pos.y + tr.scale.y * 0.2f,
+                    tr.pos.z - 0.03f
+                };
+                box.scale = {
+                    tr.scale.x * 0.4f,
+                    tr.scale.y * 0.5f,
+                    tr.scale.z
+                };
+                box.rot = {0,0,XMConvertToRadians(-5.0f)};
+                renderer->Draw(cmd, mdlSolid_, box);
+
+                // レバー部分（ON/OFF感）
+                Transform lever{};
+                lever.pos = {
+                    box.pos.x + box.scale.x * 0.3f,
+                    box.pos.y + box.scale.y * 0.2f,
+                    box.pos.z - 0.02f
+                };
+                lever.scale = {
+                    box.scale.x * 0.2f,
+                    box.scale.y * 0.6f,
+                    box.scale.z
+                };
+
+                float leverAngle = switchOn_ ? 25.0f : -25.0f;
+                lever.rot = {0,0,XMConvertToRadians(leverAngle)};
+                renderer->Draw(cmd, mdlSolid_, lever);
+            }
+
+            // ==== SwitchBlockOn / Off はそのまま描画でOK
+            // (上で mainModel として描かれてる)
         }
     }
 
-    // プレイヤー描画
+    // -------------------------------------------------
+    // 3) プレイヤー＋安全帯（腰に巻いてる安全用の黄色テープぽい板）
+    // -------------------------------------------------
     {
         float renderScale = 0.5f;
         XMFLOAT3 mn = playerModel_.GetLocalMin();
 
-        Transform drawTr = playerTr_;
-
-        // playerTr_.pos は AABB左下 なので、モデルの中心に合わせる
-        drawTr.pos = {
+        Transform pTr = playerTr_;
+        pTr.pos = {
             playerTr_.pos.x + pw_ * 0.5f,
             playerTr_.pos.y - (mn.y * renderScale),
             kPlayerZ
         };
-        drawTr.scale = {renderScale, renderScale, renderScale * kPlayerDepth};
+        pTr.scale = {
+            renderScale,
+            renderScale,
+            renderScale * kPlayerDepth
+        };
+        pTr.rot = {0,0,0};
 
-        renderer->Draw(cmd, playerModel_, drawTr);
+        // 本体
+        renderer->Draw(cmd, playerModel_, pTr);
+
+        // 腰ベルトっぽい帯（黄色×黒テープの意図）
+        Transform belt{};
+        belt.pos = {
+            pTr.pos.x,
+            pTr.pos.y + pTr.scale.y * 0.2f,
+            pTr.pos.z - 0.03f
+        };
+        belt.scale = {
+            pTr.scale.x * 0.6f,
+            pTr.scale.y * 0.1f,
+            pTr.scale.z
+        };
+        belt.rot = {0,0,XMConvertToRadians(8.0f)};
+        renderer->Draw(cmd, mdlSolid_, belt);
     }
 
     renderer->End(cmd);
 
-    // HUD or Editor
+    // HUD / Editor
     if (editorOn_) {
         EditorUI_();
     } else if (uiVisible_) {
@@ -1277,5 +1665,5 @@ void GameScene::Draw() {
 }
 
 void GameScene::Finalize() {
-    // ComPtrで勝手に開放されるので今は特に無し
+    // ComPtrで自動解放
 }

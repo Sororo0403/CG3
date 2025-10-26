@@ -21,6 +21,13 @@ struct AABB { float x, y; float w, h; };
 
 /// <summary>
 /// ステージエディタ付き2D横アクション（タイル＋物理＋ギミック）
+///
+/// ★演出コンセプト：深夜の工事現場の高所足場
+///  - 背景にクレーン/投光器
+///  - 各ブロックは仮設足場＋支柱＋立入禁止テープ
+///  - 壊れる足場はヒビ＋警告サイン
+///  - スパイクはバリケード
+///  - 全体を囲う鉄骨フレーム
 /// </summary>
 class GameScene : public IScene {
 public:
@@ -53,7 +60,6 @@ private:
     static constexpr float kMaxFallVy = -18.0f / 48.0f;
 
     // スキン（ブロックとほんの紙一枚だけ離すマージン）
-    // ★変更: かなり小さくした（隙間を目立たなくする）
     static constexpr float kSkinY = 0.005f;
     static constexpr float kSkinX = 0.005f;
 
@@ -82,9 +88,9 @@ private:
     };
 
     struct FragileState {
-        bool  armed = false; // 踏んだり頭突きした
-        float t = 0.0f;      // armedからの経過
-        bool  gone = false;  // 壊れて今は消えてる
+        bool  armed = false; // 踏んだ/頭突いた
+        float t = 0.0f;  // armedからの経過
+        bool  gone = false; // 壊れて今は消えてる
     };
     struct RegenState {
         float respawn = 0.0f; // 復活経過時間
@@ -144,16 +150,17 @@ private:
     RegenState   regen_[kMapH][kMapW]{};
 
     bool  switchOn_ = false;
-    int   spawnTx_ = 2, spawnTy_ = 2;
+    int   spawnTx_ = 2;
+    int   spawnTy_ = 2;
     float xOffset_ = 0.0f; // マップをX方向に中央寄せするオフセット
 
     // ===== プレイヤ =====
     Transform         playerTr_{};     // posはAABBの左下
     DirectX::XMFLOAT3 vel_{0,0,0};
 
-    // ★変更: もうモデルから推定しない。ゲーム用当たり判定を固定で使う
-    float pw_ = 1.0f; // プレイヤーAABB幅（1タイルより少し細い）
-    float ph_ = 0.99f; // プレイヤーAABB高さ（1タイルより少し低い）
+    // 固定AABBサイズ
+    float pw_ = 1.0f;   // プレイヤー幅
+    float ph_ = 0.99f;  // プレイヤー高さ
 
     bool  onGround_ = false;
 
@@ -191,7 +198,7 @@ private:
     AABB PlayerAabbFull_() const { return {playerTr_.pos.x, playerTr_.pos.y, pw_, ph_}; }
 
     // ===== 物理（スイープ） =====
-    void ResolveHorizontal_();       // ★変更あり: 横衝突の安定化
+    void ResolveHorizontal_();       // 横衝突の安定化
     void ResolveVertical_(float dt); // 縦＋ギミック＋着地/頭ぶつけ
 
     // ===== テクスチャ読み込み (SRV割り当て含む) =====
