@@ -103,6 +103,10 @@ public:
     /// <summary>現在のクライアント高さ（px）。</summary>
     [[nodiscard]] uint32_t GetHeight() const noexcept { return height_; }
 
+    /// <summary>現在のフレームインデックス（バックバッファインデックスと同じ）</summary>
+    [[nodiscard]] uint32_t GetFrameIndex() const noexcept { return currentBackBufferIndex_; }
+
+
 private:
     // ===============================
     // 初期化処理

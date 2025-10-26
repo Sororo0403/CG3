@@ -5,8 +5,10 @@
 #include "Mesh.h"
 #include "Model.h"
 #include "Camera.h"
+#include "DirectXCommon.h"
 
 #include <cassert>
+
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 
@@ -18,85 +20,134 @@ void ModelRenderer::Initialize(ID3D12Device *device, ShaderCompiler *shader) {
     CreateRootSignature();
     CreatePipelineState();
 
-    // SceneCB: 1個ぶん（256Bアライン）
-    sceneCB_ = BufferUtility::CreateUploadBuffer(device_.Get(),
-        BufferUtility::AlignCB(sizeof(SceneCB)));
+    // SceneCB: 1個ぶん
+    sceneCB_ = BufferUtility::CreateUploadBuffer(
+        device_.Get(),
+        BufferUtility::AlignCB(sizeof(SceneCB))
+    );
 
-    // ObjectCB: 実サイズに基づいて256Bアライン
+    // ObjectCB: フレーム数ぶん作る
     objectCBStride_ = BufferUtility::AlignCB(sizeof(ObjectCB));
     objectCBTotalBytes_ = objectCBStride_ * kMaxObjectsPerFrame;
-    objectCB_ = BufferUtility::CreateUploadBuffer(device_.Get(), objectCBTotalBytes_);
+
+    for (uint32_t i = 0; i < kFrameCount; ++i) {
+        objectCBs_[i] = BufferUtility::CreateUploadBuffer(
+            device_.Get(),
+            objectCBTotalBytes_);
+        objectCBOffset_[i] = 0;
+    }
+
+    currentFrameIndex_ = 0;
 }
 
 void ModelRenderer::Finalize() noexcept {
-    if (sceneCB_)  sceneCB_->Unmap(0, nullptr);
-    if (objectCB_) objectCB_->Unmap(0, nullptr);
-    objectCB_.Reset();
+    if (sceneCB_) {
+        sceneCB_->Unmap(0, nullptr);
+    }
     sceneCB_.Reset();
+
+    for (uint32_t i = 0; i < kFrameCount; ++i) {
+        if (objectCBs_[i]) {
+            objectCBs_[i]->Unmap(0, nullptr);
+        }
+        objectCBs_[i].Reset();
+    }
+
     pso_.Reset();
     rootSig_.Reset();
     device_.Reset();
 }
 
-void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
-    const XMMATRIX &view, const XMMATRIX &proj) noexcept {
-    // === SceneCB 更新 ===
+// Begin(view,proj)
+void ModelRenderer::Begin(
+    ID3D12GraphicsCommandList *commandList,
+    DirectXCommon *dx,
+    const XMMATRIX &view,
+    const XMMATRIX &proj) noexcept {
+    // 今フレームのインデックスを DirectXCommon から取得
+    currentFrameIndex_ = dx->GetFrameIndex() % kFrameCount;
+
+    // SceneCB 更新
     SceneCB scb{};
     XMStoreFloat4x4(&scb.view, XMMatrixTranspose(view));
     XMStoreFloat4x4(&scb.proj, XMMatrixTranspose(proj));
-    BufferUtility::WriteToUpload(sceneCB_.Get(), &scb, sizeof(SceneCB), 0);
+    BufferUtility::WriteToUpload(
+        sceneCB_.Get(),
+        &scb,
+        sizeof(SceneCB),
+        0);
 
-    // ルート/PSO設定
+    // このフレーム用 ObjectCB リングをリセット
+    objectCBOffset_[currentFrameIndex_] = 0;
+
+    // PSO / RootSig セット
     commandList->SetGraphicsRootSignature(rootSig_.Get());
     commandList->SetPipelineState(pso_.Get());
 
     // b1: SceneCB
-    commandList->SetGraphicsRootConstantBufferView(1, sceneCB_->GetGPUVirtualAddress());
-
-    // リングをリセット
-    objectCBOffset_ = 0;
+    commandList->SetGraphicsRootConstantBufferView(
+        1,
+        sceneCB_->GetGPUVirtualAddress());
 }
 
-// === Camera 受け取り糖衣 ===
-void ModelRenderer::Begin(ID3D12GraphicsCommandList *commandList,
+// Begin(camera)
+void ModelRenderer::Begin(
+    ID3D12GraphicsCommandList *commandList,
+    DirectXCommon *dx,
     const Camera &camera) noexcept {
-    Begin(commandList, camera.GetView(), camera.GetProj());
+    Begin(commandList, dx, camera.GetView(), camera.GetProj());
 }
 
 void ModelRenderer::End(ID3D12GraphicsCommandList *commandList) noexcept {
     (void)commandList;
 }
 
-void ModelRenderer::Draw(ID3D12GraphicsCommandList *commandList,
-    const Model &model, const Transform &transform) noexcept {
+void ModelRenderer::Draw(
+    ID3D12GraphicsCommandList *commandList,
+    const Model &model,
+    const Transform &transform) noexcept {
     const Mesh &mesh = model.GetMesh();
 
-    // === ObjectCB 書き込み先確保（256B境界）===
-    const uint32_t myOffset = objectCBOffset_;
-    objectCBOffset_ += objectCBStride_;
-    assert(objectCBOffset_ <= objectCBTotalBytes_ && "ObjectCB ring overflow");
+    // 今フレーム用のCBを取り出す
+    ComPtr<ID3D12Resource> &curCB = objectCBs_[currentFrameIndex_];
 
-    // === CB書き込み ===
+    // このオブジェクト分のスロットを確保
+    const uint32_t myOffset = objectCBOffset_[currentFrameIndex_];
+    objectCBOffset_[currentFrameIndex_] += objectCBStride_;
+    assert(objectCBOffset_[currentFrameIndex_] <= objectCBTotalBytes_
+        && "ObjectCB ring overflow in this frame");
+
+    // 定数バッファデータを用意
     ObjectCB ocb{};
     const XMMATRIX W = transform.MakeWorldMatrix();
     XMStoreFloat4x4(&ocb.world, XMMatrixTranspose(W));
-    ocb.color[0] = ocb.color[1] = ocb.color[2] = ocb.color[3] = 1.0f;
-
-    // テクスチャ有無フラグ
+    ocb.color[0] = 1.0f;
+    ocb.color[1] = 1.0f;
+    ocb.color[2] = 1.0f;
+    ocb.color[3] = 1.0f;
     ocb.useTexture = model.HasAlbedoSRV() ? 1u : 0u;
 
-    BufferUtility::WriteToUpload(objectCB_.Get(), &ocb, sizeof(ObjectCB), myOffset);
+    // アップロードバッファへ書き込み
+    BufferUtility::WriteToUpload(
+        curCB.Get(),
+        &ocb,
+        sizeof(ObjectCB),
+        myOffset);
 
-    // === b0: ObjectCB ===
-    const auto base = objectCB_->GetGPUVirtualAddress();
-    commandList->SetGraphicsRootConstantBufferView(0, base + myOffset);
+    // b0: ObjectCB
+    const auto base = curCB->GetGPUVirtualAddress();
+    commandList->SetGraphicsRootConstantBufferView(
+        0,
+        base + myOffset);
 
-    // === t0: SRV（テクスチャがある場合のみセット）
+    // t0: SRV (あるなら)
     if (model.HasAlbedoSRV()) {
-        commandList->SetGraphicsRootDescriptorTable(2, model.GetAlbedoSRV());
+        commandList->SetGraphicsRootDescriptorTable(
+            2,
+            model.GetAlbedoSRV());
     }
 
-    // === IA & Draw ===
+    // ドロー
     const auto &vbv = mesh.GetVBV();
     const auto &ibv = mesh.GetIBV();
     commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -105,10 +156,10 @@ void ModelRenderer::Draw(ID3D12GraphicsCommandList *commandList,
     commandList->DrawIndexedInstanced(mesh.GetIndexCount(), 1, 0, 0, 0);
 }
 
+// RootSignature / PSO はオリジナルとほぼ同じ
 void ModelRenderer::CreateRootSignature() {
     // b0: ObjectCB, b1: SceneCB, t0: SRV(Texture2D)
 
-    // t0 descriptor range
     D3D12_DESCRIPTOR_RANGE srvRange{};
     srvRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     srvRange.NumDescriptors = 1;
@@ -127,7 +178,7 @@ void ModelRenderer::CreateRootSignature() {
     params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     params[1].Descriptor.ShaderRegister = 1;
 
-    // t0 as descriptor table
+    // t0
     params[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     params[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
     params[2].DescriptorTable.NumDescriptorRanges = 1;
@@ -152,11 +203,18 @@ void ModelRenderer::CreateRootSignature() {
         D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 
     ComPtr<ID3DBlob> blob, err;
-    HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &err);
-    if (FAILED(hr) && err) ::OutputDebugStringA((const char *)err->GetBufferPointer());
+    HRESULT hr = D3D12SerializeRootSignature(
+        &desc, D3D_ROOT_SIGNATURE_VERSION_1,
+        &blob, &err);
+    if (FAILED(hr) && err) {
+        ::OutputDebugStringA((const char *)err->GetBufferPointer());
+    }
     assert(SUCCEEDED(hr));
 
-    hr = device_->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(),
+    hr = device_->CreateRootSignature(
+        0,
+        blob->GetBufferPointer(),
+        blob->GetBufferSize(),
         IID_PPV_ARGS(&rootSig_));
     assert(SUCCEEDED(hr));
 }
@@ -165,10 +223,14 @@ void ModelRenderer::CreatePipelineState() {
     assert(shader_ && "ShaderCompiler is null.");
 
     D3D12_INPUT_ELEMENT_DESC layout[] = {
-        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-        {"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-        {"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT,    0, 12,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, 24,
+            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"COLOR",    0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,
+            D3D12_APPEND_ALIGNED_ELEMENT,
             D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
     };
 
@@ -215,6 +277,8 @@ void ModelRenderer::CreatePipelineState() {
     pso.SampleDesc = {1, 0};
     pso.SampleMask = UINT_MAX;
 
-    HRESULT hr = device_->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pso_));
+    HRESULT hr = device_->CreateGraphicsPipelineState(
+        &pso,
+        IID_PPV_ARGS(&pso_));
     assert(SUCCEEDED(hr));
 }

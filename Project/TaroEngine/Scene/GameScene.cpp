@@ -985,60 +985,45 @@ void GameScene::EditorUI_() {
     }
 }
 
-// ===== Draw =====
 void GameScene::Draw() {
     auto *dx = engineContext_->directXCommon;
     auto *cmd = dx->GetCommandList();
 
     auto *renderer = renderContext_->modelRenderer;
-    renderer->Begin(cmd, camera_);
+
+    // 修正後のBegin呼び出し
+    renderer->Begin(cmd, dx, camera_);
 
     // ---- タイル描画 ----
+    // （ここから先はあなたの元の処理でOK。Zバイアスはまだ入れなくていい）
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
 
-            // fragile系の「消えた」ものはRegen以外描かない
             if (IsFragile(t) && frag_[y][x].gone && t != Tile::Regen) {
                 continue;
             }
-
-            // SwitchBlockは状態によって表示/非表示が変わる
             if (t == Tile::SwitchBlockOn && !switchOn_) continue;
             if (t == Tile::SwitchBlockOff && switchOn_) continue;
 
-            // どのモデル描くか決める
             Model *drawModel = nullptr;
             switch (t) {
-            case Tile::Solid:
-                drawModel = &mdlSolid_; break;
-            case Tile::FragileAny:
-                drawModel = &mdlFragileAny_; break;
-            case Tile::FragileTop:
-                drawModel = &mdlFragileTop_; break;
-            case Tile::FragileBottom:
-                drawModel = &mdlFragileBottom_; break;
-            case Tile::Regen:
-                drawModel = &mdlRegen_; break;
-            case Tile::Spring:
-                drawModel = &mdlSpring_; break;
-            case Tile::Spike:
-                drawModel = &mdlSpike_; break;
-            case Tile::Switch:
-                drawModel = &mdlSwitch_; break;
-            case Tile::SwitchBlockOn:
-                drawModel = &mdlSwitchBlockOn_; break;
-            case Tile::SwitchBlockOff:
-                drawModel = &mdlSwitchBlockOff_; break;
-            case Tile::JumpOnly:
-                drawModel = &mdlJumpOnly_; break;
+            case Tile::Solid:              drawModel = &mdlSolid_; break;
+            case Tile::FragileAny:         drawModel = &mdlFragileAny_; break;
+            case Tile::FragileTop:         drawModel = &mdlFragileTop_; break;
+            case Tile::FragileBottom:      drawModel = &mdlFragileBottom_; break;
+            case Tile::Regen:              drawModel = &mdlRegen_; break;
+            case Tile::Spring:             drawModel = &mdlSpring_; break;
+            case Tile::Spike:              drawModel = &mdlSpike_; break;
+            case Tile::Switch:             drawModel = &mdlSwitch_; break;
+            case Tile::SwitchBlockOn:      drawModel = &mdlSwitchBlockOn_; break;
+            case Tile::SwitchBlockOff:     drawModel = &mdlSwitchBlockOff_; break;
+            case Tile::JumpOnly:           drawModel = &mdlJumpOnly_; break;
             default:
-                break; // Empty など
+                break;
             }
-
             if (!drawModel) continue;
 
-            // タイル座標→ワールド
             const float bx = xOffset_ + x * kTile;
             const float by = TyToWorldY(y);
 
@@ -1048,7 +1033,6 @@ void GameScene::Draw() {
                 by + kTile * 0.5f,
                 0.0f
             };
-            // objは中心が原点で各軸2.0の想定 → 1タイル(=1.0)に合わせるので0.5スケール
             tr.scale = {0.5f, 0.5f, 0.5f * kBlockDepth};
 
             renderer->Draw(cmd, *drawModel, tr);
