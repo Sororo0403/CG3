@@ -103,7 +103,7 @@ void GameScene::BuildSample() {
     }
 
     // 壊れる床いろいろ
-    for (int x = 3; x <= 8; ++x) grid_[kMapH - 5][x] = Tile::FragileAny;
+    for (int x = 3; x <= 8; ++x)   grid_[kMapH - 5][x] = Tile::FragileAny;
     for (int x = 11; x <= 14; ++x) grid_[kMapH - 7][x] = Tile::FragileTop;
     for (int x = 16; x <= 19; ++x) grid_[kMapH - 9][x] = Tile::FragileBottom;
 
@@ -124,7 +124,6 @@ void GameScene::BuildSample() {
 }
 
 // ====== CSV保存・読み込み ======
-
 static std::string NowStamp() {
     std::time_t t = std::time(nullptr);
     std::tm lt{};
@@ -400,7 +399,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switch_off.obj");
     mdlJumpOnly_.Initialize(device, "Resources/Model/Block/jumponly.obj");
 
-    // テクスチャ割り当て (各Modelが albedo パスを持ってる前提)
+    // テクスチャ割り当て
     auto setupTex = [&](Model &m, UINT slot, ComPtr<ID3D12Resource> &holder) {
         if (!m.GetAlbedoPath().empty()) {
             D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
@@ -409,7 +408,6 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
             }
         }
         };
-
     setupTex(playerModel_, kSrvIndex_Player, texPlayer_);
     setupTex(mdlSolid_, kSrvIndex_Solid, texSolid_);
     setupTex(mdlFragileAny_, kSrvIndex_FragileAny, texFragileAny_);
@@ -443,15 +441,9 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
         kPlayerZ
     };
 
-    // プレイヤーモデルからAABBサイズ決定
-    {
-        float rawW = playerModel_.GetLocalWidthX();   // maxX - minX
-        float rawH = playerModel_.GetLocalHeightY();  // maxY - minY
-        float renderScale = 0.5f; // Draw() と合わせる
-        pw_ = rawW * renderScale;
-        ph_ = rawH * renderScale;
-        if (pw_ <= 0.0f || ph_ <= 0.0f) { pw_ = 1.0f; ph_ = 1.0f; }
-    }
+    // ★変更: pw_/ph_ は固定値を採用するのでここで再計算しない
+    // pw_ = 0.80f;
+    // ph_ = 0.90f;
 
     vel_ = {0,0,0};
     onGround_ = false;
@@ -549,28 +541,27 @@ bool GameScene::PickTileUnderMouse_(int &outTx, int &outTy, float *outWx, float 
 }
 
 // ====== スイープ式 横移動解決 ======
+// ★変更点まとめ：
+// ・縦の走査範囲(minY/maxY)を安全に計算し直し
+// ・overlapY判定とstopX計算を整理
+// ・kSkinXを小さくしたので壁との隙間が目立たない
 void GameScene::ResolveHorizontal_() {
     if (vel_.x == 0.0f) return;
 
     float startX = playerTr_.pos.x;
     float targetX = startX + vel_.x;
 
-    // 今フレームの縦カバー範囲（AABBのy範囲）
     AABB boxNow = PlayerAabbFull_();
-    float minY = boxNow.y + kSkinY;                        // 足元寄り（ワールド的には下）
-    float maxY = boxNow.y + boxNow.w /* <-BUG */;          // ←これ間違い。直す ↓
-    // ↑今のコードのままだとここも実はまずいので直す。正しくは boxNow.y + boxNow.h
-    maxY = boxNow.y + boxNow.h - 1e-4f;                    // 頭側（ワールド的には上）
 
-    // それぞれタイル座標に変換
-    int tyBottom = ToTy(minY); // 下にある点ほど ty は大きい
-    int tyTop = ToTy(maxY); // 上にある点ほど ty は小さい
+    const float minY = boxNow.y + kSkinY;
+    const float maxY = boxNow.y + boxNow.h - 1e-4f;
 
-    // 正しい走査順に並べ替え
+    int tyBottom = ToTy(minY); // ワールド下側ほどtyは大きい
+    int tyTop = ToTy(maxY); // 上側は小さい
     int tyMin = std::min(tyBottom, tyTop);
     int tyMax = std::max(tyBottom, tyTop);
 
-    bool collided = false;
+    bool  collided = false;
     float stopX = targetX;
 
     if (vel_.x > 0.0f) {
@@ -590,7 +581,6 @@ void GameScene::ResolveHorizontal_() {
                 float bx = xOffset_ + col * kTile;
                 float by = TyToWorldY(ty);
 
-                // 縦方向に本当に重なり得るか？
                 float overlapY =
                     std::min(maxY, by + kTile)
                     - std::max(minY, by);
@@ -598,7 +588,7 @@ void GameScene::ResolveHorizontal_() {
 
                 float wallLeft = bx;
 
-                // このフレームの右端が、ブロック左端を超える？
+                // 右端が壁の左端を超えようとしてる？
                 if (endRight > wallLeft) {
                     float candidate = wallLeft - pw_ - kSkinX;
                     if (!collided || candidate < stopX) {
@@ -632,6 +622,7 @@ void GameScene::ResolveHorizontal_() {
 
                 float wallRight = bx + kTile;
 
+                // 左端が壁の右端を超えようとしてる？
                 if (endLeft < wallRight) {
                     float candidate = wallRight + kSkinX;
                     if (!collided || candidate > stopX) {
@@ -650,7 +641,6 @@ void GameScene::ResolveHorizontal_() {
         playerTr_.pos.x = targetX;
     }
 }
-
 
 // ====== スイープ式 縦移動解決＋ギミック/ジャンプ制御 ======
 void GameScene::ResolveVertical_(float dt) {
@@ -682,7 +672,7 @@ void GameScene::ResolveVertical_(float dt) {
         int rowMin = std::min(rowStart, rowEnd);
         int rowMax = std::max(rowStart, rowEnd);
 
-        bool hitFloor = false;
+        bool  hitFloor = false;
         float bestSnapY = targetY; // 最終的にここに置く
 
         for (int row = rowMin; row <= rowMax; ++row) {
@@ -693,15 +683,15 @@ void GameScene::ResolveVertical_(float dt) {
 
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
-                float topY = by + kTile; // このタイルの上面(床)
+                float topY = by + kTile; // タイルの上面(床)
 
-                // スプリング：after位置で触ってたらバネで上に飛ばす
+                // スプリング / スイッチ重なりチェック（着地後想定位置で）
                 {
                     AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
                     if (IsSpring(tt)) {
                         if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
                             vel_.y = kSpringVy;
-                            // スプリングは足場として固定しないからここではcontinueしない
+                            // スプリングは足場としては扱わないのでcontinueしない
                         }
                     }
                     if (tt == Tile::Switch) {
@@ -724,7 +714,7 @@ void GameScene::ResolveVertical_(float dt) {
                     if (overlapX > kMinGroundOverlap) {
 
                         float snapY = topY + kSkinY;
-                        // 一番高い床の上に乗る（= snapY が一番高いのを採用）
+                        // 一番高い床の上に乗る（snapYが一番高いのを採用）
                         if (!hitFloor || snapY > bestSnapY) {
                             hitFloor = true;
                             bestSnapY = snapY;
@@ -756,7 +746,7 @@ void GameScene::ResolveVertical_(float dt) {
         int rowMin = std::min(rowStart, rowEnd);
         int rowMax = std::max(rowStart, rowEnd);
 
-        bool hitCeil = false;
+        bool  hitCeil = false;
         float bestSnapY = targetY; // 衝突したらここより下にスナップ
 
         for (int row = rowMin; row <= rowMax; ++row) {
@@ -1005,7 +995,7 @@ void GameScene::Update(float dt) {
         }
     }
 
-    // エディタ中は物理を止める（その場で動かさない）
+    // エディタ中は物理止める
     if (editorOn_) {
         return;
     }
@@ -1287,5 +1277,5 @@ void GameScene::Draw() {
 }
 
 void GameScene::Finalize() {
-    // 必要があればリソース解放（いまはComPtrなので特にしない）
+    // ComPtrで勝手に開放されるので今は特に無し
 }

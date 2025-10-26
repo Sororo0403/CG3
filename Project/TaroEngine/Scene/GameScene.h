@@ -52,11 +52,12 @@ private:
     static constexpr float kSpringVy = 18.0f / 48.0f;
     static constexpr float kMaxFallVy = -18.0f / 48.0f;
 
-    // スキン（タイルとわずかに浮かせる/離すマージン）
-    static constexpr float kSkinY = 0.01f;
-    static constexpr float kSkinX = 2.0f / 48.0f;
+    // スキン（ブロックとほんの紙一枚だけ離すマージン）
+    // ★変更: かなり小さくした（隙間を目立たなくする）
+    static constexpr float kSkinY = 0.005f;
+    static constexpr float kSkinX = 0.005f;
 
-    // 接地・側面判定に使う最小オーバーラップ
+    // 接地・側面判定に使う最小オーバーラップ量
     static constexpr float kMinSideOverlap = 4.0f / 48.0f;
     static constexpr float kMinGroundOverlap = 4.0f / 48.0f;
 
@@ -122,7 +123,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOff_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
 
-    // SRV heap slots (一致させること)
+    // SRV heap slots
     static constexpr UINT kSrvIndex_ImGuiFont = 0;
     static constexpr UINT kSrvIndex_Player = 1;
     static constexpr UINT kSrvIndex_Solid = 2;
@@ -149,8 +150,11 @@ private:
     // ===== プレイヤ =====
     Transform         playerTr_{};     // posはAABBの左下
     DirectX::XMFLOAT3 vel_{0,0,0};
-    float pw_ = 1.0f; // プレイヤーAABB幅
-    float ph_ = 1.0f; // プレイヤーAABB高さ
+
+    // ★変更: もうモデルから推定しない。ゲーム用当たり判定を固定で使う
+    float pw_ = 1.0f; // プレイヤーAABB幅（1タイルより少し細い）
+    float ph_ = 0.99f; // プレイヤーAABB高さ（1タイルより少し低い）
+
     bool  onGround_ = false;
 
     // 入力補助
@@ -187,8 +191,8 @@ private:
     AABB PlayerAabbFull_() const { return {playerTr_.pos.x, playerTr_.pos.y, pw_, ph_}; }
 
     // ===== 物理（スイープ） =====
-    void ResolveHorizontal_();      // 1フレームぶんのX移動を確定（めり込まない）
-    void ResolveVertical_(float dt);// 1フレームぶんのY移動を確定（めり込まない＋接地処理など）
+    void ResolveHorizontal_();       // ★変更あり: 横衝突の安定化
+    void ResolveVertical_(float dt); // 縦＋ギミック＋着地/頭ぶつけ
 
     // ===== テクスチャ読み込み (SRV割り当て含む) =====
     bool LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
