@@ -3,6 +3,7 @@
 #include <wrl.h>
 #include <vector>
 #include <cstdint>
+#include <DirectXMath.h>
 #include "Vertex.h"
 
 class Mesh {
@@ -18,6 +19,10 @@ public:
     const D3D12_INDEX_BUFFER_VIEW &GetIBV() const noexcept { return ibv_; }
     UINT GetIndexCount() const noexcept { return indexCount_; }
 
+    // ローカル空間でのメッシュAABB
+    const DirectX::XMFLOAT3 &GetMinPos() const noexcept { return aabbMin_; }
+    const DirectX::XMFLOAT3 &GetMaxPos() const noexcept { return aabbMax_; }
+
 private:
     void UploadVertexData_(ID3D12Device *device,
         const void *data, size_t bytes, UINT stride);
@@ -32,4 +37,8 @@ private:
     D3D12_VERTEX_BUFFER_VIEW vbv_{};
     D3D12_INDEX_BUFFER_VIEW  ibv_{};
     UINT indexCount_ = 0;
+
+    // 追加: モデルローカルでのAABB
+    DirectX::XMFLOAT3 aabbMin_{0,0,0};
+    DirectX::XMFLOAT3 aabbMax_{0,0,0};
 };
