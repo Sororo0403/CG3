@@ -12,9 +12,9 @@
 #include <cstring>
 
 // ===== 追加インクルード（テクスチャ関連）=====
-#include "BufferUtility.h"  // ★ 追加：Uploadバッファ作成に使用
+#include "BufferUtility.h"  // Uploadバッファ作成に使用
 #include <DirectXTex/d3dx12.h>
-#include <DirectXTex/DirectxTex.h>
+#include <DirectXTex/DirectXTex.h>
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
@@ -53,41 +53,66 @@ bool GameScene::KeyPressed_(uint8_t dik) {
 
 // ===== 属性 =====
 bool GameScene::IsFragile(Tile t) {
-    return t == Tile::FragileAny || t == Tile::FragileTop || t == Tile::FragileBottom || t == Tile::Regen;
+    return t == Tile::FragileAny
+        || t == Tile::FragileTop
+        || t == Tile::FragileBottom
+        || t == Tile::Regen;
 }
-bool GameScene::IsSpring(Tile t) { return t == Tile::Spring; }
+bool GameScene::IsSpring(Tile t) {
+    return t == Tile::Spring;
+}
 bool GameScene::IsBlockingAt(int tx, int ty) const {
     if (!InMap(tx, ty)) return false;
     Tile t = grid_[ty][tx];
-    if (IsFragile(t)) return !frag_[ty][tx].gone;
+
+    // 壊れ床は gone ならブロックじゃない
+    if (IsFragile(t)) {
+        return !frag_[ty][tx].gone;
+    }
+
+    // スイッチブロック
     if (t == Tile::SwitchBlockOn)  return switchOn_;
     if (t == Tile::SwitchBlockOff) return !switchOn_;
-    if (t == Tile::JumpOnly)       return true;
+
+    if (t == Tile::JumpOnly)       return true; // 一方向床扱いだけど、プレイヤーの処理で上からだけ通す等をやってる
+
     return t == Tile::Solid;
 }
 
 // ===== マップ =====
 void GameScene::ResetGrid() {
-    for (int y = 0; y < kMapH; ++y) for (int x = 0; x < kMapW; ++x) {
-        grid_[y][x] = Tile::Empty;
-        frag_[y][x] = FragileState{};
-        regen_[y][x] = RegenState{};
+    for (int y = 0; y < kMapH; ++y) {
+        for (int x = 0; x < kMapW; ++x) {
+            grid_[y][x] = Tile::Empty;
+            frag_[y][x] = FragileState{};
+            regen_[y][x] = RegenState{};
+        }
     }
     switchOn_ = false;
-    spawnTx_ = 2; spawnTy_ = 2;
+    spawnTx_ = 2;
+    spawnTy_ = 2;
 }
+
 void GameScene::BuildSample() {
     ResetGrid();
-    for (int x = 0; x < kMapW; ++x) grid_[kMapH - 2][x] = Tile::Solid;          // 下から2行目に床
+
+    // 地面
+    for (int x = 0; x < kMapW; ++x) grid_[kMapH - 2][x] = Tile::Solid;
+
+    // 壊れる床いろいろ
     for (int x = 3; x <= 8; ++x)    grid_[kMapH - 5][x] = Tile::FragileAny;
     for (int x = 11; x <= 14; ++x)  grid_[kMapH - 7][x] = Tile::FragileTop;
     for (int x = 16; x <= 19; ++x)  grid_[kMapH - 9][x] = Tile::FragileBottom;
+
+    // その他ギミック
     grid_[kMapH - 3][6] = Tile::Spring;
     grid_[kMapH - 6][18] = Tile::Switch;
     grid_[kMapH - 6][20] = Tile::SwitchBlockOn;
     grid_[kMapH - 6][21] = Tile::SwitchBlockOn;
     grid_[kMapH - 6][23] = Tile::SwitchBlockOff;
+
     for (int x = kMapW - 8; x < kMapW - 2; ++x) grid_[kMapH - 3][x] = Tile::Spike;
+
     grid_[kMapH - 8][22] = Tile::Regen;
 }
 
@@ -105,9 +130,11 @@ static std::string NowStamp() {
         lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday, lt.tm_hour, lt.tm_min, lt.tm_sec);
     return buf;
 }
+
 bool GameScene::SaveCSV(const std::string &path) const {
     std::ofstream ofs(path);
     if (!ofs) return false;
+
     ofs << kMapW << "," << kMapH << "," << spawnTx_ << "," << spawnTy_ << "\n";
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
@@ -118,6 +145,7 @@ bool GameScene::SaveCSV(const std::string &path) const {
     }
     return true;
 }
+
 bool GameScene::LoadCSV(const std::string &path) {
     std::ifstream ifs(path);
     if (!ifs) return false;
@@ -130,10 +158,15 @@ bool GameScene::LoadCSV(const std::string &path) {
     {
         if (!line.empty() && line.back() == '\r') line.pop_back();
         std::istringstream ssHeader(line);
-        std::string tok; std::vector<int> vals;
+
+        std::string tok;
+        std::vector<int> vals;
         while (std::getline(ssHeader, tok, ',')) {
             int v = 0;
-            if (!tok.empty()) { try { v = std::stoi(tok); } catch (...) { v = 0; } }
+            if (!tok.empty()) {
+                try { v = std::stoi(tok); }
+                catch (...) { v = 0; }
+            }
             vals.push_back(v);
         }
         if (vals.size() >= 4) {
@@ -146,42 +179,57 @@ bool GameScene::LoadCSV(const std::string &path) {
     while (y < kMapH && std::getline(ifs, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
         std::istringstream ss(line);
-        std::string cell; int x = 0;
+
+        std::string cell;
+        int x = 0;
         while (x < kMapW && std::getline(ss, cell, ',')) {
-            int id = 0; if (!cell.empty()) { try { id = std::stoi(cell); } catch (...) { id = 0; } }
+            int id = 0;
+            if (!cell.empty()) {
+                try { id = std::stoi(cell); }
+                catch (...) { id = 0; }
+            }
             id = std::clamp(id, 0, (int)Tile::SwitchBlockOff);
             Tile t = (Tile)id;
+
             grid_[y][x] = t;
             if (IsFragile(t)) frag_[y][x] = FragileState{};
             if (t == Tile::Regen) regen_[y][x] = RegenState{};
+
             ++x;
         }
         ++y;
     }
+
     ClampSpawnToSafe();
     return true;
 }
+
 bool GameScene::CreateSnapshot(const std::string &baseCsvPath) const {
     namespace fs = std::filesystem;
     std::error_code ec;
     fs::path base(baseCsvPath);
+
     fs::path dir = base.parent_path() / "backups";
     fs::create_directories(dir, ec);
+
     fs::path dst = dir / (base.stem().string() + "_" + NowStamp() + base.extension().string());
     return SaveCSV(dst.string());
 }
+
 void GameScene::ClampSpawnToSafe() {
     int tx = std::clamp(spawnTx_, 0, kMapW - 1);
     int ty = std::clamp(spawnTy_, 0, kMapH - 1);
     if (IsBlockingAt(tx, ty)) {
-        for (int r = ty - 1; r >= 0; --r) { // 上方向へ逃がす（上が+Y）
+        // 上方向に逃がす（上が+Y）
+        for (int r = ty - 1; r >= 0; --r) {
             if (!IsBlockingAt(tx, r)) { ty = r; break; }
         }
     }
-    spawnTx_ = tx; spawnTy_ = ty;
+    spawnTx_ = tx;
+    spawnTy_ = ty;
 }
 
-// ===== 画像→SRV ロード（sRGB）=====
+// ===== 画像→SRV ロード（sRGB） =====
 bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     ComPtr<ID3D12Resource> &outTex,
     D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle) {
@@ -199,10 +247,16 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     DXGI_FORMAT targetFmt = meta.format;
     if (!DirectX::IsCompressed(meta.format) && !DirectX::IsSRGB(meta.format)) {
         // 非圧縮＆Linear の場合は RGBA8_sRGB に揃える
-        hr = DirectX::Convert(img.GetImages(), img.GetImageCount(), meta, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
-            DirectX::TEX_FILTER_DEFAULT, DirectX::TEX_THRESHOLD_DEFAULT, conv);
+        hr = DirectX::Convert(
+            img.GetImages(), img.GetImageCount(), meta,
+            DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+            DirectX::TEX_FILTER_DEFAULT,
+            DirectX::TEX_THRESHOLD_DEFAULT,
+            conv
+        );
         if (FAILED(hr)) return false;
     }
+
     const DirectX::Image *srcImgs = conv.GetImages() ? conv.GetImages() : img.GetImages();
     DirectX::TexMetadata useMeta = conv.GetMetadata().width ? conv.GetMetadata() : meta;
     targetFmt = useMeta.format;
@@ -230,19 +284,21 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     // 3) アップロードリソース作成 & サブリソースコピー
     UINT64 uploadSize = GetRequiredIntermediateSize(outTex.Get(), 0, (UINT)useMeta.mipLevels);
 
-    // --- ★ ここを BufferUtility に置き換え ---
     ComPtr<ID3D12Resource> upload = BufferUtility::CreateUploadBuffer(device, uploadSize);
 
     // 4) 一時コマンド周り（専用キューで実行→待機）
     ComPtr<ID3D12CommandQueue> queue;
     {
-        D3D12_COMMAND_QUEUE_DESC qd{}; qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        D3D12_COMMAND_QUEUE_DESC qd{};
+        qd.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         device->CreateCommandQueue(&qd, IID_PPV_ARGS(&queue));
     }
     ComPtr<ID3D12CommandAllocator> alloc;
     device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
     ComPtr<ID3D12GraphicsCommandList> list;
-    device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc.Get(), nullptr, IID_PPV_ARGS(&list));
+    device->CreateCommandList(
+        0, D3D12_COMMAND_LIST_TYPE_DIRECT, alloc.Get(), nullptr,
+        IID_PPV_ARGS(&list));
 
     // 5) UpdateSubresources → COPY_DEST から PS 用へ遷移
     {
@@ -254,11 +310,12 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
             subs[m].SlicePitch = im.slicePitch;
         }
 
-        // outTex は作成時 COPY_DEST なので、そのままアップロード
-        UpdateSubresources(list.Get(), outTex.Get(), upload.Get(),
-            0, 0, static_cast<UINT>(useMeta.mipLevels), subs.data());
+        UpdateSubresources(
+            list.Get(), outTex.Get(), upload.Get(),
+            0, 0, static_cast<UINT>(useMeta.mipLevels),
+            subs.data()
+        );
 
-        // シェーダ読み取りへ 1 回だけ遷移
         auto toSRV = CD3DX12_RESOURCE_BARRIER::Transition(
             outTex.Get(),
             D3D12_RESOURCE_STATE_COPY_DEST,
@@ -272,8 +329,10 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
     queue->ExecuteCommandLists(1, lists);
 
     // 6) フェンスで完了待機
-    ComPtr<ID3D12Fence> fence; device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
+    ComPtr<ID3D12Fence> fence;
+    device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
     HANDLE evt = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+
     queue->Signal(fence.Get(), 1);
     if (fence->GetCompletedValue() < 1) {
         fence->SetEventOnCompletion(1, evt);
@@ -309,40 +368,61 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     renderContext_ = renderContext;
 
     auto *dx = engineContext_->directXCommon;
+    ID3D12Device *device = dx->GetDevice();
 
-    // モデル（OBJ: 原点中心/各軸2.0）
-    playerModel_.Initialize(dx->GetDevice(), "Resources/Model/Player/player.obj");
-    cubeModel_.Initialize(dx->GetDevice(), "Resources/Model/Block/block.obj");
+    // ===== モデル読み込み =====
+    // ここでは各ブロックタイプごとに別OBJを割り当てる想定
+    playerModel_.Initialize(device, "Resources/Model/Player/player.obj");
 
-    // === 画像マテリアル（map_Kd → SRV 作成 → Model へ注入）===
-    {
-        // プレイヤー
-        if (!playerModel_.GetAlbedoPath().empty()) {
-            D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
-            if (LoadTextureSRV_(Widen_(playerModel_.GetAlbedoPath()), kSrvIndex_Player, texPlayer_, gpu)) {
-                playerModel_.SetAlbedoSRV(gpu);
+    mdlSolid_.Initialize(device, "Resources/Model/Block/solid.obj");
+    mdlFragileAny_.Initialize(device, "Resources/Model/Block/fragile_any.obj");
+    mdlFragileTop_.Initialize(device, "Resources/Model/Block/fragile_top.obj");
+    mdlFragileBottom_.Initialize(device, "Resources/Model/Block/fragile_bottom.obj");
+    mdlRegen_.Initialize(device, "Resources/Model/Block/regen.obj");
+    mdlSpring_.Initialize(device, "Resources/Model/Block/spring.obj");
+    mdlSpike_.Initialize(device, "Resources/Model/Block/spike.obj");
+    mdlSwitch_.Initialize(device, "Resources/Model/Block/switch.obj");
+    mdlSwitchBlockOn_.Initialize(device, "Resources/Model/Block/switch_on.obj");
+    mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switch_off.obj");
+    mdlJumpOnly_.Initialize(device, "Resources/Model/Block/jumponly.obj");
+
+    // ===== 各モデルのアルベドテクスチャをSRV化してバインド =====
+    auto setupTex = [&](Model &m, UINT srvIndex,
+        ComPtr<ID3D12Resource> &holder) {
+            if (!m.GetAlbedoPath().empty()) {
+                D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
+                if (LoadTextureSRV_(Widen_(m.GetAlbedoPath()), srvIndex, holder, gpu)) {
+                    m.SetAlbedoSRV(gpu);
+                }
             }
-        }
-        // ブロック
-        if (!cubeModel_.GetAlbedoPath().empty()) {
-            D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
-            if (LoadTextureSRV_(Widen_(cubeModel_.GetAlbedoPath()), kSrvIndex_Block, texBlock_, gpu)) {
-                cubeModel_.SetAlbedoSRV(gpu);
-            }
-        }
-    }
+        };
 
-    // カメラ（LH, +Z前）
+    setupTex(playerModel_, kSrvIndex_Player, texPlayer_);
+    setupTex(mdlSolid_, kSrvIndex_Solid, texSolid_);
+    setupTex(mdlFragileAny_, kSrvIndex_FragileAny, texFragileAny_);
+    setupTex(mdlFragileTop_, kSrvIndex_FragileTop, texFragileTop_);
+    setupTex(mdlFragileBottom_, kSrvIndex_FragileBottom, texFragileBottom_);
+    setupTex(mdlRegen_, kSrvIndex_Regen, texRegen_);
+    setupTex(mdlSpring_, kSrvIndex_Spring, texSpring_);
+    setupTex(mdlSpike_, kSrvIndex_Spike, texSpike_);
+    setupTex(mdlSwitch_, kSrvIndex_Switch, texSwitch_);
+    setupTex(mdlSwitchBlockOn_, kSrvIndex_SwitchOn, texSwitchOn_);
+    setupTex(mdlSwitchBlockOff_, kSrvIndex_SwitchOff, texSwitchOff_);
+    setupTex(mdlJumpOnly_, kSrvIndex_JumpOnly, texJumpOnly_);
+
+    // ===== カメラ設定（LH, +Z前という想定）=====
     camera_.Initialize(
         /*eye*/{0.0f, 5.0f, -50.0f},
         /*pitch,yaw,roll*/{0.0f, 0.0f, 0.0f},
-        /*fov*/ 60.0f,
-        /*aspect*/ (float)dx->GetWidth() / std::max(1u, dx->GetHeight()),
-        /*near*/ 0.1f, /*far*/ 1000.0f);
+        /*fov*/           60.0f,
+        /*aspect*/        (float)dx->GetWidth() / std::max(1u, dx->GetHeight()),
+        /*near*/          0.1f,
+        /*far*/           1000.0f
+    );
     camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
     camera_.LookAt({0.0f, 5.0f, -50.0f}, {0.0f, 2.0f, 0.0f});
 
-    // マップ
+    // ===== マップ =====
     const float mapW = kMapW * kTile;
     xOffset_ = -mapW * 0.5f; // 中央寄せ
 
@@ -352,11 +432,16 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     }
     ClampSpawnToSafe();
 
-    // プレイヤ
+    // ===== プレイヤ初期化 =====
     playerTr_ = {};
     playerTr_.scale = {1,1,1};
-    playerTr_.pos = {xOffset_ + spawnTx_ * kTile, TyToWorldY(spawnTy_) + 0.5f, kPlayerZ};
-    pw_ = 1.0f; ph_ = 1.0f;
+    playerTr_.pos = {
+        xOffset_ + spawnTx_ * kTile,
+        TyToWorldY(spawnTy_) + 0.5f,
+        kPlayerZ
+    };
+    pw_ = 1.0f;
+    ph_ = 1.0f;
     vel_ = {0,0,0};
     onGround_ = false;
 
@@ -412,7 +497,8 @@ bool GameScene::PickTileUnderMouse_(int &outTx, int &outTy, float *outWx, float 
     int ty = ToTy(wy);
     if (!InMap(tx, ty)) return false;
 
-    outTx = tx; outTy = ty;
+    outTx = tx;
+    outTy = ty;
     if (outWx) *outWx = wx;
     if (outWy) *outWy = wy;
     return true;
@@ -429,19 +515,29 @@ void GameScene::Update(float dt) {
     if (KeyPressed_(DIK_F1)) {
         bool was = editorOn_;
         editorOn_ = !editorOn_;
-        if (was && !editorOn_) (void)CreateSnapshot("stage.csv"); // OFF に切り替わった瞬間にバックアップ
+        if (was && !editorOn_) {
+            (void)CreateSnapshot("stage.csv"); // OFF に切り替わった瞬間にバックアップ
+        }
     }
-    if (KeyPressed_(DIK_F5)) (void)SaveCSV("stage.csv");
+    if (KeyPressed_(DIK_F5)) {
+        (void)SaveCSV("stage.csv");
+    }
     if (KeyPressed_(DIK_F9)) {
         if (LoadCSV("stage.csv")) {
             ClampSpawnToSafe();
-            playerTr_.pos = {xOffset_ + spawnTx_ * kTile, TyToWorldY(spawnTy_) + 0.5f, kPlayerZ};
-            vel_ = {0,0,0}; onGround_ = false;
-            coyoteCounter_ = 0; jumpBuffer_ = 0;
+            playerTr_.pos = {
+                xOffset_ + spawnTx_ * kTile,
+                TyToWorldY(spawnTy_) + 0.5f,
+                kPlayerZ
+            };
+            vel_ = {0,0,0};
+            onGround_ = false;
+            coyoteCounter_ = 0;
+            jumpBuffer_ = 0;
         }
     }
 
-    // ===== エディタON中：ゲーム更新のみ停止（ImGuiはDrawで描く）=====
+    // ===== エディタON中：ゲーム更新は停止 =====
     if (editorOn_) {
         return;
     }
@@ -453,7 +549,6 @@ void GameScene::Update(float dt) {
     if (KeyPressed_(DIK_SPACE))  jumpBuffer_ = kJumpBufferFrames;
 
     // ===== 速度 =====
-    vel_.x += 0.0f;
     vel_.x = (onGround_ ? kMoveGround : kMoveAir) * (float)ax;
     vel_.y += -kGravity;
     if (vel_.y < kMaxFallVy) vel_.y = kMaxFallVy;
@@ -462,6 +557,7 @@ void GameScene::Update(float dt) {
     {
         playerTr_.pos.x += vel_.x;
         AABB a = PlayerAabbX_();
+
         int t = ToTy(a.y + kSkinY);
         int b = ToTy(a.y + a.h - 1e-4f - kSkinY);
         int l = ToTx(a.x);
@@ -471,12 +567,17 @@ void GameScene::Update(float dt) {
             for (int tx = l; tx <= r; ++tx) {
                 if (!InMap(tx, ty)) continue;
                 if (!IsBlockingAt(tx, ty)) continue;
+
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(ty);
                 if (!OverlapXY(a, bx, by, kTile, kTile)) continue;
 
-                if (vel_.x > 0)      playerTr_.pos.x = (bx - pw_) - kSkinX;
-                else if (vel_.x < 0) playerTr_.pos.x = (bx + kTile) + kSkinX;
+                if (vel_.x > 0) {
+                    playerTr_.pos.x = (bx - pw_) - kSkinX;
+                } else if (vel_.x < 0) {
+                    playerTr_.pos.x = (bx + kTile) + kSkinX;
+                }
+
                 a = PlayerAabbX_();
             }
         }
@@ -495,28 +596,42 @@ void GameScene::Update(float dt) {
         onGround_ = false;
 
         if (vel_.y <= 0.0f) {
+            // 下向き移動＝着地チェック
             int rowBelow = ToTy(aFull.y - kSkinY);
+
             for (int tx = l; tx <= r; ++tx) {
                 if (!InMap(tx, rowBelow)) continue;
                 Tile tt = grid_[rowBelow][tx];
+
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(rowBelow);
                 float topY = by + kTile;
 
+                // スプリング
                 if (IsSpring(tt)) {
                     if (OverlapXY(PlayerAabbFull_(), bx, by, kTile, kTile)) {
-                        vel_.y = kSpringVy; onGround_ = false;
+                        vel_.y = kSpringVy;
+                        onGround_ = false;
                     }
                 }
+
+                // スイッチ
                 if (tt == Tile::Switch) {
-                    if (OverlapXY(PlayerAabbFull_(), bx, by, kTile, kTile)) switchOverlapNow = true;
+                    if (OverlapXY(PlayerAabbFull_(), bx, by, kTile, kTile)) {
+                        switchOverlapNow = true;
+                    }
                 }
 
+                // 通常の床着地
                 if (IsBlockingAt(tx, rowBelow) &&
-                    (yPrev - kSkinY) >= topY && (playerTr_.pos.y - kSkinY) < topY &&
-                    aFull.x < bx + kTile && aFull.x + aFull.w > bx) {
-
-                    if (IsFragile(tt) && !frag_[rowBelow][tx].gone) frag_[rowBelow][tx].armed = true;
+                    (yPrev - kSkinY) >= topY &&
+                    (playerTr_.pos.y - kSkinY) < topY &&
+                    aFull.x < bx + kTile &&
+                    aFull.x + aFull.w > bx) {
+                    // 踏んだ瞬間に壊れ床をarmedにする
+                    if (IsFragile(tt) && !frag_[rowBelow][tx].gone) {
+                        frag_[rowBelow][tx].armed = true;
+                    }
 
                     playerTr_.pos.y = topY + kSkinY;
                     vel_.y = 0.0f;
@@ -529,25 +644,33 @@ void GameScene::Update(float dt) {
                 }
             }
         } else {
+            // 上昇中＝頭ぶつけ処理
             int rowAbove = ToTy(aFull.y + aFull.h + kSkinY);
             for (int tx = l; tx <= r; ++tx) {
                 if (!InMap(tx, rowAbove)) continue;
                 Tile tt = grid_[rowAbove][tx];
+
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(rowAbove);
                 float bottomY = by;
 
+                // 下から当てて壊せる床をarmedにする（FragileBottomやAnyなど）
                 if (IsFragile(tt) && !frag_[rowAbove][tx].gone) {
                     const bool canFromBelow = (tt == Tile::FragileAny || tt == Tile::FragileBottom);
                     if (canFromBelow) {
-                        float overlapX = std::min(aFull.x + aFull.w, bx + kTile) - std::max(aFull.x, bx);
-                        if (overlapX > (4.0f / 48.0f)) frag_[rowAbove][tx].armed = true;
+                        float overlapX = std::min(aFull.x + aFull.w, bx + kTile)
+                            - std::max(aFull.x, bx);
+                        if (overlapX > (4.0f / 48.0f)) {
+                            frag_[rowAbove][tx].armed = true;
+                        }
                     }
                 }
 
                 if (IsBlockingAt(tx, rowAbove) &&
-                    (yPrev + ph_ + kSkinY) <= bottomY && (playerTr_.pos.y + ph_ + kSkinY) > bottomY &&
-                    aFull.x < bx + kTile && aFull.x + aFull.w > bx) {
+                    (yPrev + ph_ + kSkinY) <= bottomY &&
+                    (playerTr_.pos.y + ph_ + kSkinY) > bottomY &&
+                    aFull.x < bx + kTile &&
+                    aFull.x + aFull.w > bx) {
                     playerTr_.pos.y = bottomY - ph_ - kSkinY;
                     vel_.y = 0.0f;
 
@@ -559,7 +682,7 @@ void GameScene::Update(float dt) {
             }
         }
 
-        // 端踏み込みの武装補完
+        // プレイヤーの足がほんの少しだけブロックにかかっていても armed にしてあげるやつ
         {
             int l2 = ToTx(playerTr_.pos.x);
             int r2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -569,31 +692,47 @@ void GameScene::Update(float dt) {
                 if (!InMap(tx2, by)) continue;
                 Tile tt = grid_[by][tx2];
                 if (!IsFragile(tt) || frag_[by][tx2].gone) continue;
-                if (!(tt == Tile::FragileAny || tt == Tile::FragileTop || tt == Tile::Regen)) continue;
+
+                // 上から踏んで壊す対象は FragileAny / FragileTop / Regen
+                if (!(tt == Tile::FragileAny || tt == Tile::FragileTop || tt == Tile::Regen)) {
+                    continue;
+                }
+
                 float bx = xOffset_ + tx2 * kTile;
-                float overlapX = std::min(playerTr_.pos.x + pw_, bx + kTile) - std::max(playerTr_.pos.x, bx);
-                if (overlapX > kMinOverlap) frag_[by][tx2].armed = true;
+                float overlapX = std::min(playerTr_.pos.x + pw_, bx + kTile)
+                    - std::max(playerTr_.pos.x, bx);
+                if (overlapX > kMinOverlap) {
+                    frag_[by][tx2].armed = true;
+                }
             }
         }
     }
 
     // スイッチ（接触エッジでトグル）
     static bool prevSw = false;
-    if (switchOverlapNow && !prevSw) switchOn_ = !switchOn_;
+    if (switchOverlapNow && !prevSw) {
+        switchOn_ = !switchOn_;
+    }
     prevSw = switchOverlapNow;
 
     // コヨーテ/ジャンプバッファ
     if (onGround_) coyoteCounter_ = kCoyoteMaxFrames;
     else if (coyoteCounter_ > 0) --coyoteCounter_;
+
     if (jumpBuffer_ > 0) --jumpBuffer_;
+
     if ((onGround_ || coyoteCounter_ > 0) && jumpBuffer_ > 0) {
-        vel_.y = kJumpVy; onGround_ = false; jumpBuffer_ = 0;
+        vel_.y = kJumpVy;
+        onGround_ = false;
+        jumpBuffer_ = 0;
     }
 
-    // 床へ吸着
+    // 床へ吸着（Yをタイルグリッドにスナップ）
     if (onGround_) {
         float targetY = std::floor((playerTr_.pos.y - kSkinY) / kTile) * kTile + kSkinY;
-        if (std::fabs(playerTr_.pos.y - targetY) > 1e-4f) playerTr_.pos.y = targetY;
+        if (std::fabs(playerTr_.pos.y - targetY) > 1e-4f) {
+            playerTr_.pos.y = targetY;
+        }
     }
 
     // 壊れ床/復活床進行
@@ -601,6 +740,7 @@ void GameScene::Update(float dt) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
             if (!IsFragile(t)) continue;
+
             auto &fs = frag_[y][x];
             if (!fs.gone) {
                 if (fs.armed) {
@@ -608,7 +748,9 @@ void GameScene::Update(float dt) {
                     constexpr float kFragileBreakTime = 1.35f;
                     if (fs.t > kFragileBreakTime) {
                         fs.gone = true;
-                        if (t == Tile::Regen) regen_[y][x].respawn = 0.0f;
+                        if (t == Tile::Regen) {
+                            regen_[y][x].respawn = 0.0f;
+                        }
                     }
                 }
             } else if (t == Tile::Regen) {
@@ -626,25 +768,43 @@ void GameScene::Update(float dt) {
         float minY = -4.0f * kTile;
         if (playerTr_.pos.y < minY) {
             ClampSpawnToSafe();
-            playerTr_.pos = {xOffset_ + spawnTx_ * kTile, TyToWorldY(spawnTy_) + 0.5f, kPlayerZ};
-            vel_ = {0,0,0}; onGround_ = false; coyoteCounter_ = 0; jumpBuffer_ = 0;
+            playerTr_.pos = {
+                xOffset_ + spawnTx_ * kTile,
+                TyToWorldY(spawnTy_) + 0.5f,
+                kPlayerZ
+            };
+            vel_ = {0,0,0};
+            onGround_ = false;
+            coyoteCounter_ = 0;
+            jumpBuffer_ = 0;
         } else {
             AABB f = PlayerAabbFull_();
             int l = ToTx(f.x);
             int r = ToTx(f.x + f.w - 1e-4f);
             int t = ToTy(f.y);
             int b = ToTy(f.y + f.h - 1e-4f);
+
             for (int ty = t; ty <= b; ++ty) {
                 for (int tx = l; tx <= r; ++tx) {
                     if (!InMap(tx, ty)) continue;
                     if (grid_[ty][tx] != Tile::Spike) continue;
+
                     float bx = xOffset_ + tx * kTile;
                     float by = TyToWorldY(ty);
                     if (OverlapXY(f, bx, by, kTile, kTile)) {
                         ClampSpawnToSafe();
-                        playerTr_.pos = {xOffset_ + spawnTx_ * kTile, TyToWorldY(spawnTy_) + 0.5f, kPlayerZ};
-                        vel_ = {0,0,0}; onGround_ = false; coyoteCounter_ = 0; jumpBuffer_ = 0;
-                        ty = b + 1; break;
+                        playerTr_.pos = {
+                            xOffset_ + spawnTx_ * kTile,
+                            TyToWorldY(spawnTy_) + 0.5f,
+                            kPlayerZ
+                        };
+                        vel_ = {0,0,0};
+                        onGround_ = false;
+                        coyoteCounter_ = 0;
+                        jumpBuffer_ = 0;
+
+                        ty = b + 1; // 二重リセット防止で外側ループbreak
+                        break;
                     }
                 }
             }
@@ -693,17 +853,28 @@ void GameScene::EditorUI_() {
     ImGui::Text("Switch: %s", switchOn_ ? "ON" : "OFF");
 
     // Save / Load / Snapshot
-    if (ImGui::Button("Save CSV (F5)")) (void)SaveCSV("stage.csv");
+    if (ImGui::Button("Save CSV (F5)")) {
+        (void)SaveCSV("stage.csv");
+    }
     ImGui::SameLine();
     if (ImGui::Button("Load CSV (F9)")) {
         if (LoadCSV("stage.csv")) {
             ClampSpawnToSafe();
-            playerTr_.pos = {xOffset_ + spawnTx_ * kTile, TyToWorldY(spawnTy_) + 0.5f, kPlayerZ};
-            vel_ = {0,0,0}; onGround_ = false; coyoteCounter_ = 0; jumpBuffer_ = 0;
+            playerTr_.pos = {
+                xOffset_ + spawnTx_ * kTile,
+                TyToWorldY(spawnTy_) + 0.5f,
+                kPlayerZ
+            };
+            vel_ = {0,0,0};
+            onGround_ = false;
+            coyoteCounter_ = 0;
+            jumpBuffer_ = 0;
         }
     }
     ImGui::SameLine();
-    if (ImGui::Button("Snapshot backups/")) (void)CreateSnapshot("stage.csv");
+    if (ImGui::Button("Snapshot backups/")) {
+        (void)CreateSnapshot("stage.csv");
+    }
 
     ImGui::Separator();
     ImGui::TextUnformatted("Mouse: L=place  R=erase  M=pick  (Spawn slot: set spawn; Shift+L: teleport)");
@@ -723,7 +894,8 @@ void GameScene::EditorUI_() {
         if (middle) {
             // スポイト
             Tile cur = grid_[hoverTy_][hoverTx_];
-            int id = (int)cur; id = std::clamp(id, 0, 11);
+            int id = (int)cur;
+            id = std::clamp(id, 0, 11);
             paletteSel_ = id;
         } else if (left) {
             // 置く or Spawn
@@ -731,16 +903,29 @@ void GameScene::EditorUI_() {
                 spawnTx_ = hoverTx_;
                 spawnTy_ = hoverTy_;
                 ClampSpawnToSafe();
+
                 const bool lshift = ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift);
                 if (lshift) {
-                    playerTr_.pos = {xOffset_ + spawnTx_ * kTile, TyToWorldY(spawnTy_) + 0.5f, kPlayerZ};
-                    vel_ = {0,0,0}; onGround_ = false; coyoteCounter_ = 0; jumpBuffer_ = 0;
+                    playerTr_.pos = {
+                        xOffset_ + spawnTx_ * kTile,
+                        TyToWorldY(spawnTy_) + 0.5f,
+                        kPlayerZ
+                    };
+                    vel_ = {0,0,0};
+                    onGround_ = false;
+                    coyoteCounter_ = 0;
+                    jumpBuffer_ = 0;
                 }
             } else {
                 Tile t = (Tile)std::clamp(paletteSel_, 0, 11);
                 grid_[hoverTy_][hoverTx_] = t;
-                if (IsFragile(t)) frag_[hoverTy_][hoverTx_] = FragileState{};
-                if (t == Tile::Regen)     regen_[hoverTy_][hoverTx_] = RegenState{};
+
+                if (IsFragile(t)) {
+                    frag_[hoverTy_][hoverTx_] = FragileState{};
+                }
+                if (t == Tile::Regen) {
+                    regen_[hoverTy_][hoverTx_] = RegenState{};
+                }
             }
         } else if (right) {
             // 消しゴム（Spawn 選択中は何もしない）
@@ -808,20 +993,65 @@ void GameScene::Draw() {
     auto *renderer = renderContext_->modelRenderer;
     renderer->Begin(cmd, camera_);
 
-    // ---- タイル（XY平面 / Z=0）----
+    // ---- タイル描画 ----
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
-            if (t == Tile::Empty) continue;
-            if (IsFragile(t) && frag_[y][x].gone && t != Tile::Regen) continue;
 
+            // fragile系の「消えた」ものはRegen以外描かない
+            if (IsFragile(t) && frag_[y][x].gone && t != Tile::Regen) {
+                continue;
+            }
+
+            // SwitchBlockは状態によって表示/非表示が変わる
+            if (t == Tile::SwitchBlockOn && !switchOn_) continue;
+            if (t == Tile::SwitchBlockOff && switchOn_) continue;
+
+            // どのモデル描くか決める
+            Model *drawModel = nullptr;
+            switch (t) {
+            case Tile::Solid:
+                drawModel = &mdlSolid_; break;
+            case Tile::FragileAny:
+                drawModel = &mdlFragileAny_; break;
+            case Tile::FragileTop:
+                drawModel = &mdlFragileTop_; break;
+            case Tile::FragileBottom:
+                drawModel = &mdlFragileBottom_; break;
+            case Tile::Regen:
+                drawModel = &mdlRegen_; break;
+            case Tile::Spring:
+                drawModel = &mdlSpring_; break;
+            case Tile::Spike:
+                drawModel = &mdlSpike_; break;
+            case Tile::Switch:
+                drawModel = &mdlSwitch_; break;
+            case Tile::SwitchBlockOn:
+                drawModel = &mdlSwitchBlockOn_; break;
+            case Tile::SwitchBlockOff:
+                drawModel = &mdlSwitchBlockOff_; break;
+            case Tile::JumpOnly:
+                drawModel = &mdlJumpOnly_; break;
+            default:
+                break; // Empty など
+            }
+
+            if (!drawModel) continue;
+
+            // タイル座標→ワールド
             const float bx = xOffset_ + x * kTile;
             const float by = TyToWorldY(y);
 
             Transform tr{};
-            tr.pos = {bx + kTile * 0.5f, by + kTile * 0.5f, 0.0f};
-            tr.scale = {0.5f, 0.5f, 0.5f * kBlockDepth}; // OBJ が 2.0 幅 → 0.5
-            renderer->Draw(cmd, cubeModel_, tr);
+            tr.pos = {
+                bx + kTile * 0.5f,
+                by + kTile * 0.5f,
+                0.0f
+            };
+            // objは中心が原点で各軸2.0の想定 → 1タイル(=1.0)に合わせるので0.5スケール
+            tr.scale = {0.5f, 0.5f, 0.5f * kBlockDepth};
+
+            renderer->Draw(cmd, *drawModel, tr);
         }
     }
 
@@ -839,7 +1069,7 @@ void GameScene::Draw() {
 
     renderer->End(cmd);
 
-    // ====== ImGui はここ（PreDrawで NewFrame 済み）======
+    // ====== ImGui ======
     if (editorOn_) {
         EditorUI_();
     } else if (uiVisible_) {
@@ -850,4 +1080,6 @@ void GameScene::Draw() {
     }
 }
 
-void GameScene::Finalize() {}
+void GameScene::Finalize() {
+    // 今のところ特に解放は不要
+}

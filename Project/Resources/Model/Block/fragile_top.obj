@@ -1,6 +1,6 @@
 # Blender 4.4.1
 # www.blender.org
-mtllib block.mtl
+mtllib fragile_top.mtl
 o 立方体
 v -1.000000 -1.000000 1.000000
 v -1.000000 1.000000 1.000000

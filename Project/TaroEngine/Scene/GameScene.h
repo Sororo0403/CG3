@@ -43,19 +43,19 @@ private:
     static constexpr float kTile = 1.0f;
 
     // 物理チューニング
-    static constexpr float kGravity = 0.55f / 48.0f;
-    static constexpr float kMoveGround = 5.0f / 48.0f;
-    static constexpr float kMoveAir = 3.0f / 48.0f;
-    static constexpr float kJumpVy = 11.0f / 48.0f;
-    static constexpr float kSpringVy = 18.0f / 48.0f;
-    static constexpr float kMaxFallVy = -18.0f / 48.0f;
+    static constexpr float kGravity    = 0.55f / 48.0f;
+    static constexpr float kMoveGround = 5.0f  / 48.0f;
+    static constexpr float kMoveAir    = 3.0f  / 48.0f;
+    static constexpr float kJumpVy     = 11.0f / 48.0f;
+    static constexpr float kSpringVy   = 18.0f / 48.0f;
+    static constexpr float kMaxFallVy  = -18.0f / 48.0f;
 
     // スキン
     static constexpr float kSkinY = 0.01f;
     static constexpr float kSkinX = 2.0f / 48.0f;
 
     // ジャンプ安定化
-    static constexpr int kCoyoteMaxFrames = 6;
+    static constexpr int kCoyoteMaxFrames  = 6;
     static constexpr int kJumpBufferFrames = 6;
 
     // ===== タイル =====
@@ -82,15 +82,51 @@ private:
 
     // ===== 描画 =====
     Camera camera_;
+
+    // プレイヤーモデル
     Model  playerModel_;
-    Model  cubeModel_;     // タイル用（OBJは中心原点/サイズ2.0）
+
+    // タイル用モデル種類
+    Model  mdlSolid_;
+    Model  mdlFragileAny_;
+    Model  mdlFragileTop_;
+    Model  mdlFragileBottom_;
+    Model  mdlRegen_;
+    Model  mdlSpring_;
+    Model  mdlSpike_;
+    Model  mdlSwitch_;
+    Model  mdlSwitchBlockOn_;
+    Model  mdlSwitchBlockOff_;
+    Model  mdlJumpOnly_;
 
     // --- テクスチャ（寿命保持 & SRVインデックス固定）
     Microsoft::WRL::ComPtr<ID3D12Resource> texPlayer_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> texBlock_;
-    static constexpr UINT kSrvIndex_ImGuiFont = 0; // ImGui が使う想定
-    static constexpr UINT kSrvIndex_Player = 1;
-    static constexpr UINT kSrvIndex_Block = 2;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSolid_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texFragileAny_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texFragileTop_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texFragileBottom_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texRegen_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSpring_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSpike_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitch_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOn_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOff_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
+
+    // SRV インデックス割り当て（グローバルSRVヒープ内の場所を固定）
+    static constexpr UINT kSrvIndex_ImGuiFont      = 0; // ImGui が使う想定
+    static constexpr UINT kSrvIndex_Player         = 1;
+    static constexpr UINT kSrvIndex_Solid          = 2;
+    static constexpr UINT kSrvIndex_FragileAny     = 3;
+    static constexpr UINT kSrvIndex_FragileTop     = 4;
+    static constexpr UINT kSrvIndex_FragileBottom  = 5;
+    static constexpr UINT kSrvIndex_Regen          = 6;
+    static constexpr UINT kSrvIndex_Spring         = 7;
+    static constexpr UINT kSrvIndex_Spike          = 8;
+    static constexpr UINT kSrvIndex_Switch         = 9;
+    static constexpr UINT kSrvIndex_SwitchOn       = 10;
+    static constexpr UINT kSrvIndex_SwitchOff      = 11;
+    static constexpr UINT kSrvIndex_JumpOnly       = 12;
 
     // ===== マップ（XY平面 / CSV互換） =====
     Tile         grid_[kMapH][kMapW]{};
