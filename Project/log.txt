@@ -31,3 +31,6 @@
 [20:58:12.590][INFO] [ShaderCompiler] DXC を初期化しました。
 [20:58:12.609][INFO] [HLSL] 成功: Resources/Shaders/ModelVS.hlsl (Entry=ModelVS / Target=vs_6_0)
 [20:58:12.617][INFO] [HLSL] 成功: Resources/Shaders/ModelPS.hlsl (Entry=ModelPS / Target=ps_6_0)
+[21:31:51.079][INFO] [ShaderCompiler] DXC を初期化しました。
+[21:31:51.097][INFO] [HLSL] 成功: Resources/Shaders/ModelVS.hlsl (Entry=ModelVS / Target=vs_6_0)
+[21:31:51.104][INFO] [HLSL] 成功: Resources/Shaders/ModelPS.hlsl (Entry=ModelPS / Target=ps_6_0)
