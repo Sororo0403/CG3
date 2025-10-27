@@ -170,6 +170,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\App\main.cpp" />
     <ClCompile Include="TaroEngine\Platform\WinApp.cpp" />
     <ClCompile Include="TaroEngine\Scene\GameScene.cpp" />
+    <ClCompile Include="TaroEngine\Scene\TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h" />
@@ -205,6 +206,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="TaroEngine\Math\Transform.h" />
     <ClInclude Include="TaroEngine\Math\Vertex.h" />
     <ClInclude Include="TaroEngine\Math\VertexRef.h" />
+    <ClInclude Include="TaroEngine\Scene\TitleScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

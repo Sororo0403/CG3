@@ -1215,80 +1215,110 @@ void GameScene::Draw() {
 
     auto Deg = [](float d) { return XMConvertToRadians(d); };
     auto DrawM = [&](Model &m, const XMFLOAT3 &p, const XMFLOAT3 &s, const XMFLOAT3 &r) {
-        Transform t{}; t.pos = p; t.scale = s; t.rot = {Deg(r.x),Deg(r.y),Deg(r.z)};
+        Transform t{};
+        t.pos = p;
+        t.scale = s;
+        t.rot = {Deg(r.x), Deg(r.y), Deg(r.z)};
         renderer->Draw(cmd, m, t);
         };
     auto Hash01 = [](int n) {
-        // 0..1 の乱数っぽい値
         uint32_t h = (uint32_t)(n * 2654435761u) ^ 0x9e3779b9u;
         h ^= (h >> 13); h *= 0x5bd1e995u; h ^= (h >> 15);
         return (h & 0xFFFF) / 65535.0f;
         };
 
-    // ========= ここから“3D背景” =========
-    // 1) 空：巨大プレーン（ごく薄い傾きで単調さを軽減）
+    // ========================================================
+    // 1) 夜空レイヤー：グラデーション + 雲板 + 月
+    // ========================================================
     {
         DrawM(mdlSolid_,
             {0.0f, worldH * 0.50f, 38.0f},
-            {worldW * 2.6f, worldH * 2.0f, 0.25f},
-            {0.0f, 0.0f, -3.5f});
-        // うっすら層をもう1枚（色は同じでも法線/UV変化でテクスチャ差が出やすい）
-        DrawM(mdlSolid_,
-            {0.0f, worldH * 0.55f, 37.2f},
-            {worldW * 2.2f, worldH * 1.8f, 0.20f},
-            {0.0f, 0.0f, 8.0f});
+            {worldW * 2.8f, worldH * 2.2f, 0.25f},
+            {0.0f, 0.0f, -4.5f});
+
+        // 雲レイヤー
+        for (int i = -3; i <= 3; ++i) {
+            float off = i * worldW * 0.25f;
+            DrawM(mdlSolid_,
+                {off, worldH * (0.6f + 0.08f * std::sin(i * 1.2f)), 37.6f},
+                {worldW * 0.9f, worldH * 0.3f, 0.05f},
+                {0, 0, (i % 2 == 0) ? -10.0f : 8.0f});
+        }
+
+        // 月
+        DrawM(mdlSwitchBlockOff_,
+            {worldW * 0.35f, worldH * 0.85f, 37.0f},
+            {1.4f, 1.4f, 0.2f},
+            {0, 0, 0});
     }
 
-    // 2) 超遠景のビル群（シルエット）— 奥から手前へ3レイヤ
-    auto DrawBuildings = [&](float z, float yBase, float span, float wMin, float wMax, float hMinH, float hMaxH, float tilt) {
+    // ========================================================
+    // 2) ビル群：遠景・中景・近景 + 屋上警告灯
+    // ========================================================
+    auto DrawBuildings = [&](float z, float yBase, float span, float wMin, float wMax, float hMin, float hMax, float tilt) {
         int count = int(worldW / span) + 6;
         for (int i = -count / 2; i <= count / 2; i++) {
-            float rx = (i * span);
-            float rW = wMin + (wMax - wMin) * Hash01(i * 31 + int(z * 10));
-            float rH = hMinH + (hMaxH - hMinH) * Hash01(i * 97 + int(z * 20));
-            DrawM(mdlSolid_,
-                {rx, yBase + rH * 0.5f, z},
-                {rW, rH * 0.5f, 0.22f},
-                {0,0,((i & 1) ? tilt : -tilt)});
-            // 屋上の小突起（別モデルを小さく）
+            float rx = i * span;
+            float rw = wMin + (wMax - wMin) * Hash01(i * 31 + int(z * 10));
+            float rh = hMin + (hMax - hMin) * Hash01(i * 97 + int(z * 20));
+
+            // 本体
+            DrawM(mdlSolid_, {rx, yBase + rh * 0.5f, z},
+                {rw, rh * 0.5f, 0.22f},
+                {0, 0, ((i & 1) ? tilt : -tilt)});
+
+            // 屋上
             DrawM(mdlSwitchBlockOff_,
-                {rx + rW * 0.15f, yBase + rH + 0.10f, z - 0.05f},
-                {rW * 0.12f, rW * 0.12f, 0.18f},
-                {0,0,(i & 1) ? -6.0f : 6.0f});
+                {rx + rw * 0.15f, yBase + rh + 0.10f, z - 0.05f},
+                {rw * 0.12f, rw * 0.12f, 0.18f},
+                {0, 0, (i & 1) ? -6.0f : 6.0f});
+
+            // 警告灯
+            if ((i + (int)z) % 4 == 0) {
+                DrawM(mdlSwitchBlockOn_,
+                    {rx, yBase + rh + 0.25f, z - 0.06f},
+                    {0.10f, 0.10f, 0.15f},
+                    {0, 0, 0});
+            }
         }
         };
     DrawBuildings(33.0f, worldH * 0.06f, worldW * 0.14f, worldW * 0.06f, worldW * 0.10f, worldH * 0.14f, worldH * 0.28f, 2.0f);
     DrawBuildings(30.0f, worldH * 0.08f, worldW * 0.12f, worldW * 0.07f, worldW * 0.12f, worldH * 0.18f, worldH * 0.34f, 3.0f);
     DrawBuildings(27.0f, worldH * 0.10f, worldW * 0.10f, worldW * 0.08f, worldW * 0.14f, worldH * 0.22f, worldH * 0.40f, 4.0f);
 
-    // 3) クレーン（梁・支柱）— JumpOnly / Solid を伸ばして構成
+    // ========================================================
+    // 3) クレーン：梁・支柱・吊り鉄骨・作業灯
+    // ========================================================
     {
-        // 支柱
         DrawM(mdlJumpOnly_, {-worldW * 0.30f, worldH * 0.86f, 24.8f}, {0.06f, worldH * 0.55f, 0.30f}, {0,0,0});
-        // アーム
         DrawM(mdlSolid_, {-worldW * 0.05f, worldH * 1.05f, 24.6f}, {worldW * 0.55f, 0.06f, 0.30f}, {0,0,-9.0f});
-        // ワイヤ
         DrawM(mdlSolid_, {worldW * 0.22f, worldH * 0.88f, 24.5f}, {0.035f, worldH * 0.28f, 0.25f}, {0,0,0});
-        // フック
         DrawM(mdlSwitch_, {worldW * 0.22f, worldH * 0.72f, 24.4f}, {0.14f, 0.14f, 0.22f}, {0,0,0});
+
+        // 吊り下げ鉄骨
+        DrawM(mdlSolid_, {worldW * 0.22f, worldH * 0.55f, 24.3f}, {0.35f, 0.08f, 0.25f}, {0,0,4.0f});
+        // 鉄骨下の作業灯
+        DrawM(mdlSwitchBlockOn_, {worldW * 0.22f, worldH * 0.47f, 24.2f}, {0.15f, 0.08f, 0.22f}, {0,0,0});
     }
 
-    // 4) 投光器（本体+三脚・光っぽい板）— Spike を薄く広げてコーン表現
-    auto Flood = [&](XMFLOAT3 b, float rotZ) {
-        // ポール
+    // ========================================================
+    // 4) 投光器：本体+光コーン+点滅ランプ
+    // ========================================================
+    auto Flood = [&](XMFLOAT3 b, float rotZ, bool blink) {
         DrawM(mdlSolid_, {b.x, b.y, 22.0f}, {0.05f, 0.55f, 0.25f}, {0,0,0});
-        // 本体
         DrawM(mdlSwitchBlockOn_, {b.x, b.y + 0.38f, 21.9f}, {0.22f, 0.12f, 0.22f}, {0,0,rotZ});
-        // 光コーン（薄板×2 を少しずらして重ねる）
         DrawM(mdlSpike_, {b.x + 0.10f, b.y + 0.25f, 21.7f}, {worldW * 0.22f, worldH * 0.10f, 0.05f}, {0,0,rotZ - 12.0f});
         DrawM(mdlSpike_, {b.x + 0.08f, b.y + 0.27f, 21.6f}, {worldW * 0.24f, worldH * 0.11f, 0.05f}, {0,0,rotZ - 14.0f});
+        if (blink) {
+            DrawM(mdlSwitch_, {b.x, b.y - 0.45f, 21.8f}, {0.12f, 0.12f, 0.15f}, {0,0,0});
+        }
         };
-    Flood({-worldW * 0.48f, worldH * 0.82f, 0}, 10.0f);
-    Flood({worldW * 0.52f, worldH * 0.74f, 0}, 18.0f);
-    // ========= “3D背景”ここまで =========
+    Flood({-worldW * 0.48f, worldH * 0.82f, 0}, 10.0f, true);
+    Flood({worldW * 0.52f, worldH * 0.74f, 0}, 18.0f, false);
 
-
-    // ===== タイル描画（そのまま） =====
+    // ========================================================
+    // 5) タイル（既存のブロックやギミック描画）
+    // ========================================================
     auto Hash4 = [](int x, int y) {
         uint32_t h = (uint32_t)(x * 73856093u) ^ (uint32_t)(y * 19349663u);
         h ^= (h >> 13); h *= 0x5bd1e995u;
@@ -1308,17 +1338,17 @@ void GameScene::Draw() {
 
             Model *m = nullptr; bool isFrag = false;
             switch (t) {
-            case Tile::Solid:            m = &mdlSolid_; break;
-            case Tile::FragileAny:       m = &mdlFragileAny_;    isFrag = true; break;
-            case Tile::FragileTop:       m = &mdlFragileTop_;    isFrag = true; break;
-            case Tile::FragileBottom:    m = &mdlFragileBottom_; isFrag = true; break;
-            case Tile::Regen:            m = &mdlRegen_;         isFrag = true; break;
-            case Tile::Spring:           m = &mdlSpring_; break;
-            case Tile::Spike:            m = &mdlSpike_; break;
-            case Tile::Switch:           m = &mdlSwitch_; break;
-            case Tile::SwitchBlockOn:    m = &mdlSwitchBlockOn_; break;
-            case Tile::SwitchBlockOff:   m = &mdlSwitchBlockOff_; break;
-            case Tile::JumpOnly:         m = &mdlJumpOnly_; break;
+            case Tile::Solid: m = &mdlSolid_; break;
+            case Tile::FragileAny: m = &mdlFragileAny_; isFrag = true; break;
+            case Tile::FragileTop: m = &mdlFragileTop_; isFrag = true; break;
+            case Tile::FragileBottom: m = &mdlFragileBottom_; isFrag = true; break;
+            case Tile::Regen: m = &mdlRegen_; isFrag = true; break;
+            case Tile::Spring: m = &mdlSpring_; break;
+            case Tile::Spike: m = &mdlSpike_; break;
+            case Tile::Switch: m = &mdlSwitch_; break;
+            case Tile::SwitchBlockOn: m = &mdlSwitchBlockOn_; break;
+            case Tile::SwitchBlockOff: m = &mdlSwitchBlockOff_; break;
+            case Tile::JumpOnly: m = &mdlJumpOnly_; break;
             default: break;
             }
             if (!m) continue;
@@ -1326,8 +1356,10 @@ void GameScene::Draw() {
             float wx = xOffset_ + tx * kTile;
             float wy = TyToWorldY(ty);
 
-            Transform base{}; base.pos = {wx + 0.5f * kTile, wy + 0.5f * kTile, 0.0f};
-            base.scale = {0.5f, 0.5f, 0.5f * kBlockDepth}; base.rot = {0,0,0};
+            Transform base{};
+            base.pos = {wx + 0.5f * kTile, wy + 0.5f * kTile, 0.0f};
+            base.scale = {0.5f, 0.5f, 0.5f * kBlockDepth};
+            base.rot = {0,0,0};
             {
                 XMFLOAT4 r = Hash4(tx, ty);
                 base.rot.z = Deg((r.x * 2.0f - 1.0f) * 4.0f);
@@ -1336,7 +1368,7 @@ void GameScene::Draw() {
             }
             renderer->Draw(cmd, *m, base);
 
-            // 以降のガーニッシュはあなたの元コードそのまま（省略していません）
+            // 以降のガーニッシュ・ギミック装飾はあなたの元コードそのまま
             bool plat = (t == Tile::Solid || t == Tile::JumpOnly || t == Tile::FragileAny || t == Tile::FragileTop || t == Tile::FragileBottom || t == Tile::Regen);
             if (plat) {
                 struct C { float ox, oy; }; C cs[4] = {{-0.35f,-0.35f},{0.35f,-0.35f},{0.35f,0.35f},{-0.35f,0.35f}};
@@ -1379,24 +1411,49 @@ void GameScene::Draw() {
         }
     }
 
-    // ===== プレイヤー =====
+    // ========================================================
+    // 6) プレイヤー
+    // ========================================================
     {
-        float s = 0.5f; XMFLOAT3 mn = playerModel_.GetLocalMin();
-        Transform p{}; p.pos = {playerTr_.pos.x + pw_ * 0.5f, playerTr_.pos.y - (mn.y * s), kPlayerZ}; p.scale = {s,s,s * kPlayerDepth}; p.rot = {0,0,0};
+        float s = 0.5f;
+        XMFLOAT3 mn = playerModel_.GetLocalMin();
+        Transform p{};
+        p.pos = {playerTr_.pos.x + pw_ * 0.5f, playerTr_.pos.y - (mn.y * s), kPlayerZ};
+        p.scale = {s,s,s * kPlayerDepth};
+        p.rot = {0,0,0};
         renderer->Draw(cmd, playerModel_, p);
 
-        Transform belt{}; belt.pos = {p.pos.x, p.pos.y + p.scale.y * 0.2f, p.pos.z - 0.03f}; belt.scale = {p.scale.x * 0.7f, p.scale.y * 0.12f, p.scale.z}; belt.rot = {0,0,Deg(8)}; renderer->Draw(cmd, mdlSolid_, belt);
+        Transform belt{};
+        belt.pos = {p.pos.x, p.pos.y + p.scale.y * 0.2f, p.pos.z - 0.03f};
+        belt.scale = {p.scale.x * 0.7f, p.scale.y * 0.12f, p.scale.z};
+        belt.rot = {0,0,Deg(8)};
+        renderer->Draw(cmd, mdlSolid_, belt);
     }
 
-    // ===== 手前ガーニッシュ（ちょい前景・プレイヤーより手前に） =====
+    // ========================================================
+    // 7) 前景：鉄骨・ケーブル・手すり
+    // ========================================================
     {
         float y = -0.5f * kTile;
         Transform rail{}; rail.pos = {0.0f, y, -0.40f}; rail.scale = {worldW * 0.65f, 0.05f, 0.22f};
         renderer->Draw(cmd, mdlSolid_, rail);
+
         for (int i = -3; i <= 3; ++i) {
             float x = i * (worldW * 0.16f);
-            Transform t{}; t.pos = {x, y + 0.2f, -0.41f}; t.scale = {worldW * 0.09f, 0.03f, 0.22f}; t.rot = {0,0,Deg((i % 2 == 0) ? -10.0f : 12.0f)};
+            Transform t{};
+            t.pos = {x, y + 0.2f, -0.41f};
+            t.scale = {worldW * 0.09f, 0.03f, 0.22f};
+            t.rot = {0,0,Deg((i % 2 == 0) ? -10.0f : 12.0f)};
             renderer->Draw(cmd, mdlSolid_, t);
+        }
+
+        // ケーブル
+        for (int i = -2; i <= 2; ++i) {
+            Transform c{};
+            c.pos = {i * (worldW * 0.18f), y + 0.5f, -0.42f};
+            c.scale = {worldW * 0.08f, 0.01f, 0.2f};
+            c.rot = {0,0,Deg(10.0f * std::sinf(static_cast<float>(i)))};
+            renderer->Draw(cmd, mdlJumpOnly_, c);
         }
     }
 
