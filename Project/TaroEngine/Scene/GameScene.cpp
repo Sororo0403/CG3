@@ -692,7 +692,7 @@ void GameScene::ResolveVertical_(float dt) {
 
                             // fragile踏んだらarmed開始
                             if (IsFragile(tt) && !frag_[row][tx].gone) {
-                                frag_[row][tx].armed = true;
+                                ArmFragile_(tx, row);
                             }
                         }
                     }
@@ -738,10 +738,11 @@ void GameScene::ResolveVertical_(float dt) {
                             std::min(boxNow.x + boxNow.w, bx + kTile)
                             - std::max(boxNow.x, bx);
                         if (overlapX > kMinGroundOverlap) {
-                            frag_[row][tx].armed = true;
+                            ArmFragile_(tx, row);
                         }
                     }
                 }
+
 
                 if (!IsBlockingAt(tx, row)) continue;
 
@@ -794,8 +795,9 @@ void GameScene::ResolveVertical_(float dt) {
                 std::min(playerTr_.pos.x + pw_, bx + kTile)
                 - std::max(playerTr_.pos.x, bx);
             if (overlapX > kMinGroundOverlap) {
-                frag_[rowBelow][tx].armed = true;
+                ArmFragile_(tx, rowBelow);
             }
+
         }
     }
 
@@ -1486,4 +1488,21 @@ void GameScene::Draw() {
 // ----------------- Finalize -----------------
 void GameScene::Finalize() {
     // ComPtrで自動解放
+}
+
+void GameScene::ArmFragile_(int tx, int ty) {
+    if (!InMap(tx, ty)) return;
+    if (!IsFragile(grid_[ty][tx])) return;
+
+    FragileState &fs = frag_[ty][tx];
+    if (fs.gone) return;
+
+    if (!fs.armed) {
+        fs.armed = true;
+        // 触れた瞬間から点滅させたいので、いきなり警告フェーズまでタイマーを進める
+        float blinkStartT = kFragileBreakTime - kFragileBlinkStart;
+        if (fs.t < blinkStartT) {
+            fs.t = blinkStartT;
+        }
+    }
 }

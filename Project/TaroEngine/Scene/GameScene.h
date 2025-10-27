@@ -37,6 +37,7 @@ public:
     void Draw() override;
     void Finalize() override;
 
+
 private:
     // ===== 基本定数 =====
     static constexpr int   kMapW = 26;
@@ -183,6 +184,10 @@ private:
     bool SaveCSV(const std::string &path) const;
     bool LoadCSV(const std::string &path);
     void ClampSpawnToSafe();
+
+
+
+    void ArmFragile_(int tx, int ty);
 
     Tile          initialGrid_[kMapH][kMapW]{};
     FragileState  initialFrag_[kMapH][kMapW]{};
