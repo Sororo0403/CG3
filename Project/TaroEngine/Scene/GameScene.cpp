@@ -414,11 +414,25 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     xOffset_ = -mapW * 0.5f;
 
     // CSVロード or サンプル構築
-    if (!LoadCSV("stage.csv")) {
-        BuildSample();
-        (void)SaveCSV("stage.csv");
+// ステージ番号に応じてCSVパス決定
+    std::string stagePath;
+    {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "stage%02d.csv", stageId_);
+        stagePath = buf;
+    }
+
+    // 1. 指定ステージのCSVを試す
+    // 2. ダメなら "stage.csv"
+    // 3. それも無ければ BuildSample()
+    if (!LoadCSV(stagePath)) {
+        if (!LoadCSV("stage.csv")) {
+            BuildSample();
+            (void)SaveCSV(stagePath); // とりあえずステージ固有名で吐いとく
+        }
     }
     ClampSpawnToSafe();
+
 
     // プレイヤ初期
     playerTr_ = {};

@@ -12,6 +12,7 @@
 #include "BufferUtility.h"
 #include "Input.h"
 #include "SceneManager.h"
+#include "StageSelectScene.h"
 
 #include <DirectXTex/DirectXTex.h>
 #include <DirectXTex/d3dx12.h>
@@ -137,7 +138,7 @@ void TitleScene::Update(float dt) {
     // Spaceでシーン遷移
     if (engine_->input && engine_->input->IsKeyTriggered(DIK_SPACE)) {
         // TODO: 実際は StageSelectScene とかに差し替えたい
-        engine_->sceneManager->ChangeScene(std::make_unique<TitleScene>());
+        engine_->sceneManager->ChangeScene(std::make_unique<StageSelectScene>());
     }
 }
 

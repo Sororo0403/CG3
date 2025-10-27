@@ -31,6 +31,7 @@ struct AABB { float x, y; float w, h; };
 /// </summary>
 class GameScene : public IScene {
 public:
+	GameScene(int stageId = 1) : stageId_(stageId) {}
 	void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
 	void Update(float deltaTime) override;
 	void Draw() override;
@@ -163,6 +164,8 @@ private:
 	float ph_ = 0.99f;  // プレイヤー高さ
 
 	bool  onGround_ = false;
+
+	int stageId_ = 1; // どのステージか
 
 	// 入力補助
 	int  coyoteCounter_ = 0;
