@@ -151,7 +151,7 @@ private:
     DirectX::XMFLOAT3 vel_{0,0,0};
 
     // 固定AABBサイズ
-    float pw_ = 1.0f;   // プレイヤー幅
+    float pw_ = 0.99f;   // プレイヤー幅
     float ph_ = 0.99f;  // プレイヤー高さ
 
     bool  onGround_ = false;
