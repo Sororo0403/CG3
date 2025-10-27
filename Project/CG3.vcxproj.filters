@@ -140,6 +140,12 @@
     <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Scene\TitleScene.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="TaroEngine\Scene\StageSelectScene.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -240,6 +246,12 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Platform\WinApp.h">
       <Filter>Include\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\TitleScene.h">
+      <Filter>Include\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\StageSelectScene.h">
+      <Filter>Include\Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
