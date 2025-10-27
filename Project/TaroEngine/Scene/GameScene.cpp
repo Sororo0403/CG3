@@ -15,12 +15,68 @@
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
-
 namespace {
     constexpr float kBlockDepth = 0.5f;
     constexpr float kPlayerDepth = 0.6f;
     constexpr float kPlayerZ = -0.26f; // -Z が手前
+
+    constexpr float kFragileBreakTime = 1.35f; // armed→完全に消滅
+    constexpr float kRegenRespawnTime = 2.0f;  // Regenが戻るまで
+    constexpr float kFragileBlinkStart = 0.6f;  // 壊れる0.6秒前からフェード警告
+    constexpr float kFragileBlinkFreq = 4.0f;  // Hz 揺らしの速さ
 }
+
+float GameScene::FragileBlinkFactor_(int tx, int ty) const {
+    if (!InMap(tx, ty)) {
+        return 1.0f;
+    }
+
+    Tile t = grid_[ty][tx];
+    if (!IsFragile(t)) {
+        return 1.0f;
+    }
+
+    const FragileState &fs = frag_[ty][tx];
+
+    // もう消えてる or まだarmedじゃないならフェードしない
+    if (fs.gone) { return 1.0f; }
+    if (!fs.armed) { return 1.0f; }
+
+    float elapsed = fs.t;
+    float remaining = kFragileBreakTime - elapsed;
+
+    // まだ余裕があるときは1.0
+    if (remaining > kFragileBlinkStart) {
+        return 1.0f;
+    }
+
+    // 警告フェーズ
+    // timeInBlink: 警告モードに入ってからどれくらい経ったか
+    float timeInBlink = kFragileBlinkStart - remaining; // 秒経過
+    float period = 1.0f / kFragileBlinkFreq;       // 周期
+    float cyclePos = std::fmodf(timeInBlink, period); // [0,period)
+    float t01 = cyclePos / period;               // [0,1)
+
+    // 0→1→0 と滑らかに上下する波
+    float wave = 0.5f * (1.0f - std::cos(t01 * 2.0f * 3.14159265f));
+    // wave=0 → 0
+    // wave=0.5 → 1
+    // wave=1 → 0
+
+    // danger: 0=まだ余裕, 1=ほぼ落ちる
+    float danger = std::clamp((kFragileBlinkStart - remaining) / kFragileBlinkStart, 0.0f, 1.0f);
+
+    // dangerが高いほど、最低アルファを0.25まで下げる
+    float minAlpha = 1.0f - danger * 0.75f; // 1.0→0.25
+
+    // waveで 1.0..minAlpha..1.0 を往復させる
+    float alphaMul = 1.0f + (minAlpha - 1.0f) * wave;
+
+    if (alphaMul < 0.0f) alphaMul = 0.0f;
+    if (alphaMul > 1.0f) alphaMul = 1.0f;
+    return alphaMul;
+}
+
 
 // ----------------- UTF-8 → UTF-16 -----------------
 std::wstring GameScene::Widen_(const std::string &u8) {
@@ -31,6 +87,7 @@ std::wstring GameScene::Widen_(const std::string &u8) {
     if (!w.empty() && w.back() == L'\0') w.pop_back();
     return w;
 }
+
 
 // ----------------- 入力立ち上がり -----------------
 bool GameScene::KeyPressed_(uint8_t dik) {
@@ -568,7 +625,7 @@ void GameScene::ResolveVertical_(float dt) {
     // AABBの現在形
     AABB boxNow = PlayerAabbFull_();
 
-    // X方向の列
+    // X方向の列（プレイヤーが今またいでるタイル範囲）
     float minX = boxNow.x;
     float maxX = boxNow.x + boxNow.w - 1e-4f;
     int txL = ToTx(minX);
@@ -580,7 +637,7 @@ void GameScene::ResolveVertical_(float dt) {
     bool switchOverlapNow = false;
 
     if (vel_.y <= 0.0f) {
-        // ====== 落下・着地 ======
+        // ====== 落下・着地処理 ======
         float startBottom = startY;
         float endBottom = targetY;
 
@@ -602,7 +659,7 @@ void GameScene::ResolveVertical_(float dt) {
                 float by = TyToWorldY(row);
                 float topY = by + kTile; // タイル上面
 
-                // スプリング / スイッチ重なり（着地後想定位置）
+                // スプリング / スイッチの当たりは「着地後の仮位置」で判定
                 {
                     AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
                     if (IsSpring(tt)) {
@@ -619,21 +676,21 @@ void GameScene::ResolveVertical_(float dt) {
 
                 if (!IsBlockingAt(tx, row)) continue;
 
-                // 下降で床にヒットした？
+                // 下向き移動で床にぶつかった？
                 if ((startBottom - kSkinY) >= topY &&
                     (endBottom - kSkinY) < topY) {
 
                     float overlapX =
                         std::min(boxNow.x + boxNow.w, bx + kTile)
                         - std::max(boxNow.x, bx);
-                    if (overlapX > kMinGroundOverlap) {
 
+                    if (overlapX > kMinGroundOverlap) {
                         float snapY = topY + kSkinY;
                         if (!hitFloor || snapY > bestSnapY) {
                             hitFloor = true;
                             bestSnapY = snapY;
 
-                            // fragile踏んだらarmed
+                            // fragile踏んだらarmed開始
                             if (IsFragile(tt) && !frag_[row][tx].gone) {
                                 frag_[row][tx].armed = true;
                             }
@@ -651,7 +708,7 @@ void GameScene::ResolveVertical_(float dt) {
             playerTr_.pos.y = targetY;
         }
     } else {
-        // ====== 上昇・頭ぶつけ ======
+        // ====== 上昇・頭ぶつけ処理 ======
         float startTop = startY + ph_;
         float endTop = targetY + ph_;
 
@@ -673,7 +730,7 @@ void GameScene::ResolveVertical_(float dt) {
                 float by = TyToWorldY(row);
                 float bottomY = by; // タイル下面
 
-                // 下から壊せるfragileへのヒビ付与
+                // 下から壊せるfragileにヒビを入れる
                 if (IsFragile(tt) && !frag_[row][tx].gone) {
                     bool canFromBelow = (tt == Tile::FragileAny || tt == Tile::FragileBottom);
                     if (canFromBelow) {
@@ -688,7 +745,7 @@ void GameScene::ResolveVertical_(float dt) {
 
                 if (!IsBlockingAt(tx, row)) continue;
 
-                // 上昇で天井にヒットした？
+                // 上昇で天井にぶつかった？
                 if ((startTop + kSkinY) <= bottomY &&
                     (endTop + kSkinY) > bottomY) {
 
@@ -715,7 +772,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // 足元微接地でfragile armed化
+    // 足元の微接地でもfragileにarmed付与（FragileAny/Top/Regen）
     {
         int txL2 = ToTx(playerTr_.pos.x);
         int txR2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -729,6 +786,7 @@ void GameScene::ResolveVertical_(float dt) {
             Tile tt = grid_[rowBelow][tx];
             if (!IsFragile(tt) || frag_[rowBelow][tx].gone) continue;
 
+            // 上から壊せる系（FragileAny/FragileTop/Regen）
             if (!(tt == Tile::FragileAny || tt == Tile::FragileTop || tt == Tile::Regen)) continue;
 
             float bx = xOffset_ + tx * kTile;
@@ -741,14 +799,14 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // スイッチトグル
+    // スイッチトグル（前フレーム非接触→今フレーム接触）
     static bool prevSw = false;
     if (switchOverlapNow && !prevSw) {
         switchOn_ = !switchOn_;
     }
     prevSw = switchOverlapNow;
 
-    // コヨーテ/ジャンプバッファ
+    // コヨーテ/ジャンプバッファ処理
     if (onGround_) coyoteCounter_ = kCoyoteMaxFrames;
     else if (coyoteCounter_ > 0) --coyoteCounter_;
 
@@ -760,7 +818,7 @@ void GameScene::ResolveVertical_(float dt) {
         jumpBuffer_ = 0;
     }
 
-    // 接地時の床スナップ（段差でズレにくくする）
+    // 接地時の小さなズレ吸収（スロープっぽい段差揺れ防止）
     if (onGround_) {
         float stableY = std::floor((playerTr_.pos.y - kSkinY) / kTile) * kTile + kSkinY;
         if (std::fabs(playerTr_.pos.y - stableY) > 1e-4f) {
@@ -768,7 +826,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // fragile / regen タイマー
+    // fragile / regen タイマー進行と実際の破壊・復活
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
@@ -778,7 +836,6 @@ void GameScene::ResolveVertical_(float dt) {
             if (!fs.gone) {
                 if (fs.armed) {
                     fs.t += dt;
-                    constexpr float kFragileBreakTime = 1.35f;
                     if (fs.t > kFragileBreakTime) {
                         fs.gone = true;
                         if (t == Tile::Regen) {
@@ -788,9 +845,8 @@ void GameScene::ResolveVertical_(float dt) {
                 }
             } else if (t == Tile::Regen) {
                 regen_[y][x].respawn += dt;
-                constexpr float kRegenRespawnTime = 2.0f;
                 if (regen_[y][x].respawn >= kRegenRespawnTime) {
-                    fs = FragileState{};
+                    fs = FragileState{}; // 復活: armed=false, t=0, gone=false
                 }
             }
         }
@@ -836,7 +892,7 @@ void GameScene::ResolveVertical_(float dt) {
 
         if (killed) {
             ResetStageAll_();
-            return; // ここでこのフレームの後処理は終わる
+            return; // このフレームはここで終了
         }
     }
 }
@@ -940,7 +996,7 @@ void GameScene::DrawBackgroundAndStage_() {
         return (h & 0xFFFF) / 65535.0f;
         };
 
-    // 1) 夜空レイヤー（大きな板＋雲＋月）
+    // 1) 夜空レイヤー
     {
         DrawM(mdlSolid_,
             {0.0f, worldH * 0.50f, 38.0f},
@@ -961,7 +1017,7 @@ void GameScene::DrawBackgroundAndStage_() {
             {0, 0, 0});
     }
 
-    // 2) ビル群（遠景〜近景）
+    // 2) ビル群
     auto DrawBuildings = [&](float z, float yBase, float span,
         float wMin, float wMax,
         float hMin, float hMax,
@@ -972,18 +1028,18 @@ void GameScene::DrawBackgroundAndStage_() {
                 float rw = wMin + (wMax - wMin) * Hash01(i * 31 + int(z * 10));
                 float rh = hMin + (hMax - hMin) * Hash01(i * 97 + int(z * 20));
 
-                // 本体
+                // ビル本体
                 DrawM(mdlSolid_, {rx, yBase + rh * 0.5f, z},
                     {rw, rh * 0.5f, 0.22f},
                     {0, 0, ((i & 1) ? tilt : -tilt)});
 
-                // 屋上の小物
+                // 屋上の装置っぽい箱
                 DrawM(mdlSwitchBlockOff_,
                     {rx + rw * 0.15f, yBase + rh + 0.10f, z - 0.05f},
                     {rw * 0.12f, rw * 0.12f, 0.18f},
                     {0, 0, (i & 1) ? -6.0f : 6.0f});
 
-                // 警告灯（点滅っぽいライト）
+                // 警告灯(点滅風ライト)
                 if ((i + (int)z) % 4 == 0) {
                     DrawM(mdlSwitchBlockOn_,
                         {rx, yBase + rh + 0.25f, z - 0.06f},
@@ -1008,7 +1064,7 @@ void GameScene::DrawBackgroundAndStage_() {
         worldH * 0.22f, worldH * 0.40f,
         4.0f);
 
-    // 3) クレーン＆つり荷
+    // 3) クレーン
     {
         DrawM(mdlJumpOnly_,
             {-worldW * 0.30f, worldH * 0.86f, 24.8f},
@@ -1027,7 +1083,7 @@ void GameScene::DrawBackgroundAndStage_() {
             {0.14f, 0.14f, 0.22f},
             {0,0,0});
 
-        // ぶら下げ鉄骨
+        // 吊られてる鉄骨
         DrawM(mdlSolid_,
             {worldW * 0.22f, worldH * 0.55f, 24.3f},
             {0.35f, 0.08f, 0.25f},
@@ -1068,7 +1124,7 @@ void GameScene::DrawBackgroundAndStage_() {
     Flood({-worldW * 0.48f, worldH * 0.82f, 0}, 10.0f, true);
     Flood({worldW * 0.52f, worldH * 0.74f, 0}, 18.0f, false);
 
-    // 5) タイル描画（足場・ギミック）
+    // 5) タイル描画（足場・ギミック・点滅対応）
     auto Hash4 = [](int x, int y) {
         uint32_t h = (uint32_t)(x * 73856093u) ^ (uint32_t)(y * 19349663u);
         h ^= (h >> 13); h *= 0x5bd1e995u;
@@ -1082,7 +1138,11 @@ void GameScene::DrawBackgroundAndStage_() {
     for (int ty = 0; ty < kMapH; ++ty) {
         for (int tx = 0; tx < kMapW; ++tx) {
             Tile t = grid_[ty][tx];
+
+            // 壊れて消滅済み（Regen以外）はもう描かない
             if (IsFragile(t) && frag_[ty][tx].gone && t != Tile::Regen) continue;
+
+            // スイッチ連動ブロック可視判定
             if (t == Tile::SwitchBlockOn && !switchOn_) continue;
             if (t == Tile::SwitchBlockOff && switchOn_) continue;
 
@@ -1107,20 +1167,39 @@ void GameScene::DrawBackgroundAndStage_() {
             float wx = xOffset_ + tx * kTile;
             float wy = TyToWorldY(ty);
 
+            // 壊れかけ床用フェードアルファ（通常は1.0）
+            float alphaMul = isFrag ? FragileBlinkFactor_(tx, ty) : 1.0f;
+
+            // このタイルの基本Transform
             Transform base{};
             base.pos = {wx + 0.5f * kTile, wy + 0.5f * kTile, 0.0f};
             base.scale = {0.5f, 0.5f, 0.5f * kBlockDepth};
             base.rot = {0,0,0};
 
+            // 足場にちょっと工事現場っぽい歪み
             {
-                XMFLOAT4 r = Hash4(tx, ty);
+                XMFLOAT4 r = {0,0,0,0};
+                {
+                    // 同じHash4()でランダム傾き・ばらつき
+                    uint32_t h = (uint32_t)(tx * 73856093u) ^ (uint32_t)(ty * 19349663u);
+                    h ^= (h >> 13); h *= 0x5bd1e995u;
+                    float r0 = (float)((h) & 0xFF) / 255.0f;
+                    float r1 = (float)((h >> 8) & 0xFF) / 255.0f;
+                    float r2 = (float)((h >> 16) & 0xFF) / 255.0f;
+                    float r3 = (float)((h >> 24) & 0xFF) / 255.0f;
+                    r = {r0,r1,r2,r3};
+                }
+
                 base.rot.z = Deg((r.x * 2.0f - 1.0f) * 4.0f);
                 base.scale.x *= (1.0f + (r.y * 0.1f - 0.05f));
                 base.scale.y *= (1.0f + (r.z * 0.1f - 0.05f));
             }
-            renderer->Draw(cmd, *m, base);
 
-            // 足場系のデコ(支柱・テープ)
+            // 本体ブロック
+            renderer->Draw(cmd, *m, base, alphaMul);
+
+            // ==== デコレーション系 ==== 
+            // 足場支柱・テープ
             bool plat = (t == Tile::Solid || t == Tile::JumpOnly ||
                 t == Tile::FragileAny || t == Tile::FragileTop ||
                 t == Tile::FragileBottom || t == Tile::Regen);
@@ -1138,8 +1217,10 @@ void GameScene::DrawBackgroundAndStage_() {
                         base.pos.z + 0.05f
                     };
                     leg.scale = {0.03f, 0.175f, base.scale.z * 0.8f};
-                    renderer->Draw(cmd, mdlSolid_, leg);
+                    leg.rot = {0,0,0};
+                    renderer->Draw(cmd, mdlSolid_, leg, alphaMul);
                 }
+
                 Transform tape{};
                 tape.pos = {
                     base.pos.x,
@@ -1152,10 +1233,10 @@ void GameScene::DrawBackgroundAndStage_() {
                     base.scale.z
                 };
                 tape.rot = base.rot;
-                renderer->Draw(cmd, mdlSolid_, tape);
+                renderer->Draw(cmd, mdlSolid_, tape, alphaMul);
             }
 
-            // 壊れる床っぽいヒビ＆警告サイン
+            // ヒビ・警告サイン（壊れる床だけ）
             if (isFrag) {
                 auto Crack = [&](float ox, float oy, float hw, float hh, float deg) {
                     Transform c = base;
@@ -1165,61 +1246,88 @@ void GameScene::DrawBackgroundAndStage_() {
                     c.scale.x = hw;
                     c.scale.y = hh;
                     c.scale.z = base.scale.z * 0.6f;
-                    c.rot.z = Deg(deg);
-                    renderer->Draw(cmd, mdlSolid_, c);
+                    c.rot.z = DirectX::XMConvertToRadians(deg);
+                    renderer->Draw(cmd, mdlSolid_, c, alphaMul);
                     };
-                XMFLOAT4 r = Hash4(tx * 13 + 7, ty * 17 + 3);
-                Crack((r.x * 0.2f - 0.1f),
-                    (r.y * 0.2f - 0.1f),
-                    0.28f, 0.03f,
-                    r.z * 60.0f - 30.0f);
-                Crack((r.y * 0.3f - 0.15f),
-                    (r.z * 0.3f - 0.15f),
-                    0.18f, 0.02f,
-                    r.w * 100.0f - 50.0f);
+
+                {   // ランダムっぽい亀裂2本
+                    uint32_t h2 = (uint32_t)(tx * 13 + 7) ^ (uint32_t)(ty * 17 + 3);
+                    h2 ^= (h2 >> 13); h2 *= 0x5bd1e995u;
+                    float r0 = (float)((h2) & 0xFF) / 255.0f;
+                    float r1 = (float)((h2 >> 8) & 0xFF) / 255.0f;
+                    float r2 = (float)((h2 >> 16) & 0xFF) / 255.0f;
+                    float r3 = (float)((h2 >> 24) & 0xFF) / 255.0f;
+
+                    Crack((r0 * 0.2f - 0.1f),
+                        (r1 * 0.2f - 0.1f),
+                        0.28f, 0.03f,
+                        r2 * 60.0f - 30.0f);
+
+                    Crack((r1 * 0.3f - 0.15f),
+                        (r2 * 0.3f - 0.15f),
+                        0.18f, 0.02f,
+                        r3 * 100.0f - 50.0f);
+                }
 
                 Transform sign{};
-                sign.pos = {base.pos.x,
-                              base.pos.y + base.scale.y * 0.6f,
-                              base.pos.z - 0.12f};
-                sign.scale = {base.scale.x * 0.45f,
-                              base.scale.y * 0.32f,
-                              base.scale.z};
-                sign.rot = {0,0,Deg(12)};
-                renderer->Draw(cmd, mdlSolid_, sign);
+                sign.pos = {
+                    base.pos.x,
+                    base.pos.y + base.scale.y * 0.6f,
+                    base.pos.z - 0.12f
+                };
+                sign.scale = {
+                    base.scale.x * 0.45f,
+                    base.scale.y * 0.32f,
+                    base.scale.z
+                };
+                sign.rot = {0,0,DirectX::XMConvertToRadians(12.0f)};
+                renderer->Draw(cmd, mdlSolid_, sign, alphaMul);
 
                 Transform stick{};
-                stick.pos = {sign.pos.x,
-                               sign.pos.y - sign.scale.y * 0.9f,
-                               sign.pos.z + 0.01f};
-                stick.scale = {sign.scale.x * 0.12f,
-                               sign.scale.y * 0.9f,
-                               sign.scale.z};
-                renderer->Draw(cmd, mdlSolid_, stick);
+                stick.pos = {
+                    sign.pos.x,
+                    sign.pos.y - sign.scale.y * 0.9f,
+                    sign.pos.z + 0.01f
+                };
+                stick.scale = {
+                    sign.scale.x * 0.12f,
+                    sign.scale.y * 0.9f,
+                    sign.scale.z
+                };
+                stick.rot = {0,0,0};
+                renderer->Draw(cmd, mdlSolid_, stick, alphaMul);
             }
 
-            // スパイク＝バリケード
+            // スパイク（バリケード）
             if (t == Tile::Spike) {
                 Transform bar{};
-                bar.pos = {base.pos.x,
-                             base.pos.y + base.scale.y * 0.4f,
-                             base.pos.z - 0.07f};
-                bar.scale = {base.scale.x * 0.9f,
-                             base.scale.y * 0.22f,
-                             base.scale.z};
-                bar.rot = {0,0,Deg(-6)};
-                renderer->Draw(cmd, mdlSolid_, bar);
+                bar.pos = {
+                    base.pos.x,
+                    base.pos.y + base.scale.y * 0.4f,
+                    base.pos.z - 0.07f
+                };
+                bar.scale = {
+                    base.scale.x * 0.9f,
+                    base.scale.y * 0.22f,
+                    base.scale.z
+                };
+                bar.rot = {0,0,DirectX::XMConvertToRadians(-6.0f)};
+                renderer->Draw(cmd, mdlSolid_, bar, alphaMul);
 
                 auto Leg = [&](float s) {
                     Transform l{};
-                    l.pos = {base.pos.x + base.scale.x * 0.7f * s,
-                               base.pos.y - base.scale.y * 0.1f,
-                               base.pos.z - 0.05f};
-                    l.scale = {base.scale.x * 0.18f,
-                               base.scale.y * 0.7f,
-                               base.scale.z};
-                    l.rot = {0,0,Deg(15 * s)};
-                    renderer->Draw(cmd, mdlSolid_, l);
+                    l.pos = {
+                        base.pos.x + base.scale.x * 0.7f * s,
+                        base.pos.y - base.scale.y * 0.1f,
+                        base.pos.z - 0.05f
+                    };
+                    l.scale = {
+                        base.scale.x * 0.18f,
+                        base.scale.y * 0.7f,
+                        base.scale.z
+                    };
+                    l.rot = {0,0,DirectX::XMConvertToRadians(15.0f * s)};
+                    renderer->Draw(cmd, mdlSolid_, l, alphaMul);
                     };
                 Leg(-1.0f);
                 Leg(+1.0f);
@@ -1228,58 +1336,85 @@ void GameScene::DrawBackgroundAndStage_() {
             // スプリング
             if (t == Tile::Spring) {
                 Transform basePlate{};
-                basePlate.pos = {base.pos.x,
-                                   base.pos.y - base.scale.y * 0.6f,
-                                   base.pos.z - 0.05f};
-                basePlate.scale = {base.scale.x * 0.8f,
-                                   base.scale.y * 0.4f,
-                                   base.scale.z};
-                renderer->Draw(cmd, mdlSolid_, basePlate);
+                basePlate.pos = {
+                    base.pos.x,
+                    base.pos.y - base.scale.y * 0.6f,
+                    base.pos.z - 0.05f
+                };
+                basePlate.scale = {
+                    base.scale.x * 0.8f,
+                    base.scale.y * 0.4f,
+                    base.scale.z
+                };
+                basePlate.rot = {0,0,0};
+                renderer->Draw(cmd, mdlSolid_, basePlate, alphaMul);
 
                 Transform pillar{};
-                pillar.pos = {base.pos.x,
-                                base.pos.y + base.scale.y * 0.1f,
-                                base.pos.z - 0.07f};
-                pillar.scale = {base.scale.x * 0.25f,
-                                base.scale.y * 0.9f,
-                                base.scale.z};
-                renderer->Draw(cmd, mdlSolid_, pillar);
+                pillar.pos = {
+                    base.pos.x,
+                    base.pos.y + base.scale.y * 0.1f,
+                    base.pos.z - 0.07f
+                };
+                pillar.scale = {
+                    base.scale.x * 0.25f,
+                    base.scale.y * 0.9f,
+                    base.scale.z
+                };
+                pillar.rot = {0,0,0};
+                renderer->Draw(cmd, mdlSolid_, pillar, alphaMul);
 
                 Transform head{};
-                head.pos = {base.pos.x,
-                              base.pos.y + base.scale.y * 0.9f,
-                              base.pos.z - 0.09f};
-                head.scale = {base.scale.x * 0.7f,
-                              base.scale.y * 0.25f,
-                              base.scale.z};
-                head.rot = {0,0,Deg(5)};
-                renderer->Draw(cmd, mdlSolid_, head);
+                head.pos = {
+                    base.pos.x,
+                    base.pos.y + base.scale.y * 0.9f,
+                    base.pos.z - 0.09f
+                };
+                head.scale = {
+                    base.scale.x * 0.7f,
+                    base.scale.y * 0.25f,
+                    base.scale.z
+                };
+                head.rot = {0,0,DirectX::XMConvertToRadians(5.0f)};
+                renderer->Draw(cmd, mdlSolid_, head, alphaMul);
             }
 
-            // スイッチ
+            // スイッチ（ON/OFFレバー）
             if (t == Tile::Switch) {
                 Transform box{};
-                box.pos = {base.pos.x + base.scale.x * 0.7f,
-                             base.pos.y + base.scale.y * 0.2f,
-                             base.pos.z - 0.06f};
-                box.scale = {base.scale.x * 0.45f,
-                             base.scale.y * 0.55f,
-                             base.scale.z};
-                box.rot = {0,0,Deg(-5)};
-                renderer->Draw(cmd, mdlSolid_, box);
+                box.pos = {
+                    base.pos.x + base.scale.x * 0.7f,
+                    base.pos.y + base.scale.y * 0.2f,
+                    base.pos.z - 0.06f
+                };
+                box.scale = {
+                    base.scale.x * 0.45f,
+                    base.scale.y * 0.55f,
+                    base.scale.z
+                };
+                box.rot = {0,0,DirectX::XMConvertToRadians(-5.0f)};
+                renderer->Draw(cmd, mdlSolid_, box, alphaMul);
 
                 Transform lever{};
-                lever.pos = {box.pos.x + box.scale.x * 0.3f,
-                               box.pos.y + box.scale.y * 0.2f,
-                               box.pos.z - 0.02f};
-                lever.scale = {box.scale.x * 0.25f,
-                               box.scale.y * 0.6f,
-                               box.scale.z};
-                lever.rot = {0,0,Deg(switchOn_ ? 30.0f : -30.0f)};
-                renderer->Draw(cmd, mdlSolid_, lever);
+                lever.pos = {
+                    box.pos.x + box.scale.x * 0.3f,
+                    box.pos.y + box.scale.y * 0.2f,
+                    box.pos.z - 0.02f
+                };
+                lever.scale = {
+                    box.scale.x * 0.25f,
+                    box.scale.y * 0.6f,
+                    box.scale.z
+                };
+                lever.rot = {
+                    0,0,
+                    DirectX::XMConvertToRadians(switchOn_ ? 30.0f : -30.0f)
+                };
+                renderer->Draw(cmd, mdlSolid_, lever, alphaMul);
             }
         }
     }
+
+
 
     // 6) プレイヤー
     {
@@ -1287,17 +1422,17 @@ void GameScene::DrawBackgroundAndStage_() {
         XMFLOAT3 mn = playerModel_.GetLocalMin();
         Transform p{};
         p.pos = {playerTr_.pos.x + pw_ * 0.5f,
-                   playerTr_.pos.y - (mn.y * s),
-                   kPlayerZ};
+                 playerTr_.pos.y - (mn.y * s),
+                 kPlayerZ};
         p.scale = {s, s, s * kPlayerDepth};
         p.rot = {0,0,0};
         renderer->Draw(cmd, playerModel_, p);
 
-        // 安全帯/腰ベルトっぽい何か
+        // 安全帯/ベルトっぽいアクセント
         Transform belt{};
         belt.pos = {p.pos.x,
-                      p.pos.y + p.scale.y * 0.2f,
-                      p.pos.z - 0.03f};
+                    p.pos.y + p.scale.y * 0.2f,
+                    p.pos.z - 0.03f};
         belt.scale = {p.scale.x * 0.7f,
                       p.scale.y * 0.12f,
                       p.scale.z};
@@ -1305,7 +1440,7 @@ void GameScene::DrawBackgroundAndStage_() {
         renderer->Draw(cmd, mdlSolid_, belt);
     }
 
-    // 7) 手前の鉄骨フレーム・ケーブル
+    // 7) 手前フレーム
     {
         float y = -0.5f * kTile;
 
@@ -1326,8 +1461,8 @@ void GameScene::DrawBackgroundAndStage_() {
         for (int i = -2; i <= 2; ++i) {
             Transform c{};
             c.pos = {i * (worldW * 0.18f),
-                       y + 0.5f,
-                       -0.42f};
+                     y + 0.5f,
+                     -0.42f};
             c.scale = {worldW * 0.08f, 0.01f, 0.2f};
             c.rot = {0,0,Deg(10.0f * std::sinf(static_cast<float>(i)))};
             renderer->Draw(cmd, mdlJumpOnly_, c);

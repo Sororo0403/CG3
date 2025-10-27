@@ -210,6 +210,10 @@ private:
 
     static std::wstring Widen_(const std::string &u8);
 
+
     // 背景3Dをまとめて描く
     void DrawBackgroundAndStage_();
+
+    float FragileBlinkFactor_(int tx, int ty) const;
+
 };

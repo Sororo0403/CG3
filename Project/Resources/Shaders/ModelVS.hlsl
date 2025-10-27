@@ -1,21 +1,20 @@
-// ===== cbuffers =====
 cbuffer ObjectCB : register(b0) {
     float4x4 gWorld;
-    float4 gColor; // 使わないなら未使用でOK（将来のティント用）
-    uint gUseTex; // 0: 頂点色, 1: テクスチャ
-    uint3 _pad_;
+    float4 gColor; // unused tint placeholder
+    float gAlphaMul; // not used in VS, but keep layout in sync
+    uint gUseTex;
+    float2 _pad_;
 }
 cbuffer SceneCB : register(b1) {
     float4x4 gView;
     float4x4 gProj;
 }
 
-// VS I/O
 struct VSIn {
     float3 pos : POSITION;
     float3 nrm : NORMAL;
     float2 uv : TEXCOORD0;
-    float4 col : COLOR0; // OBJ/MTLのKd/dを頂点色に焼いたもの（フォールバック用）
+    float4 col : COLOR0; // baked vertex color / fallback
 };
 
 struct VSOut {
@@ -33,12 +32,10 @@ VSOut ModelVS(VSIn i) {
     o.svpos = mul(mul(pw, gView), gProj);
     o.posW = pw.xyz;
 
-    // 法線は w=0 でワールドへ
+    // normal transform (w=0 vector)
     o.nrmW = mul(float4(i.nrm, 0.0), gWorld).xyz;
 
     o.uv = i.uv;
-
-    // 頂点色はPSでのフォールバック用
     o.color = i.col;
 
     return o;
