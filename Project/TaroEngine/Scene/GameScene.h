@@ -194,6 +194,13 @@ private:
 	bool CreateSnapshot(const std::string &baseCsvPath) const;
 	void ClampSpawnToSafe();
 
+	Tile          initialGrid_[kMapH][kMapW];
+	FragileState  initialFrag_[kMapH][kMapW];
+	RegenState    initialRegen_[kMapH][kMapW];
+	bool          initialSwitchOn_;
+	int           initialSpawnTx_;
+	int           initialSpawnTy_;
+
 	// AABB
 	static inline bool OverlapXY(const AABB &a, float bx, float by, float bw, float bh) {
 		return a.x < bx + bw && a.x + a.w > bx && a.y < by + bh && a.y + a.h > by;
@@ -203,6 +210,8 @@ private:
 	// ===== 物理（スイープ） =====
 	void ResolveHorizontal_();       // 横衝突の安定化
 	void ResolveVertical_(float dt); // 縦＋ギミック＋着地/頭ぶつけ
+
+	void ResetStageAll_();
 
 	// ===== テクスチャ読み込み (SRV割り当て含む) =====
 	bool LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,

@@ -492,6 +492,19 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
         {centerX, centerY, 0.0f}
     );
     camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
+
+    // === ステージ初期スナップを保存 ===
+    for (int y = 0; y < kMapH; ++y) {
+        for (int x = 0; x < kMapW; ++x) {
+            initialGrid_[y][x] = grid_[y][x];
+            initialFrag_[y][x] = frag_[y][x];
+            initialRegen_[y][x] = regen_[y][x];
+        }
+    }
+    initialSwitchOn_ = switchOn_;
+    initialSpawnTx_ = spawnTx_;
+    initialSpawnTy_ = spawnTy_;
+
 }
 
 // ====== 画面マウス→タイル ======
@@ -535,6 +548,8 @@ bool GameScene::PickTileUnderMouse_(int &outTx, int &outTy, float *outWx, float 
     outTy = ty;
     if (outWx) *outWx = wx;
     if (outWy) *outWy = wy;
+
+
     return true;
 }
 
@@ -903,19 +918,39 @@ void GameScene::ResolveVertical_(float dt) {
         }
 
         if (killed) {
-            ClampSpawnToSafe();
-            playerTr_.pos = {
-                xOffset_ + spawnTx_ * kTile,
-                TyToWorldY(spawnTy_) + 0.5f,
-                kPlayerZ
-            };
-            vel_ = {0,0,0};
-            onGround_ = false;
-            coyoteCounter_ = 0;
-            jumpBuffer_ = 0;
+            ResetStageAll_();
+            return; // もうこれ以降の後処理いらないので抜けてOK
         }
     }
 }
+
+void GameScene::ResetStageAll_() {
+    // マップ配置・壊れ状態・再生床タイマー・スイッチ・スポーン位置を初期状態に戻す
+    for (int y = 0; y < kMapH; ++y) {
+        for (int x = 0; x < kMapW; ++x) {
+            grid_[y][x] = initialGrid_[y][x];
+            frag_[y][x] = initialFrag_[y][x];
+            regen_[y][x] = initialRegen_[y][x];
+        }
+    }
+    switchOn_ = initialSwitchOn_;
+    spawnTx_ = initialSpawnTx_;
+    spawnTy_ = initialSpawnTy_;
+
+    ClampSpawnToSafe();
+
+    // プレイヤーも初期リスポーンへ
+    playerTr_.pos = {
+        xOffset_ + spawnTx_ * kTile,
+        TyToWorldY(spawnTy_) + 0.5f,
+        kPlayerZ
+    };
+    vel_ = {0,0,0};
+    onGround_ = false;
+    coyoteCounter_ = 0;
+    jumpBuffer_ = 0;
+}
+
 
 // ====== Update ======
 void GameScene::Update(float dt) {
