@@ -39,6 +39,9 @@ public:
 
 
 private:
+    void GoToClearScene_();
+    bool AllFragileGone_() const;
+
     // ===== 基本定数 =====
     static constexpr int   kMapW = 26;
     static constexpr int   kMapH = 15;
@@ -220,5 +223,14 @@ private:
     void DrawBackgroundAndStage_();
 
     float FragileBlinkFactor_(int tx, int ty) const;
+
+    // --- クリア系 ---
+    bool cleared_ = false;        // もうクリア判定済みか
+    float elapsedTime_ = 0.0f;    // ステージ開始からの経過秒
+    float finalTime_ = 0.0f;    // クリア確定タイム
+
+    // シーン遷移のために使う外部アクセス
+    SceneManager *sceneManager_ = nullptr; // これ君のエンジン側に既にあるならポインタ保持してOK
+    int maxStageCount_ = 10;   // 例えば全ステージ数(適当に)
 
 };

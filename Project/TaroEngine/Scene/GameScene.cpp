@@ -4,6 +4,8 @@
 #include "Input.h"
 #include "ModelRenderer.h"
 #include "BufferUtility.h"
+#include "SceneManager.h"
+#include "clearScene.h"
 
 #include <algorithm>
 #include <filesystem>
@@ -40,7 +42,7 @@ float GameScene::FragileBlinkFactor_(int tx, int ty) const {
 
 	// もう消えてるなら描画しない or 透明扱い
 	if (fs.gone) {
-		return 1.0f;
+		return 0.0f; // 透明扱い
 	}
 
 	// まだarmedじゃない → 通常表示(点滅なし)
@@ -406,6 +408,11 @@ bool GameScene::LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
 void GameScene::Initialize(const EngineContext *engineContext, const RenderContext *renderContext) {
 	engineContext_ = engineContext;
 	renderContext_ = renderContext;
+	sceneManager_ = engineContext_->sceneManager;
+
+	cleared_ = false;
+	elapsedTime_ = 0.0f;
+	finalTime_ = 0.0f;
 
 	auto *dx = engineContext_->directXCommon;
 	ID3D12Device *device = dx->GetDevice();
@@ -938,6 +945,10 @@ void GameScene::Update(float dt) {
 	auto *dx = engineContext_->directXCommon;
 	auto *in = engineContext_->input;
 
+	if (!cleared_) {
+		elapsedTime_ += dt;
+	}
+
 	// 画面リサイズに合わせてカメラOrthoサイズを追従
 	{
 		float screenW = (float)dx->GetWidth();
@@ -979,7 +990,56 @@ void GameScene::Update(float dt) {
 	// 物理解決（軸分離スイープ）
 	ResolveHorizontal_();
 	ResolveVertical_(dt);
+
+	// すべての壊せる床がなくなったらクリア
+	if (!cleared_ && AllFragileGone_()) {
+		cleared_ = true;
+		finalTime_ = elapsedTime_;
+		GoToClearScene_();
+		return; // このフレームのUpdateはそこで終わり
+	}
+
 }
+
+void GameScene::GoToClearScene_() {
+	if (!sceneManager_) {
+		// シーンマネージャ取れないなら何もしない（安全策）
+		return;
+	}
+
+	// 次のステージ番号を計算
+	int nextStage = stageId_ + 1;
+	if (nextStage >= maxStageCount_) {
+		nextStage = 0; // たとえば最後まで行ったら0に戻す
+	}
+
+	// ClearScene にクリアタイムと次のステージIDを渡して遷移
+	engineContext_->sceneManager->ChangeScene(
+		std::make_unique<ClearScene>(finalTime_, nextStage)
+	);
+}
+
+
+bool GameScene::AllFragileGone_() const {
+	for (int y = 0; y < kMapH; ++y) {
+		for (int x = 0; x < kMapW; ++x) {
+			Tile t = grid_[y][x];
+			if (!IsFragile(t)) continue;
+
+			// Regenも対象に含める:
+			//   - まだ残ってる？ = gone==false
+			//   - つまり1個でも "gone==false" があれば未クリア
+			const FragileState &fs = frag_[y][x];
+			if (!fs.gone) {
+				// まだ実体ある
+				return false;
+			}
+		}
+	}
+	// 1つも残ってない！
+	return true;
+}
+
 
 // ----------------- 背景＆ステージ描画本体 -----------------
 void GameScene::DrawBackgroundAndStage_() {
@@ -1148,7 +1208,11 @@ void GameScene::DrawBackgroundAndStage_() {
 			Tile t = grid_[ty][tx];
 
 			// 壊れて消滅済み（Regen以外）はもう描かない
-			if (IsFragile(t) && frag_[ty][tx].gone && t != Tile::Regen) continue;
+// 壊れて消滅済みのfragileブロックは描かない（Regenも含む）
+			if (IsFragile(t) && frag_[ty][tx].gone) {
+				continue;
+			}
+
 
 			// スイッチ連動ブロック可視判定
 			if (t == Tile::SwitchBlockOn && !switchOn_) continue;
