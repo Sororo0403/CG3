@@ -293,7 +293,8 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     blinkStrength_ = 0.0f;
 
     // 最初はステージ1
-    curStage_ = 1;
+    curStage_ = std::clamp(startStage_, kMinStage_, kMaxStage_);
+    LoadPreviewFromCSV_(); 
 
     // プレビューの横オフセット（マップ中心揃え）
     const float mapW = kMapW * kTile;
@@ -369,14 +370,8 @@ void StageSelectScene::Update(float dt) {
     }
 
     // Enter で決定 -> GameScene(curStage_)
-    if (in->IsKeyTriggered(DIK_RETURN) || in->IsKeyTriggered(DIK_NUMPADENTER)) {
+    if (in->IsKeyTriggered(DIK_SPACE)) {
         engine_->sceneManager->ChangeScene(std::make_unique<GameScene>(curStage_));
-        return;
-    }
-
-    // Esc でタイトルに戻る
-    if (in->IsKeyTriggered(DIK_ESCAPE)) {
-        engine_->sceneManager->ChangeScene(std::make_unique<TitleScene>());
         return;
     }
 }
@@ -815,8 +810,7 @@ void StageSelectScene::Draw() {
     // 操作ガイド（ImGui）
     ImGui::Begin("Select", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::Text("A / D : Select Stage");
-    ImGui::Text("Enter : Start");
-    ImGui::Text("Esc   : Back to Title");
+    ImGui::Text("Space : Start");
     ImGui::Text("Current: %d", curStage_);
     ImGui::End();
 }

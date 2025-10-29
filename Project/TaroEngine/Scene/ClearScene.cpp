@@ -53,9 +53,11 @@ void ClearScene::Update(float /*dt*/) {
             return;
         } else {
             // ステージセレクトへ戻る
+// ステージセレクトへ戻る
             engineContext_->sceneManager->ChangeScene(
-                std::make_unique<StageSelectScene>()
+                std::make_unique<StageSelectScene>(playedStageId_)
             );
+
             return;
         }
     }

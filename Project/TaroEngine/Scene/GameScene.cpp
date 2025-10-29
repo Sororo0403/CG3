@@ -1068,6 +1068,8 @@ void GameScene::Update(float dt) {
     ResolveHorizontal_();
     ResolveVertical_(dt);
 
+    ArmFragilesUnderPlayer_();
+
     // 全壊れ床が消滅してたらクリア
     if (!cleared_ && AllFragileGone_()) {
         cleared_ = true;
@@ -1104,8 +1106,9 @@ void GameScene::GoToClearScene_() {
     }
 
     engineContext_->sceneManager->ChangeScene(
-        std::make_unique<ClearScene>(finalTime_, nextStage)
+        std::make_unique<ClearScene>(finalTime_, nextStage, stageId_)
     );
+
 }
 
 // ====== 壊れ床をarmed状態にする ======
@@ -1462,6 +1465,39 @@ void GameScene::DrawBackgroundAndStage_() {
         }
     }
 }
+// プレイヤーの最終確定位置(今のplayerTr_.pos)にもとづいて
+// 足元にある壊れ床をまとめてarmedする。
+// 「両方踏んでるのに片方だけ壊れない」問題対策。
+void GameScene::ArmFragilesUnderPlayer_() {
+    // 最終位置のAABB
+    AABB f = PlayerAabbFull_();
+
+    // 足の裏ちょい下のタイル行
+    int rowBelow = ToTy(playerTr_.pos.y - kSkinY);
+
+    // プレイヤー左右のタイル範囲
+    int txL = ToTx(f.x);
+    int txR = ToTx(f.x + f.w - 1e-4f);
+    int txMin = std::min(txL, txR);
+    int txMax = std::max(txL, txR);
+
+    for (int tx = txMin; tx <= txMax; ++tx) {
+        if (!InMap(tx, rowBelow)) continue;
+
+        Tile tt = grid_[rowBelow][tx];
+        if (!IsFragile(tt)) continue;
+        if (frag_[rowBelow][tx].gone) continue;
+
+        // 足で踏んだときに壊れる対象か？
+        // FragileAny / FragileTop / Regen は「上から踏んだら壊れる」
+        if (tt == Tile::FragileAny ||
+            tt == Tile::FragileTop ||
+            tt == Tile::Regen) {
+            ArmFragile_(tx, rowBelow);
+        }
+    }
+}
+
 
 
 // ====== Draw ======
