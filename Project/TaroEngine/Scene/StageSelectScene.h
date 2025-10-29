@@ -20,6 +20,9 @@
 // Enter で GameScene(curStage_) に遷移。
 class StageSelectScene : public IScene {
 public:
+    StageSelectScene(int startStage = 1)
+        : startStage_(startStage) {
+    }
     void Initialize(const EngineContext *engine, const RenderContext *render) override;
     void Update(float dt) override;
     void Draw() override;
@@ -112,7 +115,8 @@ private:
         kSrv_T_JumpOnly,
     };
 
-    // ステージ選択状態
+    // ステージ
+    int startStage_ = 1;
     int curStage_ = 1;
     static constexpr int kMinStage_ = 1;
     static constexpr int kMaxStage_ = 30; // 仮の上限

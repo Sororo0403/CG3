@@ -14,9 +14,10 @@
 // ClearScene.h 側のクラス宣言にこれを足す
 class ClearScene : public IScene {
 public:
-    ClearScene(float clearTimeSec, int nextStageId)
-        : clearTimeSec_(clearTimeSec),
-        nextStageId_(nextStageId) {
+    ClearScene(float clearTimeSec, int nextStageId, int playedStageId)
+        : clearTimeSec_(clearTimeSec)
+        , nextStageId_(nextStageId)
+        , playedStageId_(playedStageId) {
     }
 
     // 既存のやつ:
@@ -31,6 +32,10 @@ private:
 	SceneManager *sceneManager_ = nullptr;
 
     Camera camera_;
+
+
+    // ★追加
+    int   playedStageId_ = 1;
 
     float clearTimeSec_ = 0.0f;
     int nextStageId_ = 0;

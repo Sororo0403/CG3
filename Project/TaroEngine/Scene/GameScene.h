@@ -249,6 +249,8 @@ private:
     // 描画本体（背景とマップとプレイヤー）
     void DrawBackgroundAndStage_();
 
+    void ArmFragilesUnderPlayer_();
+
     // 壊れ床の点滅アルファ
     float FragileBlinkFactor_(int tx, int ty) const;
 };
