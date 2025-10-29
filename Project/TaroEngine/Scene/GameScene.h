@@ -173,8 +173,8 @@ private:
     Transform         playerTr_{};     // posはAABB左下を指すイメージ
     DirectX::XMFLOAT3 vel_{0,0,0};
 
-    float pw_ = 0.99f;   // プレイヤー幅
-    float ph_ = 0.99f;   // プレイヤー高さ
+    float pw_ = 0.9f;   // プレイヤー幅
+    float ph_ = 0.9f;   // プレイヤー高さ
 
     bool  onGround_ = false;
 
@@ -250,6 +250,11 @@ private:
     void DrawBackgroundAndStage_();
 
     void ArmFragilesUnderPlayer_();
+
+    // GameScene クラスのメンバに追加するやつ
+    float switchCooldown_ = 0.0f;
+    static constexpr float kSwitchCooldownTime = 0.5f; // 150msくらい。この値は好みで
+
 
     // 壊れ床の点滅アルファ
     float FragileBlinkFactor_(int tx, int ty) const;

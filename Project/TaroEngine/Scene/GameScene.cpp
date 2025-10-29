@@ -52,11 +52,7 @@ float GameScene::FragileBlinkFactor_(int tx, int ty) const {
     }
 
     // ---- ここからarmed中の見た目 ----
-    // 要求：
-    // ・壊れる直前まで同じテンポ＆同じ明るさパターンで点滅
-    // ・時間経過でどんどん暗くなったりしない
-
-    // 周期だけ使う（fs.tに応じてチカチカするけど、強さは一定）
+    // 一定リズムで点滅、暗くなり続けない
     float elapsed = fs.t;
 
     // 周期(Hz) → 1/freq 秒のサイクル
@@ -64,17 +60,14 @@ float GameScene::FragileBlinkFactor_(int tx, int ty) const {
     float cyclePos = std::fmodf(elapsed, period);
     float t01 = cyclePos / period; // 0→1
 
-    // コサイン波 (0→1→0)。 0〜1の点滅カーブ。
+    // コサイン波 (0→1→0)
     float wave = 0.5f * (1.0f - std::cos(t01 * 2.0f * 3.14159265f));
 
-    // 一定の明滅レンジに固定する
-    // 例えば 0.4〜1.0 の間で点滅させる
-    // （あまり0に近いと完全に消えて見失うのでゲーム的にキツい）
+    // アルファ範囲固定
     constexpr float kMinAlpha = 0.4f;
     constexpr float kMaxAlpha = 1.0f;
 
     float alpha = kMinAlpha + (kMaxAlpha - kMinAlpha) * wave;
-
     return std::clamp(alpha, 0.0f, 1.0f);
 }
 
@@ -421,6 +414,9 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     renderContext_ = renderContext;
     sceneManager_ = engineContext_->sceneManager;
 
+    switchCooldown_ = 0.0f;
+    wasOnSwitch_ = false;
+
     cleared_ = false;
     elapsedTime_ = 0.0f;
     finalTime_ = 0.0f;
@@ -445,7 +441,6 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     mdlSwitchOff_.Initialize(device, "Resources/Model/Block/switch_off.obj");
 
     // スイッチ連動床モデル（足場）
-    // 別のモデルがまだ無いなら、とりあえず同じobjを指定しておいてOK
     mdlSwitchBlockOn_.Initialize(device, "Resources/Model/Block/switchblock_on.obj");
     mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switchblock_off.obj");
 
@@ -470,7 +465,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     setupTex(mdlSpring_, kSrvIndex_Spring, texSpring_);
     setupTex(mdlSpike_, kSrvIndex_Spike, texSpike_);
 
-    // スイッチ本体のON/OFF
+    // スイッチ本体ON/OFF
     setupTex(mdlSwitchOn_, kSrvIndex_SwitchOn, texSwitchOn_);
     setupTex(mdlSwitchOff_, kSrvIndex_SwitchOff, texSwitchOff_);
 
@@ -500,13 +495,16 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     ClampSpawnToSafe();
 
     // === プレイヤー初期配置 ===
-    playerTr_ = {};
-    playerTr_.scale = {1,1,1};
-    playerTr_.pos = {
-        xOffset_ + spawnTx_ * kTile,
-        TyToWorldY(spawnTy_) + 0.5f,
-        kPlayerZ
-    };
+    {
+        const float spawnFloorY = TyToWorldY(spawnTy_) + kTile; // 足場タイルの上端
+        playerTr_ = {};
+        playerTr_.scale = {1,1,1};
+        playerTr_.pos = {
+            xOffset_ + spawnTx_ * kTile,
+            spawnFloorY + kSkinY, // 下端を床すれすれに置く
+            kPlayerZ
+        };
+    }
 
     vel_ = {0,0,0};
     onGround_ = false;
@@ -704,16 +702,14 @@ void GameScene::ResolveVertical_(float dt) {
                 float by = TyToWorldY(row);
                 float topY = by + kTile;
 
-                // ===== スプリング判定（どこから触れても即発火） =====
+                // ===== スプリング判定 =====
                 if (IsSpring(tt)) {
                     if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
-                        // ここでは直接 vel_.y をいじらず、
-                        // 「このフレームはバネで跳ねるべき」という意思だけ残す
                         springBounce = true;
                     }
                 }
 
-                // ===== スイッチ本体判定（踏んでるかどうか） =====
+                // ===== スイッチ本体判定 =====
                 if (tt == Tile::Switch) {
                     if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
                         switchOverlapNow = true;
@@ -750,19 +746,16 @@ void GameScene::ResolveVertical_(float dt) {
             }
         }
 
-        // ここで最終決定：
+        // 最終決定
         if (springBounce) {
-            // バネ優先：上方向に吹っ飛ぶ
             vel_.y = kSpringVy;
-            playerTr_.pos.y = targetY; // スナップしないで継続位置に
+            playerTr_.pos.y = targetY; // スナップせず継続
             onGround_ = false;
         } else if (hitFloor) {
-            // ふつうの着地
             playerTr_.pos.y = bestSnapY;
             vel_.y = 0.0f;
             onGround_ = true;
         } else {
-            // ただ落下継続
             playerTr_.pos.y = targetY;
         }
     } else {
@@ -787,7 +780,7 @@ void GameScene::ResolveVertical_(float dt) {
                 float by = TyToWorldY(row);
                 float bottomY = by;
 
-                // ===== スプリング判定（どこから触れても即発火） =====
+                // ===== スプリング判定（横や斜めからでも反応） =====
                 if (IsSpring(tt)) {
                     if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
                         vel_.y = kSpringVy;
@@ -816,7 +809,7 @@ void GameScene::ResolveVertical_(float dt) {
                     }
                 }
 
-                // 空中でスイッチにヒットする場合
+                // 空中でスイッチ判定
                 if (tt == Tile::Switch) {
                     if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
                         switchOverlapNow = true;
@@ -852,7 +845,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // 足元かすり接地でfragile armed付与（既存ロジックそのまま）
+    // 足元かすり接地でfragile armed付与
     {
         int txL2 = ToTx(playerTr_.pos.x);
         int txR2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -884,10 +877,27 @@ void GameScene::ResolveVertical_(float dt) {
     }
 
     // ==== スイッチトグル処理（1フレーム1回だけ） ====
-    if (!wasOnSwitch_ && switchOverlapNow) {
-        switchOn_ = !switchOn_;
+  // ---- スイッチクールダウン更新 ----
+    if (switchCooldown_ > 0.0f) {
+        switchCooldown_ -= dt;
+        if (switchCooldown_ < 0.0f) {
+            switchCooldown_ = 0.0f;
+        }
     }
+
+    // ==== スイッチトグル処理 ====
+    // 1) いま新しく踏んだ（前フレは踏んでないのに今フレは踏んでる）
+    // 2) かつクールダウンが0
+    if (!wasOnSwitch_ && switchOverlapNow && switchCooldown_ <= 0.0f) {
+        switchOn_ = !switchOn_;
+
+        // 連打防止のためクールダウン開始
+        switchCooldown_ = kSwitchCooldownTime;
+    }
+
+    // 次フレ用に「今踏んでるか」を保存
     wasOnSwitch_ = switchOverlapNow;
+
 
     // ===== コヨーテ/ジャンプバッファ =====
     if (onGround_) {
@@ -904,16 +914,10 @@ void GameScene::ResolveVertical_(float dt) {
         jumpBuffer_ = 0;
     }
 
-    // 接地スナップ（地上扱いのときだけ）
-    if (onGround_) {
-        float stableY =
-            std::floor((playerTr_.pos.y - kSkinY) / kTile) * kTile + kSkinY;
-        if (std::fabs(playerTr_.pos.y - stableY) > 1e-4f) {
-            playerTr_.pos.y = stableY;
-        }
-    }
+    // ★ここから下、元は「接地スナップでYをグリッドに丸める」処理があったけど削除。
+    //   bestSnapY でもう十分正しい位置に揃ってるので、余計に浮かせない。
 
-    // fragile / regen タイマー進行（元の処理そのまま）
+    // fragile / regen タイマー進行
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
@@ -939,7 +943,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // --- デス判定（元の処理そのまま） ---
+    // --- デス判定 ---
     {
         bool killed = false;
 
@@ -986,9 +990,6 @@ void GameScene::ResolveVertical_(float dt) {
 }
 
 
-
-
-
 // ====== リセット ======
 void GameScene::ResetStageAll_() {
     // マップ/壊れ床/再生床/スイッチ状態/スポーン位置を初期に戻す
@@ -1005,16 +1006,22 @@ void GameScene::ResetStageAll_() {
 
     ClampSpawnToSafe();
 
-    // プレイヤー再配置
+    // プレイヤー再配置（Initializeと同じロジックに統一）
+    const float spawnFloorY = TyToWorldY(spawnTy_) + kTile;
     playerTr_.pos = {
         xOffset_ + spawnTx_ * kTile,
-        TyToWorldY(spawnTy_) + 0.5f,
+        spawnFloorY + kSkinY,
         kPlayerZ
     };
+
     vel_ = {0,0,0};
     onGround_ = false;
     coyoteCounter_ = 0;
     jumpBuffer_ = 0;
+
+    switchCooldown_ = 0.0f;
+    wasOnSwitch_ = false;
+
 }
 
 // ====== Update ======
@@ -1121,16 +1128,43 @@ void GameScene::ArmFragile_(int tx, int ty) {
 
     if (!fs.armed) {
         fs.armed = true;
-
-        // ←これ以降は何もしない
-        // fs.t をいじらないので、
-        // 0秒スタート→fs.t += dtで積算→
-        // fs.t > kFragileBreakTime(今2.5f) のタイミングで消える
-        //
-        // つまり必ずフルの kFragileBreakTime 生きる
-        // (= ちゃんと2.5秒生存する)
+        // fs.tは0から開始。以後dtで積算 → kFragileBreakTime経過で消滅
     }
 }
+
+// プレイヤーの最終確定位置(今のplayerTr_.pos)にもとづいて
+// 足元にある壊れ床をまとめてarmedする。
+// 「両方踏んでるのに片方だけ壊れない」問題対策。
+void GameScene::ArmFragilesUnderPlayer_() {
+    // 最終位置のAABB
+    AABB f = PlayerAabbFull_();
+
+    // 足の裏ちょい下のタイル行
+    int rowBelow = ToTy(playerTr_.pos.y - kSkinY);
+
+    // プレイヤー左右のタイル範囲
+    int txL = ToTx(f.x);
+    int txR = ToTx(f.x + f.w - 1e-4f);
+    int txMin = std::min(txL, txR);
+    int txMax = std::max(txL, txR);
+
+    for (int tx = txMin; tx <= txMax; ++tx) {
+        if (!InMap(tx, rowBelow)) continue;
+
+        Tile tt = grid_[rowBelow][tx];
+        if (!IsFragile(tt)) continue;
+        if (frag_[rowBelow][tx].gone) continue;
+
+        // 足で踏んだときに壊れる対象か？
+        // FragileAny / FragileTop / Regen は「上から踏んだら壊れる」
+        if (tt == Tile::FragileAny ||
+            tt == Tile::FragileTop ||
+            tt == Tile::Regen) {
+            ArmFragile_(tx, rowBelow);
+        }
+    }
+}
+
 
 // ====== 背景＋マップ＋プレイヤー描画 ======
 void GameScene::DrawBackgroundAndStage_() {
@@ -1301,7 +1335,7 @@ void GameScene::DrawBackgroundAndStage_() {
         };
 
     Flood({-worldW * 0.48f, worldH * 0.82f, 0}, 10.0f, true);
-    Flood({worldW * 0.52f, worldH * 0.74f, 0}, 18.0f, false);
+    Flood({worldW * 0.52f,  worldH * 0.74f, 0}, 18.0f, false);
 
     // ===== 2) タイル群 =====
     for (int ty = 0; ty < kMapH; ++ty) {
@@ -1359,9 +1393,9 @@ void GameScene::DrawBackgroundAndStage_() {
                 // ON状態で実体化する床
                 m = &mdlSwitchBlockOn_;
                 if (switchOn_) {
-                    alphaMul = 1.0f;   // 使える側は不透明
+                    alphaMul = 1.0f;   // 実体側
                 } else {
-                    alphaMul = 0.3f;   // 使えない側は半透明ゴースト
+                    alphaMul = 0.3f;   // ゴースト表示
                 }
             } break;
 
@@ -1465,40 +1499,6 @@ void GameScene::DrawBackgroundAndStage_() {
         }
     }
 }
-// プレイヤーの最終確定位置(今のplayerTr_.pos)にもとづいて
-// 足元にある壊れ床をまとめてarmedする。
-// 「両方踏んでるのに片方だけ壊れない」問題対策。
-void GameScene::ArmFragilesUnderPlayer_() {
-    // 最終位置のAABB
-    AABB f = PlayerAabbFull_();
-
-    // 足の裏ちょい下のタイル行
-    int rowBelow = ToTy(playerTr_.pos.y - kSkinY);
-
-    // プレイヤー左右のタイル範囲
-    int txL = ToTx(f.x);
-    int txR = ToTx(f.x + f.w - 1e-4f);
-    int txMin = std::min(txL, txR);
-    int txMax = std::max(txL, txR);
-
-    for (int tx = txMin; tx <= txMax; ++tx) {
-        if (!InMap(tx, rowBelow)) continue;
-
-        Tile tt = grid_[rowBelow][tx];
-        if (!IsFragile(tt)) continue;
-        if (frag_[rowBelow][tx].gone) continue;
-
-        // 足で踏んだときに壊れる対象か？
-        // FragileAny / FragileTop / Regen は「上から踏んだら壊れる」
-        if (tt == Tile::FragileAny ||
-            tt == Tile::FragileTop ||
-            tt == Tile::Regen) {
-            ArmFragile_(tx, rowBelow);
-        }
-    }
-}
-
-
 
 // ====== Draw ======
 void GameScene::Draw() {

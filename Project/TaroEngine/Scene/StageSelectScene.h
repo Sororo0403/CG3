@@ -16,13 +16,22 @@
 #include "BufferUtility.h"
 
 // ステージセレクト画面。
-// A/D でステージ番号を動かし、そのCSVをミニマップ的にプレビュー表示。
-// Enter で GameScene(curStage_) に遷移。
+// A/D でステージ番号を動かす。
+// W/S で難易度を切り替える。（★NEW）
+// Space で GameScene(curStage_, curDifficulty_) に遷移。（★NEW）
 class StageSelectScene : public IScene {
 public:
-    StageSelectScene(int startStage = 1)
-        : startStage_(startStage) {
+    enum class Difficulty : int { // ★NEW 難易度列挙
+        Easy = 0,
+        Normal,
+        Hard,
+        COUNT
+    };
+
+    StageSelectScene(int startStage = 1, Difficulty startDiff = Difficulty::Normal)
+        : startStage_(startStage), startDiff_(startDiff) {
     }
+
     void Initialize(const EngineContext *engine, const RenderContext *render) override;
     void Update(float dt) override;
     void Draw() override;
@@ -44,18 +53,18 @@ private:
         Spike,
         JumpOnly,
         Regen,
-        Switch,          // ←プレイヤーが踏むスイッチ本体
-        SwitchBlockOn,   // ←スイッチONのときだけある床
-        SwitchBlockOff,  // ←スイッチOFFのときだけある床
+        Switch,
+        SwitchBlockOn,
+        SwitchBlockOff,
     };
 
     struct PreviewCell {
         Tile  t = Tile::Empty;
-        bool  gone = false; // プレビューなので常にfalseでいい
+        bool  gone = false;
     };
 
     // ===== 背景演出パラメータ =====
-    float virtualWorldH_ = 22.0f; // タイトルと同じくらいの見せ方
+    float virtualWorldH_ = 22.0f;
     float blinkTime_ = 0.0f;
     float blinkStrength_ = 0.0f;
 
@@ -64,7 +73,7 @@ private:
     const RenderContext *render_ = nullptr;
     Camera camera_;
 
-    // ===== モデル（GameScene / TitleScene と同じ構成） =====
+    // ===== モデル =====
     Model mdlSolid_;
     Model mdlFragileAny_;
     Model mdlFragileTop_;
@@ -73,17 +82,14 @@ private:
     Model mdlSpring_;
     Model mdlSpike_;
 
-    // スイッチ本体（ON/OFFの2モデル）
     Model mdlSwitchOn_;
     Model mdlSwitchOff_;
-
-    // スイッチ連動床（ON時に出る床 / OFF時に出る床）
     Model mdlSwitchBlockOn_;
     Model mdlSwitchBlockOff_;
 
     Model mdlJumpOnly_;
 
-    // ===== テクスチャ保持（SRVを壊さないよう握っておく） =====
+    // ===== テクスチャ保持 =====
     Microsoft::WRL::ComPtr<ID3D12Resource> texSolid_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texFragileAny_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texFragileTop_;
@@ -99,7 +105,6 @@ private:
 
     Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
 
-    // SRVスロット（タイトルやゲーム本編と被らない適当な後ろの番号帯）
     enum : UINT {
         kSrv_T_Solid = 64,
         kSrv_T_FragileAny,
@@ -115,15 +120,19 @@ private:
         kSrv_T_JumpOnly,
     };
 
-    // ステージ
+    // ステージ番号
     int startStage_ = 1;
     int curStage_ = 1;
     static constexpr int kMinStage_ = 1;
-    static constexpr int kMaxStage_ = 30; // 仮の上限
+    static constexpr int kMaxStage_ = 30; // 仮
+
+    // ★NEW 難易度
+    Difficulty startDiff_ = Difficulty::Normal;
+    Difficulty curDiff_ = Difficulty::Normal;
 
     // プレビュー用グリッド
     Tile  previewGrid_[kMapH][kMapW]{};
-    float xOffsetPreview_ = 0.0f; // プレビューを中央寄せする用
+    float xOffsetPreview_ = 0.0f;
 
 private:
     // ユーティリティ
@@ -147,7 +156,14 @@ private:
 
     void DrawBackgroundLayers_(float W, float H);
     void DrawStageNumberBanner_(float W, float H);
+    void DrawDifficultyBanner_(float W, float H); // ★NEW
     void DrawPreviewMiniMap_(float W, float H);
 
     void LoadPreviewFromCSV_();
+
+    // ★NEW 難易度→文字列("easy","normal","hard")を返す
+    static const char *DiffTag_(Difficulty d);
+
+    // ★NEW 難易度バナー用のプレーンな英語表示
+    static const char *DiffLabel_(Difficulty d);
 };
