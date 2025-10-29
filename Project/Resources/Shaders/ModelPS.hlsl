@@ -22,10 +22,7 @@ struct PSIn {
 };
 
 float4 ModelPS(PSIn i) : SV_TARGET {
-    // ===== ライト無し（完全フラットシェーディング） =====
     float4 base = (gUseTex != 0) ? gTex.Sample(gSamp, i.uv) : i.color;
-
-    // α乗算のみ反映
     float alpha = base.a * gAlphaMul;
 
     return float4(base.rgb, alpha);
