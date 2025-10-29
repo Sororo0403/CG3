@@ -14,13 +14,13 @@
 #include "Input.h"
 #include "GameScene.h"
 #include "TitleScene.h"
-#include "imgui/imgui.h"
 
 #include <DirectXTex/DirectXTex.h>
 #include <DirectXTex/d3dx12.h>
 
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
+
 
 // ===== UTF-8→UTF-16 =====
 std::wstring StageSelectScene::Widen_(const std::string &s) {
@@ -223,7 +223,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     auto *dx = engine_->directXCommon;
     ID3D12Device *device = dx->GetDevice();
 
-    // モデルロード（省略なしであなたの元のやつ全部そのまま）
+    // モデルロード
     mdlSolid_.Initialize(device, "Resources/Model/Block/solid.obj");
     mdlFragileAny_.Initialize(device, "Resources/Model/Block/fragile_any.obj");
     mdlFragileTop_.Initialize(device, "Resources/Model/Block/fragile_top.obj");
@@ -237,7 +237,13 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switchblock_off.obj");
     mdlJumpOnly_.Initialize(device, "Resources/Model/Block/jumponly.obj");
 
-    // テクスチャSRV割り当て（あなたの元のsetupTex呼びまわし そのまま）
+    // ★キー文字モデルは中身が空で落ちるので、いったんロードしない
+    // mdlKeyA_.Initialize(device, "Resources/Model/a.obj");
+    // mdlKeyD_.Initialize(device, "Resources/Model/d.obj");
+    // mdlKeyW_.Initialize(device, "Resources/Model/w.obj");
+    // mdlKeyS_.Initialize(device, "Resources/Model/s.obj");
+
+    // テクスチャSRV割り当て
     auto setupTex = [&](Model &m, UINT slot, ComPtr<ID3D12Resource> &holder) {
         if (m.GetAlbedoPath().empty()) return;
         D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
@@ -258,7 +264,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     setupTex(mdlSwitchBlockOff_, kSrv_T_SwitchBlockOff, texSwitchBlockOff_);
     setupTex(mdlJumpOnly_, kSrv_T_JumpOnly, texJumpOnly_);
 
-    // カメラ（元の正射影カメラと同じロジック）
+    // カメラ設定（正射影）
     float w = (float)dx->GetWidth();
     float h = (float)dx->GetHeight();
     float aspect = std::max(1.0f, w) / std::max(1.0f, h);
@@ -281,7 +287,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     blinkTime_ = 0.0f;
     blinkStrength_ = 0.0f;
 
-    // ★ステージと難易度の初期値を外部指定から反映
+    // ステージ/難易度 初期値
     curStage_ = std::clamp(startStage_, kMinStage_, kMaxStage_);
     curDiff_ = startDiff_;
 
@@ -289,7 +295,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     const float mapW = kMapW * kTile;
     xOffsetPreview_ = -mapW * 0.5f;
 
-    // CSVプレビュー読み込み（難易度込みロジック）
+    // CSV読み込み
     LoadPreviewFromCSV_();
 }
 
@@ -327,7 +333,7 @@ void StageSelectScene::LoadPreviewFromCSV_() {
     }
 
     if (!ifs) {
-        // ファイルが何も無いなら空プレビューのまま終了
+        // ファイルが無いなら空プレビューのまま
         return;
     }
 
@@ -362,7 +368,7 @@ void StageSelectScene::Update(float dt) {
 
     blinkTime_ += dt;
     float basePulse = 0.5f * (1.0f + std::sinf(blinkTime_ * 3.0f));
-    blinkStrength_ = std::pow(basePulse, 3.0f); // エモい点滅
+    blinkStrength_ = std::pow(basePulse, 3.0f); // 点滅用
 
     auto *in = engine_->input;
 
@@ -394,7 +400,7 @@ void StageSelectScene::Update(float dt) {
         LoadPreviewFromCSV_();
     }
 
-    // --- 決定 (SPACE) -> GameScene(curStage_, curDiff_)
+    // --- 決定 (SPACE) ---
     if (in->IsKeyTriggered(DIK_SPACE)) {
         engine_->sceneManager->ChangeScene(
             std::make_unique<GameScene>(curStage_, curDiff_)
@@ -403,12 +409,11 @@ void StageSelectScene::Update(float dt) {
     }
 }
 
-
 // ===== 背景（夜の工事現場っぽいやつ） =====
 void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
     auto Lerp = [](float a, float b, float t) { return a + (b - a) * t; };
 
-    // 1) 空っぽいレイヤ
+    // 空レイヤ
     DrawModel_(mdlSpring_,
         {0.0f, H * 0.50f, 38.0f},
         {W * 2.6f, H * 2.2f, 0.25f},
@@ -431,7 +436,7 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
             {0, 0, (i & 1) ? -8.0f : 10.0f});
     }
 
-    // 2) ビル群
+    // ビル群
     auto DrawBuildings = [&](float z, float yBase, float span,
         float wMin, float wMax,
         float hMin, float hMax,
@@ -456,7 +461,7 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
                     {rw * 0.12f, rw * 0.12f, 0.18f},
                     {0,0,(i & 1) ? -6.0f : 8.0f});
 
-                // 警告灯っぽいやつ（ONなスイッチ床とかスイッチON）
+                // 警告灯っぽいやつ（点灯ブロック等）
                 if (warnLight && ((i + (int)z) % 5 == 0)) {
                     DrawModel_(mdlSwitchBlockOn_,
                         {rx, yBase + rh + 0.24f, z - 0.05f},
@@ -488,7 +493,7 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
         4.0f, false
     );
 
-    // 3) クレーン周り（操作盤とかライト）
+    // クレーン周り（制御盤とかライト）
     DrawModel_(mdlJumpOnly_,
         {-W * 0.32f, H * 0.86f, 24.8f},
         {0.06f, H * 0.55f, 0.30f},
@@ -504,7 +509,7 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
         {0.035f,  H * 0.28f, 0.25f},
         {0,0,0});
 
-    // クレーンの制御盤 → スイッチ本体を流用
+    // 制御盤
     DrawModel_(mdlSwitchOff_,
         {W * 0.22f, H * 0.72f, 24.4f},
         {0.14f,   0.14f,    0.22f},
@@ -516,13 +521,13 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
         {0.35f, 0.08f, 0.25f},
         {0,0, 4.0f});
 
-    // 投光器ライトヘッド（ONモデルを光源っぽく）
+    // 投光器
     DrawModel_(mdlSwitchOn_,
         {W * 0.22f, H * 0.47f, 24.2f},
         {0.15f, 0.08f, 0.22f},
         {0,0, 0.0f});
 
-    // 4) 前景の手すり
+    // 前景の手すり
     {
         float railY = -0.6f;
 
@@ -547,7 +552,7 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
         }
     }
 
-    // 5) 投光器（左右の照明・飾り）
+    // 両サイドの投光器・パネル
     auto Flood = [&](XMFLOAT3 b, float rotZ) {
         // ポール
         DrawModel_(mdlSolid_,
@@ -555,13 +560,13 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
             {0.05f, 0.55f, 0.25f},
             {0,0,0});
 
-        // ヘッド（点灯イメージはSwitchOn）
+        // ヘッド
         DrawModel_(mdlSwitchOn_,
             {b.x, b.y + 0.38f, 21.9f},
             {0.22f, 0.12f, 0.22f},
             {0,0, rotZ});
 
-        // 下にちょい警告パネル（スパイク流用でそれっぽい板）
+        // 下の警告板
         DrawModel_(mdlSpike_,
             {b.x + 0.10f, b.y + 0.26f, 21.7f},
             {W * 0.22f, H * 0.10f, 0.05f},
@@ -575,7 +580,7 @@ void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
     Flood({W * 0.52f, H * 0.74f, 0}, 18.0f);
 }
 
-// ===== "STAGE XX" のバナー（下部UI演出） =====
+// ===== "STAGE XX" のバナー =====
 void StageSelectScene::DrawStageNumberBanner_(float W, float H) {
     float originY = H * (-0.10f); // 画面下寄せ
     float zBase = -0.6f;
@@ -583,7 +588,7 @@ void StageSelectScene::DrawStageNumberBanner_(float W, float H) {
     float glyphH = H * 0.03f;
     float span = glyphW * 1.2f;
 
-    // 点滅っぽい効果
+    // 点滅
     float glowScaleMul = 1.0f + blinkStrength_ * 0.12f;
     float glowZAdd = 0.02f + blinkStrength_ * 0.03f;
     float subtleFloat = (blinkStrength_ - 0.5f) * 0.06f;
@@ -658,7 +663,9 @@ void StageSelectScene::DrawStageNumberBanner_(float W, float H) {
                 {glyphW * w, glyphH * h, 0.05f},
                 {0,0,rz});
             DrawModel_(mdlSwitchOn_,
-                {gx + ox, originY + oy + (blinkStrength_ - 0.5f) * 0.06f, -0.6f + 0.02f + blinkStrength_ * 0.03f},
+                {gx + ox,
+                 originY + oy + (blinkStrength_ - 0.5f) * 0.06f,
+                 -0.6f + 0.02f + blinkStrength_ * 0.03f},
                 {glyphW * w * (1.0f + blinkStrength_ * 0.12f),
                  glyphH * h * 0.4f,
                  0.05f},
@@ -707,19 +714,11 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
 
     auto Deg = [](float d) { return DirectX::XMConvertToRadians(d); };
 
-    // ─────────────────────────────────
-    // ★ここが一番大事：タイル縮尺と配置
-    // scaleTile … ゲーム本編1タイル=1.0 を ちょい縮小して見せる倍率
-    //   0.75くらい: 「ちょっと小さい実機プレビュー」感
-    //
-    // baseY … 画面のどこに置くか（中央よりちょい下）
-    // ─────────────────────────────────
-    const float scaleTile = 0.75f;      // ← 0.4f から大きく
-    const float baseZ = 5.0f;       // カメラより手前すぎない位置
-    const float baseY = H * 0.40f;  // ← H*0.25f から持ち上げる
+    const float scaleTile = 0.75f;
+    const float baseZ = 5.0f;
+    const float baseY = H * 0.40f;
     const float baseX = 0.0f;
 
-    // タイル1枚ごとの描画。見た目の「ちょいガタつき」もそのまま維持する
     auto DrawOneTile = [&](Model &m,
         const DirectX::XMFLOAT3 &pos,
         float zrotDeg,
@@ -728,14 +727,13 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
             Transform t{};
             t.pos = pos;
             t.scale = {
-                0.5f * scaleTile,   // 横
-                0.5f * scaleTile,   // 縦
-                0.5f * scaleTile    // 厚み（プレビュー用なので同率）
+                0.5f * scaleTile,
+                0.5f * scaleTile,
+                0.5f * scaleTile
             };
             t.rot = {0,0,Deg(zrotDeg)};
             mr->Draw(cmd, m, t);
 
-            // ヒビ床とかは注意サインをちょい浮かせて置く演出は残す
             if (crackOrDeco) {
                 Transform sign{};
                 sign.pos = {
@@ -753,7 +751,6 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
             }
         };
 
-    // ===== タイル並べ =====
     for (int ty = 0; ty < kMapH; ++ty) {
         for (int tx = 0; tx < kMapW; ++tx) {
             Tile t = previewGrid_[ty][tx];
@@ -789,28 +786,21 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
             case Tile::JumpOnly:
                 m = &mdlJumpOnly_;
                 break;
-
             case Tile::Switch:
-                // スイッチ本体
                 m = &mdlSwitchOn_;
                 break;
-
             case Tile::SwitchBlockOn:
                 m = &mdlSwitchBlockOn_;
                 break;
-
             case Tile::SwitchBlockOff:
                 m = &mdlSwitchBlockOff_;
                 break;
-
             default:
                 break;
             }
 
             if (!m) continue;
 
-            // GameScene と同じ「タイルのワールド座標」を作ってから
-            // それをscaleTileで縮めるイメージ
             float worldX = xOffsetPreview_ + tx * kTile;
             float worldY = (float)(kMapH - 1 - ty) * kTile;
 
@@ -818,7 +808,6 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
             float drawY = baseY + worldY * scaleTile;
             float drawZ = baseZ;
 
-            // ちょいガタつき（本編の背景みたいな"揺れた足場"ニュアンス）を残す
             float perTileRot = ((tx + ty) & 1) ? 4.0f : -4.0f;
 
             DrawOneTile(
@@ -831,6 +820,180 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
     }
 }
 
+// ===== HUD: 操作説明用の板だけ =====
+void StageSelectScene::DrawControlHelp3D_(float W, float H) {
+    // 画面下あたりに、"A  ←" / "D  →" / "W ↑" / "S ↓" / "START" っぽい板を並べる
+    // 文字モデルなし版なので、ひとまずパネルの「点滅 = 有効」だけ表す
+
+    const float hudY = -0.2f * H;
+    const float hudZ = -0.9f;
+
+    // ステージ進められるか？
+    bool canLeft = (curStage_ > kMinStage_);
+    bool canRight = (curStage_ < kMaxStage_);
+
+    // 難易度動かせるか？
+    int dNow = (int)curDiff_;
+    bool canUp = (dNow > 0);
+    bool canDown = (dNow < 2);
+
+    // ▼共通の小パネル描画
+    auto DrawPanel = [&](float cx, float cy, float cz,
+        float sx, float sy,
+        float rotZdeg,
+        bool blink) {
+
+            // ベース板
+            DrawModel_(mdlSolid_,
+                {cx, cy, cz},
+                {sx, sy, 0.15f},
+                {0,0,rotZdeg});
+
+            // 点滅ハイライト
+            if (blink) {
+                float floatY = (blinkStrength_ - 0.5f) * 0.06f;
+                DrawModel_(mdlSwitchOn_,
+                    {cx, cy + floatY, cz + 0.05f},
+                    {sx * (1.0f + blinkStrength_ * 0.12f),
+                     sy * 0.5f,
+                     0.10f},
+                    {0,0,rotZdeg});
+            }
+        };
+
+    // --- 左（Aでステージ--）: 左側に2枚のパネルを斜め置き
+    {
+        float xBase = -W * 0.30f;
+        float yBase = hudY;
+
+        // 大きめ
+        DrawPanel(
+            xBase,
+            yBase,
+            hudZ,
+            W * 0.10f,
+            H * 0.04f,
+            -20.0f,
+            canLeft
+        );
+
+        // 小さめをちょっとズラして重ねる（←←っぽい）
+        DrawPanel(
+            xBase + W * 0.03f,
+            yBase + H * 0.015f,
+            hudZ + 0.02f,
+            W * 0.06f,
+            H * 0.025f,
+            -20.0f,
+            canLeft
+        );
+    }
+
+    // --- 右（Dでステージ++）
+    {
+        float xBase = W * 0.30f;
+        float yBase = hudY;
+
+        DrawPanel(
+            xBase,
+            yBase,
+            hudZ,
+            W * 0.10f,
+            H * 0.04f,
+            20.0f,
+            canRight
+        );
+
+        DrawPanel(
+            xBase - W * 0.03f,
+            yBase + H * 0.015f,
+            hudZ + 0.02f,
+            W * 0.06f,
+            H * 0.025f,
+            20.0f,
+            canRight
+        );
+    }
+
+    // --- 上方向（Wで難易度アップ）
+    {
+        float xBase = 0.0f;
+        float yBase = hudY + H * 0.10f;
+
+        DrawPanel(
+            xBase,
+            yBase - H * 0.06f,
+            hudZ,
+            W * 0.09f,
+            H * 0.035f,
+            -8.0f,
+            canUp
+        );
+
+        DrawPanel(
+            xBase + W * 0.02f,
+            yBase - H * 0.03f,
+            hudZ + 0.02f,
+            W * 0.05f,
+            H * 0.02f,
+            -8.0f,
+            canUp
+        );
+    }
+
+    // --- 下方向（Sで難易度ダウン）
+    {
+        float xBase = 0.0f;
+        float yBase = hudY - H * 0.10f;
+
+        DrawPanel(
+            xBase,
+            yBase + H * 0.06f,
+            hudZ,
+            W * 0.09f,
+            H * 0.035f,
+            8.0f,
+            canDown
+        );
+
+        DrawPanel(
+            xBase - W * 0.02f,
+            yBase + H * 0.03f,
+            hudZ + 0.02f,
+            W * 0.05f,
+            H * 0.02f,
+            8.0f,
+            canDown
+        );
+    }
+
+    // --- 真ん中（SPACEでスタート） 常に点滅
+    {
+        float xC = 0.0f;
+        float yC = hudY;
+        float zC = hudZ + 0.05f;
+
+        DrawPanel(
+            xC,
+            yC,
+            zC,
+            W * 0.18f,
+            H * 0.06f,
+            0.0f,
+            true
+        );
+
+        DrawPanel(
+            xC,
+            yC + H * 0.025f,
+            zC + 0.03f,
+            W * 0.20f,
+            H * 0.015f,
+            0.0f,
+            true
+        );
+    }
+}
 
 // ===== Draw =====
 void StageSelectScene::Draw() {
@@ -846,7 +1009,7 @@ void StageSelectScene::Draw() {
     float W = virtualWorldH_ * aspect;
     float H = virtualWorldH_;
 
-    // 背景（夜景・足場・クレーン等）
+    // 背景
     DrawBackgroundLayers_(W, H);
 
     // ステージプレビュー（ミニマップ）
@@ -855,25 +1018,18 @@ void StageSelectScene::Draw() {
     // 下の "STAGE XX"
     DrawStageNumberBanner_(W, H);
 
+    // 操作説明HUD（板ベース）
+    DrawControlHelp3D_(W, H);
+
     mr->End(cmd);
-
-    // ★ここを書き換え：操作ガイド+難易度表示
-    ImGui::Begin("Select", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Text("A / D : Stage");
-    ImGui::Text("W / S : Difficulty");
-    ImGui::Text("Space : Start");
-    ImGui::Separator();
-    ImGui::Text("Stage     : %d", curStage_);
-    ImGui::Text("Difficulty: %s", DiffToText_(curDiff_));
-    ImGui::End();
 }
-
 
 // ===== Finalize =====
 void StageSelectScene::Finalize() {
-    // ComPtrが自動解放
+    // ComPtrが自動解放されるので特に何もしない
 }
 
+// 難易度テキスト
 const char *StageSelectScene::DiffToText_(Difficulty d) {
     switch (d) {
     case Difficulty::Easy:   return "EASY";

@@ -17,9 +17,9 @@
 #include "Difficulty.h"
 
 // ステージセレクト画面。
-// A/D でステージ番号を動かす。
-// W/S で難易度を切り替える。（★NEW）
-// Space で GameScene(curStage_, curDifficulty_) に遷移。（★NEW）
+// A/D -> ステージ番号
+// W/S -> 難易度
+// SPACE -> ゲーム開始
 class StageSelectScene : public IScene {
 public:
     StageSelectScene(int startStage = 1,
@@ -36,11 +36,10 @@ public:
     const char *DiffToText_(Difficulty d);
 
 private:
-    // ===== GameSceneと揃えるステージ情報 =====
+    // ===== マップ情報 =====
     static constexpr int   kMapW = 26;
     static constexpr int   kMapH = 15;
     static constexpr float kTile = 1.0f;
-
 
     enum class Tile : int32_t {
         Empty = 0,
@@ -62,7 +61,7 @@ private:
         bool  gone = false;
     };
 
-    // ===== 背景演出パラメータ =====
+    // ===== 見た目パラメータ =====
     float virtualWorldH_ = 22.0f;
     float blinkTime_ = 0.0f;
     float blinkStrength_ = 0.0f;
@@ -88,6 +87,12 @@ private:
 
     Model mdlJumpOnly_;
 
+    // （キーの文字モデルは一旦外す。a.obj等が空でクラッシュするため）
+    // Model mdlKeyA_;
+    // Model mdlKeyD_;
+    // Model mdlKeyW_;
+    // Model mdlKeyS_;
+
     // ===== テクスチャ保持 =====
     Microsoft::WRL::ComPtr<ID3D12Resource> texSolid_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texFragileAny_;
@@ -101,7 +106,6 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOff_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchBlockOn_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchBlockOff_;
-
     Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
 
     enum : UINT {
@@ -125,11 +129,11 @@ private:
     static constexpr int kMinStage_ = 1;
     static constexpr int kMaxStage_ = 30; // 仮
 
-    // ★NEW 難易度
+    // 難易度
     Difficulty startDiff_ = Difficulty::Normal;
     Difficulty curDiff_ = Difficulty::Normal;
 
-    // プレビュー用グリッド
+    // プレビュー用
     Tile  previewGrid_[kMapH][kMapW]{};
     float xOffsetPreview_ = 0.0f;
 
@@ -153,16 +157,19 @@ private:
         const DirectX::XMFLOAT3 &rotDeg
     );
 
+    // 画面構成
     void DrawBackgroundLayers_(float W, float H);
     void DrawStageNumberBanner_(float W, float H);
-    void DrawDifficultyBanner_(float W, float H); // ★NEW
     void DrawPreviewMiniMap_(float W, float H);
 
+    // HUD（キー説明用の「板」だけで構成。文字モデルは使わない）
+    void DrawControlHelp3D_(float W, float H);
+
+    // データ読み込み
     void LoadPreviewFromCSV_();
 
-    // ★NEW 難易度→文字列("easy","normal","hard")を返す
-    static const char *DiffTag_(Difficulty d);
-
-    // ★NEW 難易度バナー用のプレーンな英語表示
-    static const char *DiffLabel_(Difficulty d);
+    // 難易度表記
+    void DrawDifficultyBanner_(float W, float H); // いま未使用でもOK
+    static const char *DiffTag_(Difficulty d);    // いま未使用でもOK
+    static const char *DiffLabel_(Difficulty d);  // いま未使用でもOK
 };
