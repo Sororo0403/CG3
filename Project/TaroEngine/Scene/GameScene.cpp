@@ -665,6 +665,9 @@ void GameScene::ResolveVertical_(float dt) {
     // このフレーム、スイッチに触れているか？
     bool switchOverlapNow = false;
 
+    // 未来位置のAABB（Yだけ更新後の想定）
+    AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
+
     if (vel_.y <= 0.0f) {
         // ===== 落下・着地 =====
         float startBottom = startY;
@@ -683,27 +686,21 @@ void GameScene::ResolveVertical_(float dt) {
                 if (!InMap(tx, row)) continue;
 
                 Tile tt = grid_[row][tx];
-
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
                 float topY = by + kTile;
 
-                // スプリング / スイッチ判定（着地後の仮位置で）
-                {
-                    AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
-
-                    // スプリング
-                    if (IsSpring(tt)) {
-                        if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
-                            vel_.y = kSpringVy;
-                        }
+                // ===== スプリング判定（どこから触れても即発火） =====
+                if (IsSpring(tt)) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        vel_.y = kSpringVy;
                     }
+                }
 
-                    // スイッチ本体
-                    if (tt == Tile::Switch) {
-                        if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
-                            switchOverlapNow = true;
-                        }
+                // ===== スイッチ本体判定（踏んでるかどうか） =====
+                if (tt == Tile::Switch) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        switchOverlapNow = true;
                     }
                 }
 
@@ -762,10 +759,16 @@ void GameScene::ResolveVertical_(float dt) {
                 if (!InMap(tx, row)) continue;
 
                 Tile tt = grid_[row][tx];
-
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
                 float bottomY = by;
+
+                // ===== スプリング判定（どこから触れても即発火） =====
+                if (IsSpring(tt)) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        vel_.y = kSpringVy;
+                    }
+                }
 
                 // 下からfragile壊す(頭ゴン)
                 if (IsFragile(tt) && !frag_[row][tx].gone) {
@@ -791,7 +794,6 @@ void GameScene::ResolveVertical_(float dt) {
 
                 // 空中でスイッチにヒットする場合
                 if (tt == Tile::Switch) {
-                    AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
                     if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
                         switchOverlapNow = true;
                     }
@@ -858,11 +860,10 @@ void GameScene::ResolveVertical_(float dt) {
     }
 
     // ==== スイッチトグル処理（1フレーム1回だけ） ====
-    // ここで「前フレームは踏んでなかった && 今フレーム踏んだ」に入った瞬間にだけ反転する
+    // 「前フレームは踏んでなかった && 今フレーム踏んだ」に入った瞬間だけ反転
     if (!wasOnSwitch_ && switchOverlapNow) {
         switchOn_ = !switchOn_;
     }
-    // 次フレーム用に記録
     wasOnSwitch_ = switchOverlapNow;
 
     // ===== コヨーテ/ジャンプバッファ =====
@@ -960,6 +961,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 }
+
 
 
 
