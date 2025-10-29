@@ -24,7 +24,7 @@ namespace {
 
     constexpr float kFragileBreakTime = 1.35f; // armed→完全消滅
     constexpr float kRegenRespawnTime = 2.0f;  // 再生床が戻るまで
-    constexpr float kFragileBlinkStart = 0.6f;  // 点滅開始のリードタイム
+    constexpr float kFragileBlinkStart = 0.0f;  // 点滅開始のリードタイム
     constexpr float kFragileBlinkFreq = 4.0f;  // Hz
 }
 
@@ -46,27 +46,38 @@ float GameScene::FragileBlinkFactor_(int tx, int ty) const {
         return 0.0f;
     }
 
-    // まだarmedじゃない → 普通に表示
+    // まだarmedじゃない → 常に等倍表示 (点滅なし)
     if (!fs.armed) {
         return 1.0f;
     }
 
-    // armed中は点滅
+    // ---- ここからarmed中の見た目 ----
+    // 要求：
+    // ・壊れる直前まで同じテンポ＆同じ明るさパターンで点滅
+    // ・時間経過でどんどん暗くなったりしない
+
+    // 周期だけ使う（fs.tに応じてチカチカするけど、強さは一定）
     float elapsed = fs.t;
-    float danger = std::clamp(elapsed / kFragileBreakTime, 0.0f, 1.0f);
 
-    float period = 1.0f / kFragileBlinkFreq;
+    // 周期(Hz) → 1/freq 秒のサイクル
+    float period = 1.0f / kFragileBlinkFreq; // 4Hzなら0.25秒で1サイクル
     float cyclePos = std::fmodf(elapsed, period);
-    float t01 = cyclePos / period;
+    float t01 = cyclePos / period; // 0→1
 
-    // コサイン波 (0→1→0)
+    // コサイン波 (0→1→0)。 0〜1の点滅カーブ。
     float wave = 0.5f * (1.0f - std::cos(t01 * 2.0f * 3.14159265f));
 
-    // 壊れる直前ほど暗く(最低0.25まで)
-    float minAlpha = 1.0f - danger * 0.75f; // 1.0→0.25
-    float alphaMul = 1.0f + (minAlpha - 1.0f) * wave;
-    return std::clamp(alphaMul, 0.0f, 1.0f);
+    // 一定の明滅レンジに固定する
+    // 例えば 0.4〜1.0 の間で点滅させる
+    // （あまり0に近いと完全に消えて見失うのでゲーム的にキツい）
+    constexpr float kMinAlpha = 0.4f;
+    constexpr float kMaxAlpha = 1.0f;
+
+    float alpha = kMinAlpha + (kMaxAlpha - kMinAlpha) * wave;
+
+    return std::clamp(alpha, 0.0f, 1.0f);
 }
+
 
 // ====== UTF-8 → UTF-16 ======
 std::wstring GameScene::Widen_(const std::string &u8) {
@@ -665,6 +676,9 @@ void GameScene::ResolveVertical_(float dt) {
     // このフレーム、スイッチに触れているか？
     bool switchOverlapNow = false;
 
+    // スプリングを踏んだ（＝バネで吹っ飛ぶべき）か？
+    bool springBounce = false;
+
     // 未来位置のAABB（Yだけ更新後の想定）
     AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
 
@@ -693,7 +707,9 @@ void GameScene::ResolveVertical_(float dt) {
                 // ===== スプリング判定（どこから触れても即発火） =====
                 if (IsSpring(tt)) {
                     if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
-                        vel_.y = kSpringVy;
+                        // ここでは直接 vel_.y をいじらず、
+                        // 「このフレームはバネで跳ねるべき」という意思だけ残す
+                        springBounce = true;
                     }
                 }
 
@@ -734,11 +750,19 @@ void GameScene::ResolveVertical_(float dt) {
             }
         }
 
-        if (hitFloor) {
+        // ここで最終決定：
+        if (springBounce) {
+            // バネ優先：上方向に吹っ飛ぶ
+            vel_.y = kSpringVy;
+            playerTr_.pos.y = targetY; // スナップしないで継続位置に
+            onGround_ = false;
+        } else if (hitFloor) {
+            // ふつうの着地
             playerTr_.pos.y = bestSnapY;
             vel_.y = 0.0f;
             onGround_ = true;
         } else {
+            // ただ落下継続
             playerTr_.pos.y = targetY;
         }
     } else {
@@ -828,7 +852,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // 足元のかすり接地でもfragile armed付与（上から壊れる系＋Regen）
+    // 足元かすり接地でfragile armed付与（既存ロジックそのまま）
     {
         int txL2 = ToTx(playerTr_.pos.x);
         int txR2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -860,7 +884,6 @@ void GameScene::ResolveVertical_(float dt) {
     }
 
     // ==== スイッチトグル処理（1フレーム1回だけ） ====
-    // 「前フレームは踏んでなかった && 今フレーム踏んだ」に入った瞬間だけ反転
     if (!wasOnSwitch_ && switchOverlapNow) {
         switchOn_ = !switchOn_;
     }
@@ -881,7 +904,7 @@ void GameScene::ResolveVertical_(float dt) {
         jumpBuffer_ = 0;
     }
 
-    // 接地スナップ
+    // 接地スナップ（地上扱いのときだけ）
     if (onGround_) {
         float stableY =
             std::floor((playerTr_.pos.y - kSkinY) / kTile) * kTile + kSkinY;
@@ -890,7 +913,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // fragile / regen タイマー進行
+    // fragile / regen タイマー進行（元の処理そのまま）
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
@@ -916,7 +939,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // --- デス判定 ---
+    // --- デス判定（元の処理そのまま） ---
     {
         bool killed = false;
 
@@ -961,6 +984,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 }
+
 
 
 
@@ -1094,11 +1118,14 @@ void GameScene::ArmFragile_(int tx, int ty) {
 
     if (!fs.armed) {
         fs.armed = true;
-        // 触れた瞬間から点滅させたければ、警告フェーズの時刻まで一気に飛ばす
-        float blinkStartT = kFragileBreakTime - kFragileBlinkStart;
-        if (fs.t < blinkStartT) {
-            fs.t = blinkStartT;
-        }
+
+        // ←これ以降は何もしない
+        // fs.t をいじらないので、
+        // 0秒スタート→fs.t += dtで積算→
+        // fs.t > kFragileBreakTime(今2.5f) のタイミングで消える
+        //
+        // つまり必ずフルの kFragileBreakTime 生きる
+        // (= ちゃんと2.5秒生存する)
     }
 }
 
