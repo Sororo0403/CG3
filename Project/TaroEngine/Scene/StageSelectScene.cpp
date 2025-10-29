@@ -700,42 +700,60 @@ void StageSelectScene::DrawStageNumberBanner_(float W, float H) {
 }
 
 // ===== ステージのミニチュアプレビュー描画 =====
-void StageSelectScene::DrawPreviewMiniMap_(float W, float H) {
-    (void)W;
-
+void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
     auto *dx = engine_->directXCommon;
     auto *cmd = dx->GetCommandList();
     auto *mr = render_->modelRenderer;
 
-    auto Deg = [](float d) { return XMConvertToRadians(d); };
+    auto Deg = [](float d) { return DirectX::XMConvertToRadians(d); };
 
-    // ちっちゃいタイルを並べるヘルパ
-    auto DrawOne = [&](Model &m,
-        const XMFLOAT3 &pos,
+    // ─────────────────────────────────
+    // ★ここが一番大事：タイル縮尺と配置
+    // scaleTile … ゲーム本編1タイル=1.0 を ちょい縮小して見せる倍率
+    //   0.75くらい: 「ちょっと小さい実機プレビュー」感
+    //
+    // baseY … 画面のどこに置くか（中央よりちょい下）
+    // ─────────────────────────────────
+    const float scaleTile = 0.75f;      // ← 0.4f から大きく
+    const float baseZ = 5.0f;       // カメラより手前すぎない位置
+    const float baseY = H * 0.40f;  // ← H*0.25f から持ち上げる
+    const float baseX = 0.0f;
+
+    // タイル1枚ごとの描画。見た目の「ちょいガタつき」もそのまま維持する
+    auto DrawOneTile = [&](Model &m,
+        const DirectX::XMFLOAT3 &pos,
         float zrotDeg,
         bool crackOrDeco) {
+
             Transform t{};
             t.pos = pos;
-            t.scale = {0.5f * 0.4f, 0.5f * 0.4f, 0.5f * 0.4f}; // 縮小表示
+            t.scale = {
+                0.5f * scaleTile,   // 横
+                0.5f * scaleTile,   // 縦
+                0.5f * scaleTile    // 厚み（プレビュー用なので同率）
+            };
             t.rot = {0,0,Deg(zrotDeg)};
             mr->Draw(cmd, m, t);
 
-            // 壊れ床系にはちょいデコ（注意サインぽい何か）
+            // ヒビ床とかは注意サインをちょい浮かせて置く演出は残す
             if (crackOrDeco) {
                 Transform sign{};
-                sign.pos = {pos.x, pos.y + 0.3f, pos.z - 0.05f};
-                sign.scale = {0.2f, 0.15f, 0.2f};
+                sign.pos = {
+                    pos.x,
+                    pos.y + 0.30f * scaleTile,
+                    pos.z - 0.05f
+                };
+                sign.scale = {
+                    0.20f * scaleTile,
+                    0.15f * scaleTile,
+                    0.20f * scaleTile
+                };
                 sign.rot = {0,0,Deg(12)};
                 mr->Draw(cmd, mdlSolid_, sign);
             }
         };
 
-    // 中央やや下にマップ
-    float baseZ = 5.0f;      // カメラより奥だけど背景よりは手前
-    float baseY = H * 0.25f;
-    float baseX = 0.0f;
-    float scaleTile = 0.4f;      // 1タイルを0.4ワールドに縮める
-
+    // ===== タイル並べ =====
     for (int ty = 0; ty < kMapH; ++ty) {
         for (int tx = 0; tx < kMapW; ++tx) {
             Tile t = previewGrid_[ty][tx];
@@ -773,17 +791,15 @@ void StageSelectScene::DrawPreviewMiniMap_(float W, float H) {
                 break;
 
             case Tile::Switch:
-                // スイッチ本体はON/OFFどっちか好きなほう。ここはONをアイコン的に見せる
+                // スイッチ本体
                 m = &mdlSwitchOn_;
                 break;
 
             case Tile::SwitchBlockOn:
-                // スイッチON状態で存在する床
                 m = &mdlSwitchBlockOn_;
                 break;
 
             case Tile::SwitchBlockOff:
-                // スイッチOFF状態で存在する床
                 m = &mdlSwitchBlockOff_;
                 break;
 
@@ -793,22 +809,28 @@ void StageSelectScene::DrawPreviewMiniMap_(float W, float H) {
 
             if (!m) continue;
 
-            float wx = xOffsetPreview_ + tx * kTile;
-            float wy = (float)(kMapH - 1 - ty) * kTile;
+            // GameScene と同じ「タイルのワールド座標」を作ってから
+            // それをscaleTileで縮めるイメージ
+            float worldX = xOffsetPreview_ + tx * kTile;
+            float worldY = (float)(kMapH - 1 - ty) * kTile;
 
-            float drawX = baseX + wx * scaleTile;
-            float drawY = baseY + wy * scaleTile;
+            float drawX = baseX + worldX * scaleTile;
+            float drawY = baseY + worldY * scaleTile;
             float drawZ = baseZ;
 
-            DrawOne(
+            // ちょいガタつき（本編の背景みたいな"揺れた足場"ニュアンス）を残す
+            float perTileRot = ((tx + ty) & 1) ? 4.0f : -4.0f;
+
+            DrawOneTile(
                 *m,
                 {drawX, drawY, drawZ},
-                ((tx + ty) & 1) ? 4.0f : -4.0f,
+                perTileRot,
                 showCrack
             );
         }
     }
 }
+
 
 // ===== Draw =====
 void StageSelectScene::Draw() {
