@@ -333,9 +333,10 @@ void TitleScene::Draw() {
 
     mr->Begin(cmd, dx, camera_);
 
-    // 背景は黒クリア任せで特に何も描かない
+    // 1) 背景（夜の工事現場レイヤ）
+    DrawTitleBackground_();
 
-    // 落下ブロック群を描画
+    // 2) タイトル演出の降ってくるブロック達（手前に描く）
     DrawDebris_();
 
     mr->End(cmd);
@@ -519,4 +520,248 @@ bool TitleScene::LoadTextureSRV_(
     device->CreateShaderResourceView(outTex.Get(), &srvDesc, cpu);
 
     return true;
+}
+
+void TitleScene::DrawTitleBackground_() {
+    // StageSelectScene::DrawBackgroundLayers_ をベースにしたやつ
+    // ここでは worldW_ / worldH_ を使って同じノリの工事夜景を描く
+
+    float W = worldW_;
+    float H = worldH_;
+
+    auto Lerp = [](float a, float b, float t) { return a + (b - a) * t; };
+
+    // 1) 空っぽい奥行きレイヤ（夜空と薄い色ムラ）
+    DrawModel_(
+        mdlSpring_,                     // 空っぽい面として流用
+        {0.0f, H * 0.50f, 38.0f},
+        {W * 2.6f, H * 2.2f, 0.25f},
+        {0,0,0},
+        1.0f
+    );
+
+    DrawModel_(
+        mdlJumpOnly_,                   // ちょい違う色で重ねる
+        {0.0f, H * 0.48f, 37.8f},
+        {W * 2.6f, H * 1.9f, 0.25f},
+        {0,0,-4.0f},
+        1.0f
+    );
+
+    for (int i = -3; i <= 3; ++i) {
+        float rx = i * (W * 0.35f);
+        float ry = H * (0.70f + 0.03f * std::sin(i * 0.9f));
+        // 擬似ランダム幅
+        float randv = float(((i * 31 * 2654435761u) & 255)) / 255.0f;
+        float rw = W * Lerp(0.50f, 0.80f, randv);
+        float rh = H * 0.06f;
+        float rz = 37.6f - (i & 1) * 0.2f;
+
+        DrawModel_(
+            mdlSpring_,
+            {rx, ry, rz},
+            {rw, rh, 0.05f},
+            {0,0,(i & 1) ? -8.0f : 10.0f},
+            1.0f
+        );
+    }
+
+    // 2) ビル群
+    auto DrawBuildings = [&](float z, float yBase, float span,
+        float wMin, float wMax,
+        float hMin, float hMax,
+        float tiltDeg, bool warnLight) {
+            int count = int(W / span) + 8;
+            for (int i = -count / 2; i <= count / 2; ++i) {
+                float rx = i * span;
+                uint32_t seed = (uint32_t)(i * 73 + (int)(z * 10));
+                float r = (float)(seed & 0xFFFF) / 65535.0f;
+
+                float rw = Lerp(wMin, wMax, r);
+                float rh = Lerp(hMin, hMax, 1.0f - r);
+
+                // ビル本体
+                DrawModel_(
+                    mdlSolid_,
+                    {rx, yBase + rh * 0.5f, z},
+                    {rw, rh * 0.5f, 0.22f},
+                    {0,0,(i & 1) ? tiltDeg : -tiltDeg},
+                    1.0f
+                );
+
+                // 屋上の機材箱（SwitchBlockOffでアクセント）
+                DrawModel_(
+                    mdlSwitchBlockOff_,
+                    {rx + rw * 0.14f, yBase + rh + 0.12f, z - 0.03f},
+                    {rw * 0.12f, rw * 0.12f, 0.18f},
+                    {0,0,(i & 1) ? -6.0f : 8.0f},
+                    1.0f
+                );
+
+                // 警告灯っぽい点（SwitchBlockOn）
+                if (warnLight && ((i + (int)z) % 5 == 0)) {
+                    DrawModel_(
+                        mdlSwitchBlockOn_,
+                        {rx, yBase + rh + 0.24f, z - 0.05f},
+                        {0.10f, 0.10f, 0.15f},
+                        {0,0,0},
+                        1.0f
+                    );
+                }
+            }
+        };
+
+    DrawBuildings(
+        33.0f, H * 0.06f,
+        W * 0.14f,
+        W * 0.06f, W * 0.10f,
+        H * 0.16f, H * 0.30f,
+        2.0f, true
+    );
+    DrawBuildings(
+        29.0f, H * 0.08f,
+        W * 0.12f,
+        W * 0.07f, W * 0.12f,
+        H * 0.18f, H * 0.36f,
+        3.0f, true
+    );
+    DrawBuildings(
+        25.0f, H * 0.10f,
+        W * 0.10f,
+        W * 0.08f, W * 0.14f,
+        H * 0.22f, H * 0.40f,
+        4.0f, false
+    );
+
+    // 3) クレーン・吊り荷・ライト
+    // 支柱
+    DrawModel_(
+        mdlJumpOnly_,
+        {-W * 0.32f, H * 0.86f, 24.8f},
+        {0.06f, H * 0.55f, 0.30f},
+        {0,0,0},
+        1.0f
+    );
+
+    // アーム
+    DrawModel_(
+        mdlSolid_,
+        {-W * 0.06f, H * 1.03f, 24.6f},
+        {W * 0.55f, 0.06f, 0.30f},
+        {0,0,-9.0f},
+        1.0f
+    );
+
+    // 縦フレーム
+    DrawModel_(
+        mdlSolid_,
+        {W * 0.22f, H * 0.88f, 24.5f},
+        {0.035f,  H * 0.28f, 0.25f},
+        {0,0,0},
+        1.0f
+    );
+
+    // クレーン操作盤はスイッチOFFの箱っぽさで
+    DrawModel_(
+        mdlSwitchOff_,
+        {W * 0.22f, H * 0.72f, 24.4f},
+        {0.14f, 0.14f, 0.22f},
+        {0,0,0},
+        1.0f
+    );
+
+    // 吊り荷
+    DrawModel_(
+        mdlSolid_,
+        {W * 0.22f, H * 0.55f, 24.3f},
+        {0.35f, 0.08f, 0.25f},
+        {0,0,4.0f},
+        1.0f
+    );
+
+    // 投光器ヘッド（SwitchOnで光ってる感じ）
+    DrawModel_(
+        mdlSwitchOn_,
+        {W * 0.22f, H * 0.47f, 24.2f},
+        {0.15f, 0.08f, 0.22f},
+        {0,0,0},
+        1.0f
+    );
+
+    // 4) 手前手すり・注意テープ
+    {
+        float railY = -0.6f;
+
+        // メイン柵
+        DrawModel_(
+            mdlSolid_,
+            {0.0f, railY, -0.40f},
+            {W * 0.66f, 0.05f, 0.22f},
+            {0,0,0},
+            1.0f
+        );
+
+        // 手すりの繰り返し板
+        for (int i = -3; i <= 3; ++i) {
+            float x = i * (W * 0.16f);
+            DrawModel_(
+                mdlSolid_,
+                {x, railY + 0.20f, -0.41f},
+                {W * 0.09f, 0.03f, 0.22f},
+                {0,0,(i % 2 == 0) ? -10.0f : 12.0f},
+                1.0f
+            );
+        }
+
+        // 黄色テープ風の細い板（JumpOnlyモデルの細切れ）
+        for (int i = -2; i <= 2; ++i) {
+            DrawModel_(
+                mdlJumpOnly_,
+                {i * (W * 0.18f), railY + 0.55f, -0.42f},
+                {W * 0.08f, 0.01f, 0.2f},
+                {0,0, 10.0f * std::sinf(float(i))},
+                1.0f
+            );
+        }
+    }
+
+    // 5) 両サイド投光器 (ポール＋ライト＋注意サイン板)
+    auto Flood = [&](XMFLOAT3 b, float rotZDeg) {
+        // ポール
+        DrawModel_(
+            mdlSolid_,
+            {b.x, b.y, 22.0f},
+            {0.05f, 0.55f, 0.25f},
+            {0,0,0},
+            1.0f
+        );
+
+        // ライトヘッド（SwitchOnで明るい想定）
+        DrawModel_(
+            mdlSwitchOn_,
+            {b.x, b.y + 0.38f, 21.9f},
+            {0.22f, 0.12f, 0.22f},
+            {0,0, rotZDeg},
+            1.0f
+        );
+
+        // 警告パネルっぽい板（Spikeを薄く広げて貼る）
+        DrawModel_(
+            mdlSpike_,
+            {b.x + 0.10f, b.y + 0.26f, 21.7f},
+            {W * 0.22f, H * 0.10f, 0.05f},
+            {0,0, rotZDeg - 12.0f},
+            1.0f
+        );
+        DrawModel_(
+            mdlSpike_,
+            {b.x + 0.08f, b.y + 0.28f, 21.6f},
+            {W * 0.24f, H * 0.11f, 0.05f},
+            {0,0, rotZDeg - 14.0f},
+            1.0f
+        );
+        };
+
+    Flood({-W * 0.48f, H * 0.82f, 0}, 10.0f);
+    Flood({W * 0.52f, H * 0.74f, 0}, 18.0f);
 }

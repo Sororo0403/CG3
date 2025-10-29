@@ -17,6 +17,9 @@ public:
     void Draw() override;
 
 private:
+    // タイトル背景（夜景・クレーン・手すりとか）
+    void DrawTitleBackground_();
+
     struct FallingBlock {
         bool   alive = false;
         DirectX::XMFLOAT3 pos{0,0,0};
