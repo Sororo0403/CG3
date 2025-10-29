@@ -16,9 +16,8 @@
 #include "BufferUtility.h"
 
 // ステージセレクト画面。
-// 背景は TitleScene と同じ工事現場の夜景。
 // A/D でステージ番号を動かし、そのCSVをミニマップ的にプレビュー表示。
-// Enter でGameScene(curStage_)に遷移する。
+// Enter で GameScene(curStage_) に遷移。
 class StageSelectScene : public IScene {
 public:
     void Initialize(const EngineContext *engine, const RenderContext *render) override;
@@ -27,7 +26,7 @@ public:
     void Finalize() override;
 
 private:
-    // ===== 内部タイル定義（GameScene から必要なとこだけ持ってくる） =====
+    // ===== GameSceneと揃えるステージ情報 =====
     static constexpr int   kMapW = 26;
     static constexpr int   kMapH = 15;
     static constexpr float kTile = 1.0f;
@@ -42,31 +41,27 @@ private:
         Spike,
         JumpOnly,
         Regen,
-        Switch,
-        SwitchBlockOn,
-        SwitchBlockOff,
-    };
-
-    struct FragileState {
-        bool  gone = false;
+        Switch,          // ←プレイヤーが踏むスイッチ本体
+        SwitchBlockOn,   // ←スイッチONのときだけある床
+        SwitchBlockOff,  // ←スイッチOFFのときだけある床
     };
 
     struct PreviewCell {
-        Tile t = Tile::Empty;
-        bool gone = false; // fragile壊れてるかとか、ここはfalse固定でいい
+        Tile  t = Tile::Empty;
+        bool  gone = false; // プレビューなので常にfalseでいい
     };
 
-    // ====== 背景用パラメータ ======
-    float virtualWorldH_ = 22.0f; // TitleSceneと同じ仮想高さ
+    // ===== 背景演出パラメータ =====
+    float virtualWorldH_ = 22.0f; // タイトルと同じくらいの見せ方
     float blinkTime_ = 0.0f;
     float blinkStrength_ = 0.0f;
 
-    // ====== 参照 ======
+    // ===== 参照 =====
     const EngineContext *engine_ = nullptr;
     const RenderContext *render_ = nullptr;
     Camera camera_;
 
-    // ====== モデル軍（TitleScene / GameScene と揃える） ======
+    // ===== モデル（GameScene / TitleScene と同じ構成） =====
     Model mdlSolid_;
     Model mdlFragileAny_;
     Model mdlFragileTop_;
@@ -74,12 +69,18 @@ private:
     Model mdlRegen_;
     Model mdlSpring_;
     Model mdlSpike_;
-    Model mdlSwitch_;
+
+    // スイッチ本体（ON/OFFの2モデル）
     Model mdlSwitchOn_;
     Model mdlSwitchOff_;
+
+    // スイッチ連動床（ON時に出る床 / OFF時に出る床）
+    Model mdlSwitchBlockOn_;
+    Model mdlSwitchBlockOff_;
+
     Model mdlJumpOnly_;
 
-    // ====== Texture ComPtr（SRV存続用） ======
+    // ===== テクスチャ保持（SRVを壊さないよう握っておく） =====
     Microsoft::WRL::ComPtr<ID3D12Resource> texSolid_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texFragileAny_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texFragileTop_;
@@ -87,11 +88,15 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Resource> texRegen_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSpring_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSpike_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitch_;
+
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOn_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOff_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchBlockOn_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchBlockOff_;
+
     Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
 
+    // SRVスロット（タイトルやゲーム本編と被らない適当な後ろの番号帯）
     enum : UINT {
         kSrv_T_Solid = 64,
         kSrv_T_FragileAny,
@@ -100,34 +105,41 @@ private:
         kSrv_T_Regen,
         kSrv_T_Spring,
         kSrv_T_Spike,
-        kSrv_T_Switch,
         kSrv_T_SwitchOn,
         kSrv_T_SwitchOff,
+        kSrv_T_SwitchBlockOn,
+        kSrv_T_SwitchBlockOff,
         kSrv_T_JumpOnly,
     };
 
     // ステージ選択状態
     int curStage_ = 1;
     static constexpr int kMinStage_ = 1;
-    static constexpr int kMaxStage_ = 30; // 仮の上限。必要なら変えて
+    static constexpr int kMaxStage_ = 30; // 仮の上限
 
     // プレビュー用グリッド
-    Tile previewGrid_[kMapH][kMapW]{};
-    bool switchOnPreview_ = false; // スイッチ系ブロックの表示用
-    float xOffsetPreview_ = 0.0f;  // プレビューを中央寄せする
+    Tile  previewGrid_[kMapH][kMapW]{};
+    float xOffsetPreview_ = 0.0f; // プレビューを中央寄せする用
 
 private:
-    // 便利ユーティリティ
+    // ユーティリティ
     static std::wstring Widen_(const std::string &u8);
-    bool LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
+
+    bool LoadTextureSRV_(
+        const std::wstring &fileU16,
+        UINT srvIndex,
         Microsoft::WRL::ComPtr<ID3D12Resource> &outTex,
-        D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle);
+        D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle
+    );
 
     void RefreshCameraOrtho_();
-    void DrawModel_(Model &m,
+
+    void DrawModel_(
+        Model &m,
         const DirectX::XMFLOAT3 &pos,
         const DirectX::XMFLOAT3 &fullScale,
-        const DirectX::XMFLOAT3 &rotDeg);
+        const DirectX::XMFLOAT3 &rotDeg
+    );
 
     void DrawBackgroundLayers_(float W, float H);
     void DrawStageNumberBanner_(float W, float H);

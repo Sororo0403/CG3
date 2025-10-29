@@ -19,7 +19,13 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-// ==== UTF-8 -> UTF-16 ユーティリティ ====
+namespace {
+    // タイトル画面用SRV開始スロット。
+    // ImGuiなどが0番台を使ってるなら被らないように後ろへずらす。
+    constexpr UINT kTitleSrvBase = 32;
+}
+
+// ==== UTF-8 -> UTF-16 ====
 static std::wstring WidenU16_(const std::string &s) {
     if (s.empty()) return L"";
     int wlen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, nullptr, 0);
@@ -54,9 +60,15 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
     mdlRegen_.Initialize(device, "Resources/Model/Block/regen.obj");
     mdlSpring_.Initialize(device, "Resources/Model/Block/spring.obj");
     mdlSpike_.Initialize(device, "Resources/Model/Block/spike.obj");
-    mdlSwitch_.Initialize(device, "Resources/Model/Block/switch.obj");
-    mdlSwitchBlockOn_.Initialize(device, "Resources/Model/Block/switch_on.obj");
-    mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switch_off.obj");
+
+    // スイッチ本体（押すギミック）
+    mdlSwitchOn_.Initialize(device, "Resources/Model/Block/switch_on.obj");
+    mdlSwitchOff_.Initialize(device, "Resources/Model/Block/switch_off.obj");
+
+    // スイッチ連動床（ON時に出る床 / OFF時に出る床）
+    mdlSwitchBlockOn_.Initialize(device, "Resources/Model/Block/switchblock_on.obj");
+    mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switchblock_off.obj");
+
     mdlJumpOnly_.Initialize(device, "Resources/Model/Block/jumponly.obj");
 
     // ---------- テクスチャSRVをバインド ----------
@@ -68,26 +80,32 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
         }
         };
 
-    // SRVスロットは空いてる番号でいい。0～10でOK。
-    setupTex(mdlSolid_, 0, texSolid_);
-    setupTex(mdlFragileAny_, 1, texFragileAny_);
-    setupTex(mdlFragileTop_, 2, texFragileTop_);
-    setupTex(mdlFragileBottom_, 3, texFragileBottom_);
-    setupTex(mdlRegen_, 4, texRegen_);
-    setupTex(mdlSpring_, 5, texSpring_);
-    setupTex(mdlSpike_, 6, texSpike_);
-    setupTex(mdlSwitch_, 7, texSwitch_);
-    setupTex(mdlSwitchBlockOn_, 8, texSwitchOn_);
-    setupTex(mdlSwitchBlockOff_, 9, texSwitchOff_);
-    setupTex(mdlJumpOnly_, 10, texJumpOnly_);
+    // SRVスロット割り当て
+    setupTex(mdlSolid_, kTitleSrvBase + 0, texSolid_);
+    setupTex(mdlFragileAny_, kTitleSrvBase + 1, texFragileAny_);
+    setupTex(mdlFragileTop_, kTitleSrvBase + 2, texFragileTop_);
+    setupTex(mdlFragileBottom_, kTitleSrvBase + 3, texFragileBottom_);
+    setupTex(mdlRegen_, kTitleSrvBase + 4, texRegen_);
+    setupTex(mdlSpring_, kTitleSrvBase + 5, texSpring_);
+    setupTex(mdlSpike_, kTitleSrvBase + 6, texSpike_);
 
+    // スイッチ本体ON/OFF
+    setupTex(mdlSwitchOn_, kTitleSrvBase + 7, texSwitchOn_);
+    setupTex(mdlSwitchOff_, kTitleSrvBase + 8, texSwitchOff_);
+
+    // スイッチ連動床ON/OFF
+    setupTex(mdlSwitchBlockOn_, kTitleSrvBase + 9, texSwitchBlockOn_);
+    setupTex(mdlSwitchBlockOff_, kTitleSrvBase + 10, texSwitchBlockOff_);
+
+    setupTex(mdlJumpOnly_, kTitleSrvBase + 11, texJumpOnly_);
 
     // ---------- ワールドスケールとカメラ ----------
+    // ゲーム内ステージと似たスケールで見せたい
     worldW_ = 32.0f;
     worldH_ = 18.0f;
 
-    spawnTopY_ = worldH_ + 2.0f;   // 画面より上から出す
-    despawnY_ = -4.0f;            // ここより下に行ったら消す
+    spawnTopY_ = worldH_ + 2.0f; // 画面上ちょい外から降らせる
+    despawnY_ = -4.0f;
     spawnLeftX_ = -worldW_ * 0.3f;
     spawnRightX_ = worldW_ * 0.3f;
 
@@ -107,7 +125,7 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
 
     float camZ = -50.0f;
     float centerX = 0.0f;
-    float centerY = worldH_ * 0.5f; // 9くらい
+    float centerY = worldH_ * 0.5f;
 
     camera_.Initialize(
         {centerX, centerY, camZ},
@@ -124,11 +142,12 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
     );
     camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
 
-    // ---------- スポーン管理 ----------
+    // ---------- スポーン状態 ----------
     spawnTimer_ = 0.0f;
-    spawnInterval_ = 0.1f;
+    spawnInterval_ = 0.1f; // 0.1秒ごとに落とす感じ
+    nextKindIndex_ = 0;
 
-    // 全ブロックを初期化
+    // ブロックリスト初期化
     for (int i = 0; i < kMaxBlocks_; ++i) {
         blocks_[i] = FallingBlock{};
         blocks_[i].alive = false;
@@ -139,7 +158,7 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
 // Finalize
 // =======================================================
 void TitleScene::Finalize() {
-    // ComPtr任せ
+    // ComPtr が勝手に解放してくれるので何もしない
 }
 
 // =======================================================
@@ -173,6 +192,7 @@ void TitleScene::RefreshCameraOrtho_() {
 // SpawnOne_ : 新しい落下ブロックを1つ有効化
 // =======================================================
 void TitleScene::SpawnOne_() {
+    // 空いてるスロットを探す
     int slot = -1;
     for (int i = 0; i < kMaxBlocks_; ++i) {
         if (!blocks_[i].alive) { slot = i; break; }
@@ -187,33 +207,44 @@ void TitleScene::SpawnOne_() {
     b.alive = true;
     b.t = 0.0f;
 
-    // 出現位置（Xはランダム、Yは画面の上外）
+    // 出現位置
     float spawnX = spawnLeftX_ + (spawnRightX_ - spawnLeftX_) * r0;
     b.baseX = spawnX;
-    b.pos = {spawnX, spawnTopY_, -1.0f};
+    b.pos = {spawnX, spawnTopY_, 0.0f};
 
-    // 落下スピード / 横揺れ設定
+    // 落下モーション
     b.fallSpeed = 5.0f + r1 * 2.0f;
     b.swayAmp = 2.0f + r2 * 1.5f;
     b.swayFreq = 0.6f + r1 * 0.4f;
     b.phase = r2 * 6.28318f;
 
-    // モデルのスケールは固定（モデルの素の形をそのまま見せたいなら等倍演出にしておく）
+    // サイズと回転は固定
     b.w = 1.0f;
     b.h = 1.0f;
     b.d = 1.0f;
+    b.rotZDeg = 0.0f;
 
-    // ちょい回転スタートで漂わせる
-    b.rotZDeg = (r1 * 2.0f - 1.0f) * 10.0f;
-
-    // ★ここ：11種を順番に出す
+    // 種類は 0..10 を順番ローテ
+    // 0:Solid
+    // 1:FragileAny
+    // 2:FragileTop
+    // 3:FragileBottom
+    // 4:Regen
+    // 5:Spring
+    // 6:Spike
+    // 7:SwitchOn
+    // 8:SwitchOff
+    // 9:SwitchBlockOn
+    //10:SwitchBlockOff
+    // (JumpOnly はこのローテに入れたいなら増やしてもOK。
+    //  今回は JumpOnly を SwitchBlockOff と差し替えず、下で分岐で扱うなら拡張する。
+    //  とりあえず 0..10 の11種類に JumpOnly も含めたいなら下のマッピングで扱う)
     b.kind = nextKindIndex_ % 11;
     nextKindIndex_++;
 }
 
-
 // =======================================================
-// UpdateDebris_ : 生きてるブロックを全員更新
+// UpdateDebris_ : 生きてるブロックの全更新
 // =======================================================
 void TitleScene::UpdateDebris_(float dt) {
     for (int i = 0; i < kMaxBlocks_; ++i) {
@@ -222,17 +253,14 @@ void TitleScene::UpdateDebris_(float dt) {
 
         b.t += dt;
 
-        // 下方向に等速落下（画面を通過）
+        // 重力っぽい落下（等速）
         b.pos.y -= b.fallSpeed * dt;
 
-        // 横方向はサインでゆったりスイング
+        // 横方向にフラフラ
         float sway = std::sinf(b.t * b.swayFreq + b.phase) * b.swayAmp;
         b.pos.x = b.baseX + sway;
 
-        // ゆっくり回転させるとさらに漂ってる感が出る
-        b.rotZDeg += dt * 15.0f; // 1秒で15度くらい
-
-        // 画面外(十分下)まで行ったら消す
+        // 画面のかなり下まで落ちたら消す
         if (b.pos.y < despawnY_) {
             b.alive = false;
         }
@@ -240,7 +268,7 @@ void TitleScene::UpdateDebris_(float dt) {
 }
 
 // =======================================================
-// DrawDebris_ : 落下中ブロックたちを描画
+// DrawDebris_ : 落下ブロック描画
 // =======================================================
 void TitleScene::DrawDebris_() {
     for (int i = 0; i < kMaxBlocks_; ++i) {
@@ -249,48 +277,28 @@ void TitleScene::DrawDebris_() {
 
         Model *useModel = nullptr;
         switch (b.kind) {
-        case 0:  useModel = &mdlSolid_;            break;
-        case 1:  useModel = &mdlFragileAny_;       break;
-        case 2:  useModel = &mdlFragileTop_;       break;
-        case 3:  useModel = &mdlFragileBottom_;    break;
-        case 4:  useModel = &mdlRegen_;            break;
-        case 5:  useModel = &mdlSpring_;           break;
-        case 6:  useModel = &mdlSpike_;            break;
-        case 7:  useModel = &mdlSwitch_;           break;
-        case 8:  useModel = &mdlSwitchBlockOn_;    break;
-        case 9:  useModel = &mdlSwitchBlockOff_;   break;
-        case 10: useModel = &mdlJumpOnly_;         break;
-        default: useModel = &mdlSolid_;            break;
+        case 0:  useModel = &mdlSolid_;           break;
+        case 1:  useModel = &mdlFragileAny_;      break;
+        case 2:  useModel = &mdlFragileTop_;      break;
+        case 3:  useModel = &mdlFragileBottom_;   break;
+        case 4:  useModel = &mdlRegen_;           break;
+        case 5:  useModel = &mdlSpring_;          break;
+        case 6:  useModel = &mdlSpike_;           break;
+        case 7:  useModel = &mdlSwitchOn_;        break; // スイッチ本体(ON)
+        case 8:  useModel = &mdlSwitchOff_;       break; // スイッチ本体(OFF)
+        case 9:  useModel = &mdlSwitchBlockOn_;   break; // スイッチ床ON
+        case 10: useModel = &mdlSwitchBlockOff_;  break; // スイッチ床OFF
+        default: useModel = &mdlJumpOnly_;        break; // 念のためfallback
         }
 
-        DrawModel_(*useModel,
+        DrawModel_(
+            *useModel,
             b.pos,
             {b.w, b.h, b.d},
             {0.0f, 0.0f, b.rotZDeg},
-            1.0f);
+            1.0f
+        );
     }
-}
-
-
-// =======================================================
-// DrawBackground_ : 背景一枚板（水色にしたいならそのテクスチャを水色に）
-// =======================================================
-void TitleScene::DrawBackground_() {
-    auto *dx = engine_->directXCommon;
-    auto *cmd = dx->GetCommandList();
-    auto *mr = render_->modelRenderer;
-
-    auto Deg = [](float d) { return XMConvertToRadians(d); };
-
-    Transform t{};
-    t.pos = {0.0f, worldH_ * 0.5f, 40.0f}; // カメラより奥
-    t.scale = {worldW_ * 3.0f * 0.5f,
-               worldH_ * 3.0f * 0.5f,
-               0.5f * 0.5f};
-    t.rot = {0,0,Deg(0.0f)};
-
-    // ただの板をでっかく
-    mr->Draw(cmd, mdlSolid_, t, 1.0f);
 }
 
 // =======================================================
@@ -299,17 +307,17 @@ void TitleScene::DrawBackground_() {
 void TitleScene::Update(float dt) {
     RefreshCameraOrtho_();
 
-    // スポーンタイマ進行
+    // 一定間隔で新しいブロックを落とす
     spawnTimer_ += dt;
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         SpawnOne_();
     }
 
-    // ブロック更新
+    // ブロック挙動更新
     UpdateDebris_(dt);
 
-    // スペースでシーン遷移
+    // スペースでステージセレクトへ
     if (engine_->input && engine_->input->IsKeyTriggered(DIK_SPACE)) {
         engine_->sceneManager->ChangeScene(std::make_unique<StageSelectScene>());
     }
@@ -325,16 +333,16 @@ void TitleScene::Draw() {
 
     mr->Begin(cmd, dx, camera_);
 
-    // 1) 背景
-    DrawBackground_();
-    // 2) 落ちてるブロックたち
+    // 背景は黒クリア任せで特に何も描かない
+
+    // 落下ブロック群を描画
     DrawDebris_();
 
     mr->End(cmd);
 }
 
 // =======================================================
-// DrawModel_ : ModelRenderer 経由で描画
+// DrawModel_ : 1モデル描画
 // =======================================================
 void TitleScene::DrawModel_(
     Model &m,
@@ -366,10 +374,11 @@ void TitleScene::DrawModel_(
 }
 
 // =======================================================
-// LoadTextureSRV_ : テクスチャを読み込んでSRVを作る
+// LoadTextureSRV_ : TitleScene版（GameSceneとほぼ同じ）
 // =======================================================
 bool TitleScene::LoadTextureSRV_(
-    const std::wstring &fileU16, UINT srvIndex,
+    const std::wstring &fileU16,
+    UINT srvIndex,
     ComPtr<ID3D12Resource> &outTex,
     D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle) {
 
@@ -431,7 +440,7 @@ bool TitleScene::LoadTextureSRV_(
     UINT64 uploadSize = GetRequiredIntermediateSize(outTex.Get(), 0, (UINT)useMeta.mipLevels);
     ComPtr<ID3D12Resource> upload = BufferUtility::CreateUploadBuffer(device, uploadSize);
 
-    // 小さな一時コマンドリストを作って転送
+    // 一時コマンドでテクスチャ転送
     ComPtr<ID3D12CommandQueue> queue;
     {
         D3D12_COMMAND_QUEUE_DESC qd{};
@@ -450,7 +459,6 @@ bool TitleScene::LoadTextureSRV_(
         IID_PPV_ARGS(&list)
     );
 
-    // サブリソースコピー
     {
         std::vector<D3D12_SUBRESOURCE_DATA> subs((size_t)useMeta.mipLevels);
         for (size_t m = 0; m < useMeta.mipLevels; ++m) {
@@ -478,7 +486,7 @@ bool TitleScene::LoadTextureSRV_(
     ID3D12CommandList *lists[] = {list.Get()};
     queue->ExecuteCommandLists(1, lists);
 
-    // フェンスで待つ
+    // フェンス待ち
     ComPtr<ID3D12Fence> fence;
     device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
     HANDLE evt = CreateEvent(nullptr, FALSE, FALSE, nullptr);
