@@ -7,12 +7,12 @@
 #include "SceneManager.h"
 #include "Camera.h"
 #include "Model.h"
+#include "Transform.h"
 #include "Difficulty.h"
 
-#include <DirectXMath.h>
 #include <string>
+#include <array>
 
-// ClearScene.h 側のクラス宣言にこれを足す
 class ClearScene : public IScene {
 public:
     ClearScene(float clearTimeSec,
@@ -24,7 +24,7 @@ public:
         , playedStageId_(playedStageId)
         , difficulty_(diff) {
     }
-    // 既存のやつ:
+
     void Initialize(const EngineContext *engine, const RenderContext *render) override;
     void Update(float dt) override;
     void Draw() override;
@@ -33,20 +33,33 @@ public:
 private:
     const EngineContext *engineContext_ = nullptr;
     const RenderContext *renderContext_ = nullptr;
-	SceneManager *sceneManager_ = nullptr;
+    SceneManager *sceneManager_ = nullptr;
 
     Camera camera_;
 
+    // UI用モデル
+    Model titlePlateModel_;    // CLEAR TIME 的な板 (normal.obj を仮使用)
+    Model nextStageModel_;     // NEXT STAGE
+    Model stageSelectModel_;   // STAGE SELECT
 
-    // ★追加
-    int   playedStageId_ = 1;
+    std::array<Model, 10> digitModel_; // 0..9
+    Model spaceModel_;               // スペース (space.obj) これ ":" "." のダミーにも使う
 
+    // クリア情報
     float clearTimeSec_ = 0.0f;
-    int nextStageId_ = 0;
-
-
-    // ★追加: クリア時の難易度を保持
+    int   nextStageId_ = 0;
+    int   playedStageId_ = 1;
     Difficulty difficulty_ = Difficulty::Normal;
 
-    int menuIndex_ = 0; // 0=Next,1=Select
+    int menuIndex_ = 0; // 0=NextStage,1=StageSelect
+
+    std::string BuildTimeString_() const;
+
+    void DrawTimeString3D_(
+        ID3D12GraphicsCommandList *cmd,
+        const std::string &timeText,
+        float baseX, float baseY, float z,
+        float charW, float charH,
+        float spacing
+    );
 };
