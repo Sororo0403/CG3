@@ -464,34 +464,50 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     setupTex(mdlRegen_, kSrvIndex_Regen, texRegen_);
     setupTex(mdlSpring_, kSrvIndex_Spring, texSpring_);
     setupTex(mdlSpike_, kSrvIndex_Spike, texSpike_);
-
-    // スイッチ本体ON/OFF
     setupTex(mdlSwitchOn_, kSrvIndex_SwitchOn, texSwitchOn_);
     setupTex(mdlSwitchOff_, kSrvIndex_SwitchOff, texSwitchOff_);
-
-    // スイッチ連動床のON/OFF
     setupTex(mdlSwitchBlockOn_, kSrvIndex_SwitchBlockOn, texSwitchBlockOn_);
     setupTex(mdlSwitchBlockOff_, kSrvIndex_SwitchBlockOff, texSwitchBlockOff_);
-
     setupTex(mdlJumpOnly_, kSrvIndex_JumpOnly, texJumpOnly_);
 
     // === マップオフセット（横方向センタリング） ===
     const float mapW = kMapW * kTile;
     xOffset_ = -mapW * 0.5f;
 
-    // === ステージCSVロード ===
-    std::string stagePath;
+    // === ステージCSVロード（難易度つき） ===
     {
-        char buf[64];
-        std::snprintf(buf, sizeof(buf), "stage%02d.csv", stageId_);
-        stagePath = buf;
-    }
-    if (!LoadCSV(stagePath)) {
-        if (!LoadCSV("stage.csv")) {
+        auto DiffTag = [this]() -> const char * {
+            switch (difficulty_) {
+            case Difficulty::Easy:   return "easy";
+            case Difficulty::Normal: return "normal";
+            case Difficulty::Hard:   return "hard";
+            }
+            return "normal";
+            };
+
+        char bufDiff[64];
+        std::snprintf(bufDiff, sizeof(bufDiff),
+            "stage%02d_%s.csv", stageId_, DiffTag());
+
+        char bufNormal[64];
+        std::snprintf(bufNormal, sizeof(bufNormal),
+            "stage%02d.csv", stageId_);
+
+        bool loaded = false;
+        if (LoadCSV(bufDiff)) {
+            loaded = true;
+        } else if (LoadCSV(bufNormal)) {
+            loaded = true;
+        } else if (LoadCSV("stage.csv")) {
+            loaded = true;
+        } else {
             BuildSample();
-            (void)SaveCSV(stagePath); // ないならサンプルを出力
+            (void)SaveCSV(bufNormal); // なければサンプル吐く
+            loaded = true;
         }
+        (void)loaded;
     }
+
     ClampSpawnToSafe();
 
     // === プレイヤー初期配置 ===
@@ -512,7 +528,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     jumpBuffer_ = 0;
     std::memset(keyPrev_, 0, sizeof(keyPrev_));
 
-    // === カメラ設定（マップ全体を正射影で収める） ===
+    // === カメラ設定（正射影で全体俯瞰） ===
     {
         const float worldW = kMapW * kTile;
         const float worldH = kMapH * kTile;
@@ -563,6 +579,7 @@ void GameScene::Initialize(const EngineContext *engineContext, const RenderConte
     initialSpawnTx_ = spawnTx_;
     initialSpawnTy_ = spawnTy_;
 }
+
 
 // ====== 横方向の物理解決 ======
 void GameScene::ResolveHorizontal_() {
@@ -1112,11 +1129,12 @@ void GameScene::GoToClearScene_() {
         nextStage = 0;
     }
 
+    // ★難易度も渡す
     engineContext_->sceneManager->ChangeScene(
-        std::make_unique<ClearScene>(finalTime_, nextStage, stageId_)
+        std::make_unique<ClearScene>(finalTime_, nextStage, stageId_, difficulty_)
     );
-
 }
+
 
 // ====== 壊れ床をarmed状態にする ======
 void GameScene::ArmFragile_(int tx, int ty) {

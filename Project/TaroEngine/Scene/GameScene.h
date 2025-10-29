@@ -9,6 +9,7 @@
 #include "Model.h"
 #include "Transform.h"
 #include "SceneManager.h"
+#include "Difficulty.h"
 
 #include <DirectXMath.h>
 #include <string>
@@ -26,7 +27,10 @@ struct AABB { float x, y; float w, h; };
 /// </summary>
 class GameScene : public IScene {
 public:
-    GameScene(int stageId = 1) : stageId_(stageId) {}
+    GameScene(int stageId = 1, Difficulty diff = Difficulty::Normal)
+        : stageId_(stageId)
+        , difficulty_(diff) {
+    }
     void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
     void Update(float deltaTime) override;
     void Draw() override;
@@ -97,6 +101,8 @@ private:
 
     bool wasOnSwitch_ = false; // 前フレーム、プレイヤーはスイッチに触れていたか？
 
+    // ★追加: 現在の難易度
+    Difficulty difficulty_ = Difficulty::Normal;
 
     // ===== 描画リソース =====
     Camera camera_;

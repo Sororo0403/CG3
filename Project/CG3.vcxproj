@@ -175,6 +175,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="TaroEngine\Scene\TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TaroEngine\Scene\Difficulty.h" />
     <ClInclude Include="TaroEngine\Scene\ClearScene.h" />
     <ClInclude Include="TaroEngine\Scene\StageSelectScene.h" />
     <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h" />

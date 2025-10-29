@@ -14,6 +14,7 @@
 #include "Model.h"
 #include "IScene.h"
 #include "BufferUtility.h"
+#include "Difficulty.h"
 
 // ステージセレクト画面。
 // A/D でステージ番号を動かす。
@@ -21,15 +22,10 @@
 // Space で GameScene(curStage_, curDifficulty_) に遷移。（★NEW）
 class StageSelectScene : public IScene {
 public:
-    enum class Difficulty : int { // ★NEW 難易度列挙
-        Easy = 0,
-        Normal,
-        Hard,
-        COUNT
-    };
-
-    StageSelectScene(int startStage = 1, Difficulty startDiff = Difficulty::Normal)
-        : startStage_(startStage), startDiff_(startDiff) {
+    StageSelectScene(int startStage = 1,
+        Difficulty startDiff = Difficulty::Normal)
+        : startStage_(startStage)
+        , startDiff_(startDiff) {
     }
 
     void Initialize(const EngineContext *engine, const RenderContext *render) override;
@@ -37,11 +33,14 @@ public:
     void Draw() override;
     void Finalize() override;
 
+    const char *DiffToText_(Difficulty d);
+
 private:
     // ===== GameSceneと揃えるステージ情報 =====
     static constexpr int   kMapW = 26;
     static constexpr int   kMapH = 15;
     static constexpr float kTile = 1.0f;
+
 
     enum class Tile : int32_t {
         Empty = 0,
