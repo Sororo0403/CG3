@@ -259,6 +259,9 @@
     <ClInclude Include="TaroEngine\Scene\ClearScene.h">
       <Filter>Include\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\Difficulty.h">
+      <Filter>Source\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\ModelVS.hlsl">

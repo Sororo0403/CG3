@@ -223,7 +223,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     auto *dx = engine_->directXCommon;
     ID3D12Device *device = dx->GetDevice();
 
-    // モデルロード（GameScene / TitleScene と揃える）
+    // モデルロード（省略なしであなたの元のやつ全部そのまま）
     mdlSolid_.Initialize(device, "Resources/Model/Block/solid.obj");
     mdlFragileAny_.Initialize(device, "Resources/Model/Block/fragile_any.obj");
     mdlFragileTop_.Initialize(device, "Resources/Model/Block/fragile_top.obj");
@@ -231,18 +231,13 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     mdlRegen_.Initialize(device, "Resources/Model/Block/regen.obj");
     mdlSpring_.Initialize(device, "Resources/Model/Block/spring.obj");
     mdlSpike_.Initialize(device, "Resources/Model/Block/spike.obj");
-
-    // スイッチ本体：ON/OFF
     mdlSwitchOn_.Initialize(device, "Resources/Model/Block/switch_on.obj");
     mdlSwitchOff_.Initialize(device, "Resources/Model/Block/switch_off.obj");
-
-    // スイッチ連動床：ON側の床 / OFF側の床
     mdlSwitchBlockOn_.Initialize(device, "Resources/Model/Block/switchblock_on.obj");
     mdlSwitchBlockOff_.Initialize(device, "Resources/Model/Block/switchblock_off.obj");
-
     mdlJumpOnly_.Initialize(device, "Resources/Model/Block/jumponly.obj");
 
-    // 各モデルのアルベドをSRVに登録
+    // テクスチャSRV割り当て（あなたの元のsetupTex呼びまわし そのまま）
     auto setupTex = [&](Model &m, UINT slot, ComPtr<ID3D12Resource> &holder) {
         if (m.GetAlbedoPath().empty()) return;
         D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
@@ -250,7 +245,6 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
             m.SetAlbedoSRV(gpu);
         }
         };
-
     setupTex(mdlSolid_, kSrv_T_Solid, texSolid_);
     setupTex(mdlFragileAny_, kSrv_T_FragileAny, texFragileAny_);
     setupTex(mdlFragileTop_, kSrv_T_FragileTop, texFragileTop_);
@@ -258,18 +252,13 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     setupTex(mdlRegen_, kSrv_T_Regen, texRegen_);
     setupTex(mdlSpring_, kSrv_T_Spring, texSpring_);
     setupTex(mdlSpike_, kSrv_T_Spike, texSpike_);
-
-    // スイッチ本体 ON/OFF
     setupTex(mdlSwitchOn_, kSrv_T_SwitchOn, texSwitchOn_);
     setupTex(mdlSwitchOff_, kSrv_T_SwitchOff, texSwitchOff_);
-
-    // スイッチ連動床 ON/OFF
     setupTex(mdlSwitchBlockOn_, kSrv_T_SwitchBlockOn, texSwitchBlockOn_);
     setupTex(mdlSwitchBlockOff_, kSrv_T_SwitchBlockOff, texSwitchBlockOff_);
-
     setupTex(mdlJumpOnly_, kSrv_T_JumpOnly, texJumpOnly_);
 
-    // カメラはタイトル風の正射影
+    // カメラ（元の正射影カメラと同じロジック）
     float w = (float)dx->GetWidth();
     float h = (float)dx->GetHeight();
     float aspect = std::max(1.0f, w) / std::max(1.0f, h);
@@ -292,38 +281,58 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     blinkTime_ = 0.0f;
     blinkStrength_ = 0.0f;
 
-    // 最初はステージ1
+    // ★ステージと難易度の初期値を外部指定から反映
     curStage_ = std::clamp(startStage_, kMinStage_, kMaxStage_);
-    LoadPreviewFromCSV_(); 
+    curDiff_ = startDiff_;
 
     // プレビューの横オフセット（マップ中心揃え）
     const float mapW = kMapW * kTile;
     xOffsetPreview_ = -mapW * 0.5f;
 
+    // CSVプレビュー読み込み（難易度込みロジック）
     LoadPreviewFromCSV_();
 }
 
 // ===== CSVを読んで previewGrid_ にタイルを入れる =====
 void StageSelectScene::LoadPreviewFromCSV_() {
-    // まず空で初期化
+    // 全部Emptyで初期化
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             previewGrid_[y][x] = Tile::Empty;
         }
     }
 
-    // "stageXX.csv"
+    // 難易度タグ
+    auto diffTag = [this]() -> const char * {
+        switch (curDiff_) {
+        case Difficulty::Easy:   return "easy";
+        case Difficulty::Normal: return "normal";
+        case Difficulty::Hard:   return "hard";
+        }
+        return "normal";
+        }();
+
+    // 優先: stageNN_<diff>.csv
     char pathBuf[64];
-    std::snprintf(pathBuf, sizeof(pathBuf), "stage%02d.csv", curStage_);
+    std::snprintf(pathBuf, sizeof(pathBuf),
+        "stage%02d_%s.csv", curStage_, diffTag);
 
     std::ifstream ifs(pathBuf);
+
+    // フォールバック: stageNN.csv
     if (!ifs) {
-        // CSV無しなら空のままでOK
+        std::snprintf(pathBuf, sizeof(pathBuf),
+            "stage%02d.csv", curStage_);
+        ifs.open(pathBuf);
+    }
+
+    if (!ifs) {
+        // ファイルが何も無いなら空プレビューのまま終了
         return;
     }
 
     std::string line;
-    // 1行目（W,H,spawnTx,spawnTy...）は今は使わないので捨てる
+    // 1行目 (W,H,spawnTx,spawnTy...) は読み飛ばす
     if (!std::getline(ifs, line)) return;
 
     int y = 0;
@@ -353,11 +362,11 @@ void StageSelectScene::Update(float dt) {
 
     blinkTime_ += dt;
     float basePulse = 0.5f * (1.0f + std::sinf(blinkTime_ * 3.0f));
-    blinkStrength_ = std::pow(basePulse, 3.0f); // ちょっとエモい点滅
+    blinkStrength_ = std::pow(basePulse, 3.0f); // エモい点滅
 
     auto *in = engine_->input;
 
-    // A / D でステージ番号変更
+    // --- ステージ番号変更 (A / D) ---
     if (in->IsKeyTriggered(DIK_A)) {
         curStage_--;
         if (curStage_ < kMinStage_) curStage_ = kMinStage_;
@@ -369,12 +378,31 @@ void StageSelectScene::Update(float dt) {
         LoadPreviewFromCSV_();
     }
 
-    // Enter で決定 -> GameScene(curStage_)
+    // --- 難易度変更 (W / S) ---
+    if (in->IsKeyTriggered(DIK_W)) {
+        int d = (int)curDiff_;
+        d--;
+        if (d < 0) d = 0;
+        curDiff_ = (Difficulty)d;
+        LoadPreviewFromCSV_();
+    }
+    if (in->IsKeyTriggered(DIK_S)) {
+        int d = (int)curDiff_;
+        d++;
+        if (d > 2) d = 2;
+        curDiff_ = (Difficulty)d;
+        LoadPreviewFromCSV_();
+    }
+
+    // --- 決定 (SPACE) -> GameScene(curStage_, curDiff_)
     if (in->IsKeyTriggered(DIK_SPACE)) {
-        engine_->sceneManager->ChangeScene(std::make_unique<GameScene>(curStage_));
+        engine_->sceneManager->ChangeScene(
+            std::make_unique<GameScene>(curStage_, curDiff_)
+        );
         return;
     }
 }
+
 
 // ===== 背景（夜の工事現場っぽいやつ） =====
 void StageSelectScene::DrawBackgroundLayers_(float W, float H) {
@@ -799,7 +827,7 @@ void StageSelectScene::Draw() {
     // 背景（夜景・足場・クレーン等）
     DrawBackgroundLayers_(W, H);
 
-    // ステージプレビュー
+    // ステージプレビュー（ミニマップ）
     DrawPreviewMiniMap_(W, H);
 
     // 下の "STAGE XX"
@@ -807,15 +835,28 @@ void StageSelectScene::Draw() {
 
     mr->End(cmd);
 
-    // 操作ガイド（ImGui）
+    // ★ここを書き換え：操作ガイド+難易度表示
     ImGui::Begin("Select", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Text("A / D : Select Stage");
+    ImGui::Text("A / D : Stage");
+    ImGui::Text("W / S : Difficulty");
     ImGui::Text("Space : Start");
-    ImGui::Text("Current: %d", curStage_);
+    ImGui::Separator();
+    ImGui::Text("Stage     : %d", curStage_);
+    ImGui::Text("Difficulty: %s", DiffToText_(curDiff_));
     ImGui::End();
 }
+
 
 // ===== Finalize =====
 void StageSelectScene::Finalize() {
     // ComPtrが自動解放
+}
+
+const char *StageSelectScene::DiffToText_(Difficulty d) {
+    switch (d) {
+    case Difficulty::Easy:   return "EASY";
+    case Difficulty::Normal: return "NORMAL";
+    case Difficulty::Hard:   return "HARD";
+    }
+    return "UNKNOWN";
 }

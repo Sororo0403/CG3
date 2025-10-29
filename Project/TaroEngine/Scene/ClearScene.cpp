@@ -45,23 +45,21 @@ void ClearScene::Update(float /*dt*/) {
     // 決定
     if (in->IsKeyPressed(DIK_SPACE)) {
         if (menuIndex_ == 0) {
-            // 次のステージへ
-            // -> GameScene(nextStageId_)
-            engineContext_->sceneManager->ChangeScene(
-                std::make_unique<GameScene>(nextStageId_)
+            // 次のステージへ (同じ難易度で)
+            sceneManager_->ChangeScene(
+                std::make_unique<GameScene>(nextStageId_, difficulty_)
             );
             return;
         } else {
-            // ステージセレクトへ戻る
-// ステージセレクトへ戻る
-            engineContext_->sceneManager->ChangeScene(
-                std::make_unique<StageSelectScene>(playedStageId_)
+            // ステージセレクトへ戻る（開始ステージ＆難易度を引き継ぐ）
+            sceneManager_->ChangeScene(
+                std::make_unique<StageSelectScene>(playedStageId_, difficulty_)
             );
-
             return;
         }
     }
 }
+
 
 void ClearScene::Draw() {
 

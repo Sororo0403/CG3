@@ -9,6 +9,7 @@
 #include "Model.h"
 #include "Transform.h"
 #include "SceneManager.h"
+#include "Difficulty.h"
 
 #include <DirectXMath.h>
 #include <string>
@@ -26,7 +27,10 @@ struct AABB { float x, y; float w, h; };
 /// </summary>
 class GameScene : public IScene {
 public:
-    GameScene(int stageId = 1) : stageId_(stageId) {}
+    GameScene(int stageId = 1, Difficulty diff = Difficulty::Normal)
+        : stageId_(stageId)
+        , difficulty_(diff) {
+    }
     void Initialize(const EngineContext *engineContext, const RenderContext *renderContext) override;
     void Update(float deltaTime) override;
     void Draw() override;
@@ -97,6 +101,8 @@ private:
 
     bool wasOnSwitch_ = false; // 前フレーム、プレイヤーはスイッチに触れていたか？
 
+    // ★追加: 現在の難易度
+    Difficulty difficulty_ = Difficulty::Normal;
 
     // ===== 描画リソース =====
     Camera camera_;
@@ -173,8 +179,8 @@ private:
     Transform         playerTr_{};     // posはAABB左下を指すイメージ
     DirectX::XMFLOAT3 vel_{0,0,0};
 
-    float pw_ = 0.99f;   // プレイヤー幅
-    float ph_ = 0.99f;   // プレイヤー高さ
+    float pw_ = 0.9f;   // プレイヤー幅
+    float ph_ = 0.9f;   // プレイヤー高さ
 
     bool  onGround_ = false;
 
@@ -250,6 +256,11 @@ private:
     void DrawBackgroundAndStage_();
 
     void ArmFragilesUnderPlayer_();
+
+    // GameScene クラスのメンバに追加するやつ
+    float switchCooldown_ = 0.0f;
+    static constexpr float kSwitchCooldownTime = 0.5f; // 150msくらい。この値は好みで
+
 
     // 壊れ床の点滅アルファ
     float FragileBlinkFactor_(int tx, int ty) const;
