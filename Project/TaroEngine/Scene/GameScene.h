@@ -95,6 +95,9 @@ private:
     const RenderContext *renderContext_ = nullptr;
     SceneManager *sceneManager_ = nullptr;
 
+    bool wasOnSwitch_ = false; // 前フレーム、プレイヤーはスイッチに触れていたか？
+
+
     // ===== 描画リソース =====
     Camera camera_;
 

@@ -111,8 +111,10 @@ bool GameScene::IsBlockingAt(int tx, int ty) const {
     }
 
     // スイッチ連動床
-    if (t == Tile::SwitchBlockOn)  return switchOn_;   // ON時だけある床
-    if (t == Tile::SwitchBlockOff) return !switchOn_;  // OFF時だけある床
+    // ON 床は switchOn_ == true のときだけ実体
+    // OFF 床は switchOn_ == false のときだけ実体
+    if (t == Tile::SwitchBlockOn)  return switchOn_;
+    if (t == Tile::SwitchBlockOff) return !switchOn_;
 
     // 通常足場
     if (t == Tile::JumpOnly) return true;
@@ -121,6 +123,7 @@ bool GameScene::IsBlockingAt(int tx, int ty) const {
     // スイッチ本体 / スプリング / スパイク / etc. は床じゃない
     return false;
 }
+
 
 // ====== マップ初期化 ======
 void GameScene::ResetGrid() {
@@ -658,10 +661,15 @@ void GameScene::ResolveVertical_(float dt) {
     int txMax = std::max(txL, txR);
 
     onGround_ = false;
+
+    // このフレーム、スイッチに触れているか？
     bool switchOverlapNow = false;
 
+    // 未来位置のAABB（Yだけ更新後の想定）
+    AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
+
     if (vel_.y <= 0.0f) {
-        // --- 落下・着地 ---
+        // ===== 落下・着地 =====
         float startBottom = startY;
         float endBottom = targetY;
 
@@ -678,23 +686,21 @@ void GameScene::ResolveVertical_(float dt) {
                 if (!InMap(tx, row)) continue;
 
                 Tile tt = grid_[row][tx];
-
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
                 float topY = by + kTile;
 
-                // スプリング / スイッチ本体 判定(着地後の仮位置で)
-                {
-                    AABB afterBox{boxNow.x, targetY, boxNow.w, boxNow.h};
-                    if (IsSpring(tt)) {
-                        if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
-                            vel_.y = kSpringVy;
-                        }
+                // ===== スプリング判定（どこから触れても即発火） =====
+                if (IsSpring(tt)) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        vel_.y = kSpringVy;
                     }
-                    if (tt == Tile::Switch) {
-                        if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
-                            switchOverlapNow = true;
-                        }
+                }
+
+                // ===== スイッチ本体判定（踏んでるかどうか） =====
+                if (tt == Tile::Switch) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        switchOverlapNow = true;
                     }
                 }
 
@@ -736,7 +742,7 @@ void GameScene::ResolveVertical_(float dt) {
             playerTr_.pos.y = targetY;
         }
     } else {
-        // --- 上昇・頭ぶつけ ---
+        // ===== 上昇・頭ぶつけ =====
         float startTop = startY + ph_;
         float endTop = targetY + ph_;
 
@@ -753,10 +759,16 @@ void GameScene::ResolveVertical_(float dt) {
                 if (!InMap(tx, row)) continue;
 
                 Tile tt = grid_[row][tx];
-
                 float bx = xOffset_ + tx * kTile;
                 float by = TyToWorldY(row);
                 float bottomY = by;
+
+                // ===== スプリング判定（どこから触れても即発火） =====
+                if (IsSpring(tt)) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        vel_.y = kSpringVy;
+                    }
+                }
 
                 // 下からfragile壊す(頭ゴン)
                 if (IsFragile(tt) && !frag_[row][tx].gone) {
@@ -777,6 +789,13 @@ void GameScene::ResolveVertical_(float dt) {
                                 ArmFragile_(tx, row);
                             }
                         }
+                    }
+                }
+
+                // 空中でスイッチにヒットする場合
+                if (tt == Tile::Switch) {
+                    if (OverlapXY(afterBox, bx, by, kTile, kTile)) {
+                        switchOverlapNow = true;
                     }
                 }
 
@@ -809,7 +828,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // 足元のかすり接地でもfragile armed付与（上から壊れるタイプとRegen）
+    // 足元のかすり接地でもfragile armed付与（上から壊れる系＋Regen）
     {
         int txL2 = ToTx(playerTr_.pos.x);
         int txR2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -840,14 +859,14 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // スイッチON/OFFトグル（「いま重なってる」→「前フレームは重なってない」時に切り替え）
-    static bool prevSw = false;
-    if (switchOverlapNow && !prevSw) {
+    // ==== スイッチトグル処理（1フレーム1回だけ） ====
+    // 「前フレームは踏んでなかった && 今フレーム踏んだ」に入った瞬間だけ反転
+    if (!wasOnSwitch_ && switchOverlapNow) {
         switchOn_ = !switchOn_;
     }
-    prevSw = switchOverlapNow;
+    wasOnSwitch_ = switchOverlapNow;
 
-    // コヨーテタイム/ジャンプバッファ処理
+    // ===== コヨーテ/ジャンプバッファ =====
     if (onGround_) {
         coyoteCounter_ = kCoyoteMaxFrames;
     } else if (coyoteCounter_ > 0) {
@@ -862,7 +881,7 @@ void GameScene::ResolveVertical_(float dt) {
         jumpBuffer_ = 0;
     }
 
-    // 接地後の微ズレ吸収（スナップ）
+    // 接地スナップ
     if (onGround_) {
         float stableY =
             std::floor((playerTr_.pos.y - kSkinY) / kTile) * kTile + kSkinY;
@@ -871,7 +890,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // fragile/regen タイマー進行
+    // fragile / regen タイマー進行
     for (int y = 0; y < kMapH; ++y) {
         for (int x = 0; x < kMapW; ++x) {
             Tile t = grid_[y][x];
@@ -924,6 +943,7 @@ void GameScene::ResolveVertical_(float dt) {
                 for (int tx = txMin3; tx <= txMax3; ++tx) {
                     if (!InMap(tx, ty)) continue;
                     if (grid_[ty][tx] != Tile::Spike) continue;
+
                     float bx = xOffset_ + tx * kTile;
                     float by = TyToWorldY(ty);
 
@@ -941,6 +961,9 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 }
+
+
+
 
 // ====== リセット ======
 void GameScene::ResetStageAll_() {
@@ -1108,8 +1131,7 @@ void GameScene::DrawBackgroundAndStage_() {
         return (h & 0xFFFF) / 65535.0f;
         };
 
-    // ========= 1) 夜空の背景とか、遠景ビル群・ライトなどの演出レイヤー =========
-    // ここは君が既に持ってた演出のまま。例として一部だけ残す。
+    // ===== 1) 遠景演出（夜景・ビル・クレーンなど） =====
 
     // 夜空ベース
     {
@@ -1126,7 +1148,7 @@ void GameScene::DrawBackgroundAndStage_() {
                 {0, 0, (i % 2 == 0) ? -10.0f : 8.0f});
         }
 
-        // 背景の小物（このへんは好きにカスタムしてOK）
+        // 背景の小物
         DrawM(
             switchOn_ ? mdlSwitchOn_ : mdlSwitchOff_,
             {worldW * 0.35f, worldH * 0.85f, 37.0f},
@@ -1135,7 +1157,6 @@ void GameScene::DrawBackgroundAndStage_() {
         );
     }
 
-    // ビル群を並べるヘルパ
     auto DrawBuildings = [&](float z, float yBase, float span,
         float wMin, float wMax,
         float hMin, float hMax,
@@ -1186,7 +1207,7 @@ void GameScene::DrawBackgroundAndStage_() {
         worldH * 0.22f, worldH * 0.40f,
         4.0f);
 
-    // 簡易クレーン演出
+    // クレーン演出
     {
         // 支柱
         DrawM(mdlJumpOnly_,
@@ -1206,7 +1227,7 @@ void GameScene::DrawBackgroundAndStage_() {
             {0.035f, worldH * 0.28f, 0.25f},
             {0,0,0});
 
-        // クレーン操作のスイッチっぽい見た目も本体モデルのON/OFFを流用
+        // クレーンの操作盤っぽいものをスイッチモデルで
         DrawM(
             switchOn_ ? mdlSwitchOn_ : mdlSwitchOff_,
             {worldW * 0.22f, worldH * 0.72f, 24.4f},
@@ -1219,14 +1240,13 @@ void GameScene::DrawBackgroundAndStage_() {
             {0.35f, 0.08f, 0.25f},
             {0,0,4.0f});
 
-        // ライト
+        // 投光器
         DrawM(mdlSwitchOn_,
             {worldW * 0.22f, worldH * 0.47f, 24.2f},
             {0.15f, 0.08f, 0.22f},
             {0,0,0});
     }
 
-    // 投光器っぽい物体（例）
     auto Flood = [&](DirectX::XMFLOAT3 b, float rotZ, bool blink) {
         // ポール
         DrawM(mdlSolid_,
@@ -1234,13 +1254,13 @@ void GameScene::DrawBackgroundAndStage_() {
             {0.05f, 0.55f, 0.25f},
             {0,0,0});
 
-        // ライトヘッド（always ONモデルでとりあえず光らせる）
+        // ヘッド
         DrawM(mdlSwitchOn_,
             {b.x, b.y + 0.38f, 21.9f},
             {0.22f, 0.12f, 0.22f},
             {0,0,rotZ});
 
-        // 下の制御スイッチ
+        // 下部のスイッチっぽいとこ
         if (blink) {
             DrawM(
                 switchOn_ ? mdlSwitchOn_ : mdlSwitchOff_,
@@ -1253,22 +1273,19 @@ void GameScene::DrawBackgroundAndStage_() {
     Flood({-worldW * 0.48f, worldH * 0.82f, 0}, 10.0f, true);
     Flood({worldW * 0.52f, worldH * 0.74f, 0}, 18.0f, false);
 
-    // ========= 2) タイル(実際の足場/ギミック)を描画 =========
+    // ===== 2) タイル群 =====
     for (int ty = 0; ty < kMapH; ++ty) {
         for (int tx = 0; tx < kMapW; ++tx) {
             Tile t = grid_[ty][tx];
 
-            // 消えてる壊れ床は描画スキップ
+            // 消えてる壊れ床は描画しない
             if (IsFragile(t) && frag_[ty][tx].gone) {
                 continue;
             }
 
-            // スイッチ連動床は状態によって表示しない
-            if (t == Tile::SwitchBlockOn && !switchOn_) continue;
-            if (t == Tile::SwitchBlockOff && switchOn_) continue;
-
             Model *m = nullptr;
-            bool isFrag = false;
+            bool   isFrag = false;
+            float  alphaMul = 1.0f;
 
             switch (t) {
             case Tile::Solid:
@@ -1304,20 +1321,29 @@ void GameScene::DrawBackgroundAndStage_() {
                 break;
 
             case Tile::Switch:
-                // スイッチ本体 = 押しボタン本体
-                // ONなら青モデル / OFFなら赤モデル
+                // スイッチ本体（押しボタン）
                 m = switchOn_ ? &mdlSwitchOn_ : &mdlSwitchOff_;
                 break;
 
-            case Tile::SwitchBlockOn:
-                // ON時だけ存在する床
+            case Tile::SwitchBlockOn: {
+                // ON状態で実体化する床
                 m = &mdlSwitchBlockOn_;
-                break;
+                if (switchOn_) {
+                    alphaMul = 1.0f;   // 使える側は不透明
+                } else {
+                    alphaMul = 0.3f;   // 使えない側は半透明ゴースト
+                }
+            } break;
 
-            case Tile::SwitchBlockOff:
-                // OFF時だけ存在する床
+            case Tile::SwitchBlockOff: {
+                // OFF状態で実体化する床
                 m = &mdlSwitchBlockOff_;
-                break;
+                if (!switchOn_) {
+                    alphaMul = 1.0f;
+                } else {
+                    alphaMul = 0.3f;
+                }
+            } break;
 
             case Tile::JumpOnly:
                 m = &mdlJumpOnly_;
@@ -1332,15 +1358,17 @@ void GameScene::DrawBackgroundAndStage_() {
             float wx = xOffset_ + tx * kTile;
             float wy = TyToWorldY(ty);
 
-            // Fragileは点滅アルファ
-            float alphaMul = isFrag ? FragileBlinkFactor_(tx, ty) : 1.0f;
+            // Fragileは点滅アルファを掛け合わせ
+            if (isFrag) {
+                alphaMul *= FragileBlinkFactor_(tx, ty);
+            }
 
             Transform base{};
             base.pos = {wx + 0.5f * kTile, wy + 0.5f * kTile, 0.0f};
             base.scale = {0.5f, 0.5f, 0.5f * kBlockDepth};
             base.rot = {0,0,0};
 
-            // タイルごとにちょっとランダムな傾き/スケールでガタつかせる
+            // タイルごとのちょいガタつき
             {
                 uint32_t h = (uint32_t)(tx * 73856093u) ^ (uint32_t)(ty * 19349663u);
                 h ^= (h >> 13); h *= 0x5bd1e995u;
@@ -1349,7 +1377,7 @@ void GameScene::DrawBackgroundAndStage_() {
                 float r2 = (float)((h >> 16) & 0xFF) / 255.0f;
 
                 base.rot.z = Deg((r0 * 2.0f - 1.0f) * 4.0f); // ±4°
-                base.scale.x *= (1.0f + (r1 * 0.1f - 0.05f));   // ±5%
+                base.scale.x *= (1.0f + (r1 * 0.1f - 0.05f));  // ±5%
                 base.scale.y *= (1.0f + (r2 * 0.1f - 0.05f));
             }
 
@@ -1357,7 +1385,7 @@ void GameScene::DrawBackgroundAndStage_() {
         }
     }
 
-    // ========= 3) プレイヤー =========
+    // ===== 3) プレイヤー =====
     {
         float s = 0.5f;
         DirectX::XMFLOAT3 mn = playerModel_.GetLocalMin();
@@ -1378,7 +1406,7 @@ void GameScene::DrawBackgroundAndStage_() {
         renderer->Draw(cmd, playerModel_, p);
     }
 
-    // ========= 4) 手前フレーム(柵とか) =========
+    // ===== 4) 手前フレーム(柵とか) =====
     {
         float y = -0.5f * kTile;
 
@@ -1407,6 +1435,7 @@ void GameScene::DrawBackgroundAndStage_() {
         }
     }
 }
+
 
 // ====== Draw ======
 void GameScene::Draw() {
