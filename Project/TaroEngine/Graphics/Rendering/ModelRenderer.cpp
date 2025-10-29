@@ -8,6 +8,7 @@
 #include "DirectXCommon.h"
 
 #include <cassert>
+#include <algorithm>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -58,12 +59,12 @@ void ModelRenderer::Finalize() noexcept {
     device_.Reset();
 }
 
-// Begin(view,proj)
 void ModelRenderer::Begin(
     ID3D12GraphicsCommandList *commandList,
     DirectXCommon *dx,
     const XMMATRIX &view,
     const XMMATRIX &proj) noexcept {
+
     // 今フレームのインデックスを DirectXCommon から取得
     currentFrameIndex_ = dx->GetFrameIndex() % kFrameCount;
 
@@ -90,11 +91,11 @@ void ModelRenderer::Begin(
         sceneCB_->GetGPUVirtualAddress());
 }
 
-// Begin(camera)
 void ModelRenderer::Begin(
     ID3D12GraphicsCommandList *commandList,
     DirectXCommon *dx,
     const Camera &camera) noexcept {
+
     Begin(commandList, dx, camera.GetView(), camera.GetProj());
 }
 
@@ -105,7 +106,9 @@ void ModelRenderer::End(ID3D12GraphicsCommandList *commandList) noexcept {
 void ModelRenderer::Draw(
     ID3D12GraphicsCommandList *commandList,
     const Model &model,
-    const Transform &transform) noexcept {
+    const Transform &transform,
+    float alphaMul) noexcept {
+
     const Mesh &mesh = model.GetMesh();
 
     // 今フレーム用のCBを取り出す
@@ -121,11 +124,11 @@ void ModelRenderer::Draw(
     ObjectCB ocb{};
     const XMMATRIX W = transform.MakeWorldMatrix();
     XMStoreFloat4x4(&ocb.world, XMMatrixTranspose(W));
-    ocb.color[0] = 1.0f;
-    ocb.color[1] = 1.0f;
-    ocb.color[2] = 1.0f;
-    ocb.color[3] = 1.0f;
+
+    ocb.color = {1.0f, 1.0f, 1.0f, 1.0f}; // 将来的なティント用
+    ocb.alphaMul = alphaMul;
     ocb.useTexture = model.HasAlbedoSRV() ? 1u : 0u;
+    ocb.pad = {0.0f, 0.0f};
 
     // アップロードバッファへ書き込み
     BufferUtility::WriteToUpload(
@@ -156,7 +159,6 @@ void ModelRenderer::Draw(
     commandList->DrawIndexedInstanced(mesh.GetIndexCount(), 1, 0, 0, 0);
 }
 
-// RootSignature / PSO はオリジナルとほぼ同じ
 void ModelRenderer::CreateRootSignature() {
     // b0: ObjectCB, b1: SceneCB, t0: SRV(Texture2D)
 
@@ -259,8 +261,27 @@ void ModelRenderer::CreatePipelineState() {
     ds.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
     ds.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 
+    // ★ アルファブレンド有効化
     D3D12_BLEND_DESC blend{};
-    blend.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+    blend.AlphaToCoverageEnable = FALSE;
+    blend.IndependentBlendEnable = FALSE;
+
+    auto &rt0 = blend.RenderTarget[0];
+    rt0.BlendEnable = TRUE;
+    rt0.LogicOpEnable = FALSE;
+
+    // Color.rgb = Src.rgb * SrcAlpha + Dst.rgb * (1 - SrcAlpha)
+    rt0.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+    rt0.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+    rt0.BlendOp = D3D12_BLEND_OP_ADD;
+
+    // Alpha = keep src alpha (roughly)
+    rt0.SrcBlendAlpha = D3D12_BLEND_ONE;
+    rt0.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+    rt0.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+
+    rt0.LogicOp = D3D12_LOGIC_OP_NOOP;
+    rt0.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
     pso.pRootSignature = rootSig_.Get();

@@ -1,98 +1,121 @@
 #pragma once
-#define NOMINMAX
+#include "IScene.h"
+#include "Camera.h"
+#include "Model.h"
+#include "EngineContext.h"
+#include "RenderContext.h"
 
 #include <wrl.h>
 #include <d3d12.h>
 #include <DirectXMath.h>
-#include <string>
 
-#include "EngineContext.h"
-#include "RenderContext.h"
-#include "Camera.h"
-#include "Model.h"
-#include "IScene.h"
-
-/// <summary>
-/// タイトルシーン：工事現場風の多層背景を描画し、
-/// 画面中央に"SPACE"の看板をブロックで組んで点滅（擬似）表示する。
-/// Spaceキーでステージセレクトに遷移する。
-/// </summary>
 class TitleScene : public IScene {
 public:
     void Initialize(const EngineContext *engine, const RenderContext *render) override;
+    void Finalize() override;
     void Update(float dt) override;
     void Draw() override;
-    void Finalize() override;
-
-    /// <summary>
-    /// モデル描画ヘルパ
-    /// fullScale は「最終的な幅・高さ・奥行き」をそのまま指定すると、
-    /// 内部で半分にしてScaleに入れる（=OBJが±1ベースのとき扱いやすい）
-    /// </summary>
-    void DrawModel_(Model &m,
-        const DirectX::XMFLOAT3 &pos,
-        const DirectX::XMFLOAT3 &fullScale,
-        const DirectX::XMFLOAT3 &rotDeg);
 
 private:
-    // GameScene と同等の単独ロード版（WIC → SRV）
-    // テクスチャをロードし、指定のSRVヒープスロットにSRVを作成して
-    // GPUハンドルをモデルへ渡す
-    bool LoadTextureSRV_(const std::wstring &fileU16, UINT srvIndex,
-        Microsoft::WRL::ComPtr<ID3D12Resource> &outTex,
-        D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle);
+    struct FallingBlock {
+        bool   alive = false;
+        DirectX::XMFLOAT3 pos{0,0,0};
+        float  baseX = 0.0f;
+        float  t = 0.0f;
+        float  phase = 0.0f;
 
-    // ウィンドウサイズに応じて正射影サイズを更新
+        float  fallSpeed = 6.0f;
+        float  swayAmp = 1.0f;
+        float  swayFreq = 1.0f;
+
+        // ブロックは常に等倍（ゲーム内タイル感と揃える）
+        float  w = 1.0f;
+        float  h = 1.0f;
+        float  d = 1.0f;
+
+        int    kind = 0;       // どのモデルを使うか（0～10）
+        float  rotZDeg = 0.0f; // いまは固定0で回転させない
+    };
+
+    // 内部処理
     void RefreshCameraOrtho_();
+    void SpawnOne_();                // 新しいブロックを1つ出す
+    void UpdateDebris_(float dt);    // 物理っぽい落下アニメ更新
+    void DrawDebris_();              // 全ブロック描画
+    void DrawModel_(
+        Model &m,
+        const DirectX::XMFLOAT3 &pos,
+        const DirectX::XMFLOAT3 &fullScale,
+        const DirectX::XMFLOAT3 &rotDeg,
+        float alphaMul = 1.0f
+    );
 
-    // "SPACE" のサインを描画する（組みブロック）
-    // baseW/baseH は1文字あたりの見た目スケール
-    void DrawSpaceSign_(float baseW, float baseH);
+    bool LoadTextureSRV_(
+        const std::wstring &fileU16,
+        UINT srvIndex,
+        Microsoft::WRL::ComPtr<ID3D12Resource> &outTex,
+        D3D12_GPU_DESCRIPTOR_HANDLE &outGpuHandle
+    );
+
+    static float Hash01_(int seed);
 
 private:
     const EngineContext *engine_ = nullptr;
     const RenderContext *render_ = nullptr;
-    Camera                camera_;
 
-    // ====== 点滅制御 ======
-    // 経過時間
-    float blinkTime_ = 0.0f;
-    // 0～1くらいで上下する「光の強さ」
-    // Updateで更新して、DrawSpaceSign_で使う
-    float blinkStrength_ = 0.0f;
+    Camera camera_;
 
-    // ====== 使用モデル（既存Block系） ======
-    Model mdlSolid_;         // 濃グレー：足場ベース
-    Model mdlFragileAny_;    // ひび割れ/注意系
-    Model mdlJumpOnly_;      // 明るいグレー(手すり/ケーブル)
-    Model mdlSpike_;         // 青系：ライト照射コーン
-    Model mdlSpring_;        // 水色：空や雲っぽい大板
-    Model mdlSwitch_;        // 黄：機材
-    Model mdlSwitchOn_;      // 明るい黄：発光ライト
-    Model mdlSwitchOff_;     // 消灯／中間色
+    // 画面に見せたいワールド範囲（タイトル演出用の「ステージサイズ」）
+    float worldW_ = 32.0f;
+    float worldH_ = 18.0f;
 
-    // ====== SRVのリソース保持 ======
+    // 落下スポーンと消滅ライン
+    float spawnTopY_ = 16.0f;   // 画面ちょい上から出す
+    float despawnY_ = -4.0f;   // ここより下に落ちたら消す
+    float spawnLeftX_ = -8.0f;
+    float spawnRightX_ = 8.0f;
+
+    // 最大この数だけ同時に落とす
+    static constexpr int kMaxBlocks_ = 32;
+    FallingBlock blocks_[kMaxBlocks_];
+
+    // スポーン制御
+    float spawnTimer_ = 0.0f;
+    float spawnInterval_ = 0.1f;  // 0.1秒おきくらいでポロポロ落ちる
+    int   nextKindIndex_ = 0;     // 0..10 を順番にローテする
+
+    // モデル郡
+    Model mdlSolid_;
+    Model mdlFragileAny_;
+    Model mdlFragileTop_;
+    Model mdlFragileBottom_;
+    Model mdlRegen_;
+    Model mdlSpring_;
+    Model mdlSpike_;
+
+    // スイッチ本体：ONモデル / OFFモデル
+    Model mdlSwitchOn_;
+    Model mdlSwitchOff_;
+
+    // スイッチ連動床：ON時だけ出る床 / OFF時だけ出る床
+    Model mdlSwitchBlockOn_;
+    Model mdlSwitchBlockOff_;
+
+    Model mdlJumpOnly_;
+
+    // テクスチャ保持（SRVリソース）
     Microsoft::WRL::ComPtr<ID3D12Resource> texSolid_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texFragileAny_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> texSpike_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texFragileTop_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texFragileBottom_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texRegen_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSpring_;
-    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitch_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSpike_;
+
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOn_;
     Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchOff_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchBlockOn_;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texSwitchBlockOff_;
 
-    // ====== タイトル専用の SRV スロット（他のシーンと被らない帯域にしておく） ======
-    enum : UINT {
-        kSrv_T_Solid = 64,
-        kSrv_T_FragileAny,
-        kSrv_T_JumpOnly,
-        kSrv_T_Spike,
-        kSrv_T_Spring,
-        kSrv_T_Switch,
-        kSrv_T_SwitchOn,
-        kSrv_T_SwitchOff,
-    };
-
-    // ====== 正射影の仮想高さ（幅はアスペクトから決定） ======
-    float virtualWorldH_ = 22.0f;
+    Microsoft::WRL::ComPtr<ID3D12Resource> texJumpOnly_;
 };

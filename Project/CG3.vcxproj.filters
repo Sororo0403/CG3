@@ -146,6 +146,9 @@
     <ClCompile Include="TaroEngine\Scene\StageSelectScene.cpp">
       <Filter>Source\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="TaroEngine\Scene\ClearScene.cpp">
+      <Filter>Source\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -251,6 +254,9 @@
       <Filter>Include\Scene</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Scene\StageSelectScene.h">
+      <Filter>Include\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="TaroEngine\Scene\ClearScene.h">
       <Filter>Include\Scene</Filter>
     </ClInclude>
   </ItemGroup>
