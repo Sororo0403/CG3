@@ -35,11 +35,15 @@ public:
 
     const char *DiffToText_(Difficulty d);
 
+    int DetectPlayableMaxStage_();
+
 private:
     // ===== マップ情報 =====
     static constexpr int   kMapW = 26;
     static constexpr int   kMapH = 15;
     static constexpr float kTile = 1.0f;
+
+    int playableMaxStage_ = 1; // Initializeで決定し直す
 
     enum class Tile : int32_t {
         Empty = 0,

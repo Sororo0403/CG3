@@ -223,7 +223,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     auto *dx = engine_->directXCommon;
     ID3D12Device *device = dx->GetDevice();
 
-    // モデルロード
+    // ===== モデルロード =====
     mdlSolid_.Initialize(device, "Resources/Model/Block/solid.obj");
     mdlFragileAny_.Initialize(device, "Resources/Model/Block/fragile_any.obj");
     mdlFragileTop_.Initialize(device, "Resources/Model/Block/fragile_top.obj");
@@ -243,7 +243,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     // mdlKeyW_.Initialize(device, "Resources/Model/w.obj");
     // mdlKeyS_.Initialize(device, "Resources/Model/s.obj");
 
-    // テクスチャSRV割り当て
+    // ===== テクスチャSRV割り当て =====
     auto setupTex = [&](Model &m, UINT slot, ComPtr<ID3D12Resource> &holder) {
         if (m.GetAlbedoPath().empty()) return;
         D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
@@ -264,7 +264,7 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     setupTex(mdlSwitchBlockOff_, kSrv_T_SwitchBlockOff, texSwitchBlockOff_);
     setupTex(mdlJumpOnly_, kSrv_T_JumpOnly, texJumpOnly_);
 
-    // カメラ設定（正射影）
+    // ===== カメラ設定（正射影） =====
     float w = (float)dx->GetWidth();
     float h = (float)dx->GetHeight();
     float aspect = std::max(1.0f, w) / std::max(1.0f, h);
@@ -284,20 +284,30 @@ void StageSelectScene::Initialize(const EngineContext *engine, const RenderConte
     );
     camera_.SetViewportSize(dx->GetWidth(), dx->GetHeight());
 
+    // ===== エフェクト用パラメータ =====
     blinkTime_ = 0.0f;
     blinkStrength_ = 0.0f;
 
-    // ステージ/難易度 初期値
+    // ===== ステージ/難易度の初期値 =====
     curStage_ = std::clamp(startStage_, kMinStage_, kMaxStage_);
     curDiff_ = startDiff_;
 
-    // プレビューの横オフセット（マップ中心揃え）
+    // ===== CSVの有無から「遊べる最終ステージ」を検出 =====
+    playableMaxStage_ = DetectPlayableMaxStage_();
+
+    // 初期ステージが未実装側にはみ出してたら戻す
+    if (curStage_ > playableMaxStage_) {
+        curStage_ = playableMaxStage_;
+    }
+
+    // ===== プレビューの横オフセット（マップ中心揃え） =====
     const float mapW = kMapW * kTile;
     xOffsetPreview_ = -mapW * 0.5f;
 
-    // CSV読み込み
+    // ===== 最初のプレビュー読み込み =====
     LoadPreviewFromCSV_();
 }
+
 
 // ===== CSVを読んで previewGrid_ にタイルを入れる =====
 void StageSelectScene::LoadPreviewFromCSV_() {
@@ -366,44 +376,70 @@ void StageSelectScene::LoadPreviewFromCSV_() {
 void StageSelectScene::Update(float dt) {
     RefreshCameraOrtho_();
 
+    // 点滅エフェクト更新
     blinkTime_ += dt;
-    float basePulse = 0.5f * (1.0f + std::sinf(blinkTime_ * 3.0f));
-    blinkStrength_ = std::pow(basePulse, 3.0f); // 点滅用
+    {
+        float basePulse = 0.5f * (1.0f + std::sinf(blinkTime_ * 3.0f));
+        blinkStrength_ = std::pow(basePulse, 3.0f); // 点滅用
+    }
 
     auto *in = engine_->input;
 
-    // --- ステージ番号変更 (A / D) ---
+    // ========= ステージ番号変更 (A / D) =========
     if (in->IsKeyTriggered(DIK_A)) {
         curStage_--;
-        if (curStage_ < kMinStage_) curStage_ = kMinStage_;
-        LoadPreviewFromCSV_();
-    }
-    if (in->IsKeyTriggered(DIK_D)) {
-        curStage_++;
-        if (curStage_ > kMaxStage_) curStage_ = kMaxStage_;
+        if (curStage_ < kMinStage_) {
+            curStage_ = kMinStage_;
+        }
         LoadPreviewFromCSV_();
     }
 
-    // --- 難易度変更 (W / S) ---
+    if (in->IsKeyTriggered(DIK_D)) {
+        curStage_++;
+        if (curStage_ > playableMaxStage_) {
+            curStage_ = playableMaxStage_;
+        }
+        LoadPreviewFromCSV_();
+    }
+
+    // ========= 難易度変更 (W / S) =========
+    // ※いまは端で止める仕様（ループさせたいならコメント内を差し替え）
     if (in->IsKeyTriggered(DIK_W)) {
         int d = (int)curDiff_;
         d--;
-        if (d < 0) d = 0;
+        if (d < 0) d = 0;        // ループにするなら: if (d < 0) d = 2;
         curDiff_ = (Difficulty)d;
-        LoadPreviewFromCSV_();
-    }
-    if (in->IsKeyTriggered(DIK_S)) {
-        int d = (int)curDiff_;
-        d++;
-        if (d > 2) d = 2;
-        curDiff_ = (Difficulty)d;
+
+        // 難易度変えたら、その難易度での最終ステージ数を再スキャン
+        playableMaxStage_ = DetectPlayableMaxStage_();
+        if (curStage_ > playableMaxStage_) {
+            curStage_ = playableMaxStage_;
+        }
+
         LoadPreviewFromCSV_();
     }
 
-    // --- 決定 (SPACE) ---
+    if (in->IsKeyTriggered(DIK_S)) {
+        int d = (int)curDiff_;
+        d++;
+        if (d > 2) d = 2;        // ループにするなら: if (d > 2) d = 0;
+        curDiff_ = (Difficulty)d;
+
+        playableMaxStage_ = DetectPlayableMaxStage_();
+        if (curStage_ > playableMaxStage_) {
+            curStage_ = playableMaxStage_;
+        }
+
+        LoadPreviewFromCSV_();
+    }
+
+    // ========= 決定 (SPACE) =========
     if (in->IsKeyTriggered(DIK_SPACE)) {
+        // 念のためここでもクランプ
+        int playStage = std::clamp(curStage_, kMinStage_, playableMaxStage_);
+
         engine_->sceneManager->ChangeScene(
-            std::make_unique<GameScene>(curStage_, curDiff_)
+            std::make_unique<GameScene>(playStage, curDiff_)
         );
         return;
     }
@@ -822,20 +858,24 @@ void StageSelectScene::DrawPreviewMiniMap_(float /*W*/, float H) {
 
 // ===== HUD: 操作説明用の板だけ =====
 void StageSelectScene::DrawControlHelp3D_(float W, float H) {
-    // 画面下あたりに、"A  ←" / "D  →" / "W ↑" / "S ↓" / "START" っぽい板を並べる
-    // 文字モデルなし版なので、ひとまずパネルの「点滅 = 有効」だけ表す
+    // 画面下あたりに、"A ←" / "D →" / "W ↑" / "S ↓" / "START" っぽい板を並べる
+    // 文字モデルなし版なので、ひとまずパネルの「点滅 = 押せる」だけ表す
 
     const float hudY = -0.2f * H;
     const float hudZ = -0.9f;
 
     // ステージ進められるか？
     bool canLeft = (curStage_ > kMinStage_);
-    bool canRight = (curStage_ < kMaxStage_);
+    bool canRight = (curStage_ < playableMaxStage_);
 
     // 難易度動かせるか？
+    // いまは端で止まる仕様だから、端では光らない
     int dNow = (int)curDiff_;
-    bool canUp = (dNow > 0);
-    bool canDown = (dNow < 2);
+    bool canUp = (dNow > 0); // Wで上に行ける？
+    bool canDown = (dNow < 2); // Sで下に行ける？
+    // もし難易度をループさせるなら、どっちも true にしてOK:
+    // bool canUp   = true;
+    // bool canDown = true;
 
     // ▼共通の小パネル描画
     auto DrawPanel = [&](float cx, float cy, float cz,
@@ -995,6 +1035,7 @@ void StageSelectScene::DrawControlHelp3D_(float W, float H) {
     }
 }
 
+
 // ===== Draw =====
 void StageSelectScene::Draw() {
     auto *dx = engine_->directXCommon;
@@ -1037,4 +1078,58 @@ const char *StageSelectScene::DiffToText_(Difficulty d) {
     case Difficulty::Hard:   return "HARD";
     }
     return "UNKNOWN";
+}
+
+int StageSelectScene::DetectPlayableMaxStage_() {
+    // この難易度(curDiff_)で「連番で存在している最後のステージ番号」を返す
+    // 例:
+    //   stage01_easy.csv, stage02_easy.csv, stage03_easy.csv がある
+    //   でも stage04_easy.csv がない
+    //   → playableMaxStage_ は 3
+
+    // 難易度タグを決める
+    auto diffTag = [this]() -> const char * {
+        switch (curDiff_) {
+        case Difficulty::Easy:   return "easy";
+        case Difficulty::Normal: return "normal";
+        case Difficulty::Hard:   return "hard";
+        }
+        return "normal";
+        }();
+
+    // 探索の絶対上限（今後増やすならここを上げるだけでOK）
+    const int kAbsMax = 30;
+
+    int lastPlayable = kMinStage_ - 1; // まだ有効ステージを見つけてない状態
+
+    for (int st = kMinStage_; st <= kAbsMax; ++st) {
+        // まず stageNN_<diff>.csv を試す
+        char pathBuf[64];
+        std::snprintf(pathBuf, sizeof(pathBuf),
+            "stage%02d_%s.csv", st, diffTag);
+
+        std::ifstream ifs(pathBuf);
+
+        if (!ifs) {
+            // なければ stageNN.csv を試す（共通ステージ）
+            std::snprintf(pathBuf, sizeof(pathBuf),
+                "stage%02d.csv", st);
+            ifs.open(pathBuf);
+        }
+
+        if (!ifs) {
+            // どっちも無い = ここから先は未実装
+            break;
+        }
+
+        // CSV見つかったので、このステージ番号までは有効
+        lastPlayable = st;
+    }
+
+    // 一応フォールバック：もし1つも見つからなかったら最小ステージに戻す
+    if (lastPlayable < kMinStage_) {
+        lastPlayable = kMinStage_;
+    }
+
+    return lastPlayable;
 }

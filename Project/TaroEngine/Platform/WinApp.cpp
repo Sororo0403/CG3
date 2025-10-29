@@ -32,7 +32,7 @@ void WinApp::Initialize() {
 	// → WM_NCCREATE で回収して GWLP_USERDATA に保存する
 	// ===============================
 	hwnd_ =
-		CreateWindow(wc_.lpszClassName, L"CG3", WS_OVERLAPPEDWINDOW,
+		CreateWindow(wc_.lpszClassName, L"2123_おから工事", WS_OVERLAPPEDWINDOW,
 			CW_USEDEFAULT, CW_USEDEFAULT, wrc.right - wrc.left,
 			wrc.bottom - wrc.top, nullptr, nullptr, wc_.hInstance, this);
 
