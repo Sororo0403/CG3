@@ -733,31 +733,39 @@ void GameScene::ResolveVertical_(float dt) {
                     }
                 }
 
-                if (!IsBlockingAt(tx, row)) continue;
+                if (!IsBlockingAt(tx, row)) {
+                    continue;
+                }
 
-                // 真下から床に乗る衝突チェック
-                if ((startBottom - kSkinY) >= topY &&
-                    (endBottom - kSkinY) < topY) {
+                // このタイルとプレイヤー足元のX方向重なり量
+                float overlapX =
+                    std::min(boxNow.x + boxNow.w, bx + kTile)
+                    - std::max(boxNow.x, bx);
 
-                    float overlapX =
-                        std::min(boxNow.x + boxNow.w, bx + kTile)
-                        - std::max(boxNow.x, bx);
+                // 足の裏がこのタイルの上端をまたいで下がってきた？
+                bool crossedFromAbove =
+                    (startBottom - kSkinY) >= topY &&
+                    (endBottom - kSkinY) < topY;
 
-                    if (overlapX > kMinGroundOverlap) {
-                        float snapY = topY + kSkinY;
-                        if (!hitFloor || snapY > bestSnapY) {
-                            hitFloor = true;
-                            bestSnapY = snapY;
+                if (crossedFromAbove && overlapX > kMinGroundOverlap) {
 
-                            // fragile踏んだらarmed
-                            if (IsFragile(tt) && !frag_[row][tx].gone) {
-                                if (tt == Tile::FragileAny ||
-                                    tt == Tile::FragileTop ||
-                                    tt == Tile::Regen) {
-                                    ArmFragile_(tx, row);
-                                }
-                            }
+                    // ★ここが今回の修正ポイント：
+                    // 「接触した瞬間に壊れる床はarmedにする」。
+                    // bestSnapYに選ばれるかどうかとは独立。
+                    if (IsFragile(tt) && !frag_[row][tx].gone) {
+                        // 上から踏んで壊れるタイプだけ対象
+                        if (tt == Tile::FragileAny ||
+                            tt == Tile::FragileTop ||
+                            tt == Tile::Regen) {
+                            ArmFragile_(tx, row);
                         }
+                    }
+
+                    // ここからは従来どおり、着地スナップのための床を決める
+                    float snapY = topY + kSkinY;
+                    if (!hitFloor || snapY > bestSnapY) {
+                        hitFloor = true;
+                        bestSnapY = snapY;
                     }
                 }
             }
@@ -812,11 +820,11 @@ void GameScene::ResolveVertical_(float dt) {
                             tt == Tile::Regen);
 
                     if (canFromBelow) {
-                        float overlapX =
+                        float overlapX2 =
                             std::min(boxNow.x + boxNow.w, bx + kTile)
                             - std::max(boxNow.x, bx);
 
-                        if (overlapX > kMinGroundOverlap) {
+                        if (overlapX2 > kMinGroundOverlap) {
                             if ((startTop + kSkinY) <= bottomY &&
                                 (endTop + kSkinY) > bottomY) {
 
@@ -836,14 +844,16 @@ void GameScene::ResolveVertical_(float dt) {
                 if (!IsBlockingAt(tx, row)) continue;
 
                 // 頭が天井にぶつかった？
-                if ((startTop + kSkinY) <= bottomY &&
-                    (endTop + kSkinY) > bottomY) {
+                bool crossedIntoCeil =
+                    (startTop + kSkinY) <= bottomY &&
+                    (endTop + kSkinY) > bottomY;
 
-                    float overlapX =
+                if (crossedIntoCeil) {
+                    float overlapX3 =
                         std::min(boxNow.x + boxNow.w, bx + kTile)
                         - std::max(boxNow.x, bx);
 
-                    if (overlapX > kMinGroundOverlap) {
+                    if (overlapX3 > kMinGroundOverlap) {
                         float snapY = bottomY - ph_ - kSkinY;
                         if (!hitCeil || snapY < bestSnapY) {
                             hitCeil = true;
@@ -862,7 +872,7 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // 足元かすり接地でfragile armed付与
+    // 足元かすり接地でfragile armed付与（元のまま）
     {
         int txL2 = ToTx(playerTr_.pos.x);
         int txR2 = ToTx(playerTr_.pos.x + pw_ - 1e-4f);
@@ -876,25 +886,17 @@ void GameScene::ResolveVertical_(float dt) {
             Tile tt = grid_[rowBelow][tx];
             if (!IsFragile(tt) || frag_[rowBelow][tx].gone) continue;
 
-            if (!(tt == Tile::FragileAny ||
+            // 足で踏んだときに壊れる対象か？
+            // FragileAny / FragileTop / Regen は「上から踏んだら壊れる」
+            if (tt == Tile::FragileAny ||
                 tt == Tile::FragileTop ||
-                tt == Tile::Regen)) {
-                continue;
-            }
-
-            float bx = xOffset_ + tx * kTile;
-            float overlapX =
-                std::min(playerTr_.pos.x + pw_, bx + kTile)
-                - std::max(playerTr_.pos.x, bx);
-
-            if (overlapX > kMinGroundOverlap) {
+                tt == Tile::Regen) {
                 ArmFragile_(tx, rowBelow);
             }
         }
     }
 
-    // ==== スイッチトグル処理（1フレーム1回だけ） ====
-  // ---- スイッチクールダウン更新 ----
+    // ---- スイッチクールダウン更新 ----
     if (switchCooldown_ > 0.0f) {
         switchCooldown_ -= dt;
         if (switchCooldown_ < 0.0f) {
@@ -902,8 +904,8 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 
-    // ==== スイッチトグル処理 ====
-    // 1) いま新しく踏んだ（前フレは踏んでないのに今フレは踏んでる）
+    // ==== スイッチトグル処理 ====  
+    // 1) いま新しく踏んだ（前フレ wasOnSwitch_ は false だったのに今は true）
     // 2) かつクールダウンが0
     if (!wasOnSwitch_ && switchOverlapNow && switchCooldown_ <= 0.0f) {
         switchOn_ = !switchOn_;
@@ -914,7 +916,6 @@ void GameScene::ResolveVertical_(float dt) {
 
     // 次フレ用に「今踏んでるか」を保存
     wasOnSwitch_ = switchOverlapNow;
-
 
     // ===== コヨーテ/ジャンプバッファ =====
     if (onGround_) {
@@ -930,9 +931,6 @@ void GameScene::ResolveVertical_(float dt) {
         onGround_ = false;
         jumpBuffer_ = 0;
     }
-
-    // ★ここから下、元は「接地スナップでYをグリッドに丸める」処理があったけど削除。
-    //   bestSnapY でもう十分正しい位置に揃ってるので、余計に浮かせない。
 
     // fragile / regen タイマー進行
     for (int y = 0; y < kMapH; ++y) {
@@ -1005,7 +1003,6 @@ void GameScene::ResolveVertical_(float dt) {
         }
     }
 }
-
 
 // ====== リセット ======
 void GameScene::ResetStageAll_() {
