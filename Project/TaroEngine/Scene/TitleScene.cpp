@@ -21,7 +21,7 @@ using Microsoft::WRL::ComPtr;
 
 namespace {
     // タイトル画面用SRV開始スロット。
-    // ImGuiなどが0番台を使ってるなら被らないように後ろへずらす。
+    // ImGui等が0番〜を食ってるので、被らないように十分後ろに送ってる
     constexpr UINT kTitleSrvBase = 32;
 }
 
@@ -71,40 +71,37 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
 
     mdlJumpOnly_.Initialize(device, "Resources/Model/Block/jumponly.obj");
 
+    // タイトルロゴ
+    mdlTitleLogo_.Initialize(device, "Resources/Model/title.obj");
+
     // ---------- テクスチャSRVをバインド ----------
     auto setupTex = [&](Model &m, UINT slot, ComPtr<ID3D12Resource> &holder) {
         if (m.GetAlbedoPath().empty()) return;
         D3D12_GPU_DESCRIPTOR_HANDLE gpu{};
-        if (LoadTextureSRV_(WidenU16_(m.GetAlbedoPath()), slot, holder, gpu)) {
+        if (LoadTextureSRV_(WidenU16_(m.GetAlbedoPath()), kTitleSrvBase + slot, holder, gpu)) {
             m.SetAlbedoSRV(gpu);
         }
         };
 
-    // SRVスロット割り当て
-    setupTex(mdlSolid_, kTitleSrvBase + 0, texSolid_);
-    setupTex(mdlFragileAny_, kTitleSrvBase + 1, texFragileAny_);
-    setupTex(mdlFragileTop_, kTitleSrvBase + 2, texFragileTop_);
-    setupTex(mdlFragileBottom_, kTitleSrvBase + 3, texFragileBottom_);
-    setupTex(mdlRegen_, kTitleSrvBase + 4, texRegen_);
-    setupTex(mdlSpring_, kTitleSrvBase + 5, texSpring_);
-    setupTex(mdlSpike_, kTitleSrvBase + 6, texSpike_);
-
-    // スイッチ本体ON/OFF
-    setupTex(mdlSwitchOn_, kTitleSrvBase + 7, texSwitchOn_);
-    setupTex(mdlSwitchOff_, kTitleSrvBase + 8, texSwitchOff_);
-
-    // スイッチ連動床ON/OFF
-    setupTex(mdlSwitchBlockOn_, kTitleSrvBase + 9, texSwitchBlockOn_);
-    setupTex(mdlSwitchBlockOff_, kTitleSrvBase + 10, texSwitchBlockOff_);
-
-    setupTex(mdlJumpOnly_, kTitleSrvBase + 11, texJumpOnly_);
+    setupTex(mdlSolid_, 0, texSolid_);
+    setupTex(mdlFragileAny_, 1, texFragileAny_);
+    setupTex(mdlFragileTop_, 2, texFragileTop_);
+    setupTex(mdlFragileBottom_, 3, texFragileBottom_);
+    setupTex(mdlRegen_, 4, texRegen_);
+    setupTex(mdlSpring_, 5, texSpring_);
+    setupTex(mdlSpike_, 6, texSpike_);
+    setupTex(mdlSwitchOn_, 7, texSwitchOn_);
+    setupTex(mdlSwitchOff_, 8, texSwitchOff_);
+    setupTex(mdlSwitchBlockOn_, 9, texSwitchBlockOn_);
+    setupTex(mdlSwitchBlockOff_, 10, texSwitchBlockOff_);
+    setupTex(mdlJumpOnly_, 11, texJumpOnly_);
+    setupTex(mdlTitleLogo_, 12, texTitleLogo_);
 
     // ---------- ワールドスケールとカメラ ----------
-    // ゲーム内ステージと似たスケールで見せたい
     worldW_ = 32.0f;
     worldH_ = 18.0f;
 
-    spawnTopY_ = worldH_ + 2.0f; // 画面上ちょい外から降らせる
+    spawnTopY_ = worldH_ + 2.0f;
     despawnY_ = -4.0f;
     spawnLeftX_ = -worldW_ * 0.3f;
     spawnRightX_ = worldW_ * 0.3f;
@@ -144,10 +141,9 @@ void TitleScene::Initialize(const EngineContext *engine, const RenderContext *re
 
     // ---------- スポーン状態 ----------
     spawnTimer_ = 0.0f;
-    spawnInterval_ = 0.1f; // 0.1秒ごとに落とす感じ
+    spawnInterval_ = 0.1f;
     nextKindIndex_ = 0;
 
-    // ブロックリスト初期化
     for (int i = 0; i < kMaxBlocks_; ++i) {
         blocks_[i] = FallingBlock{};
         blocks_[i].alive = false;
@@ -192,7 +188,6 @@ void TitleScene::RefreshCameraOrtho_() {
 // SpawnOne_ : 新しい落下ブロックを1つ有効化
 // =======================================================
 void TitleScene::SpawnOne_() {
-    // 空いてるスロットを探す
     int slot = -1;
     for (int i = 0; i < kMaxBlocks_; ++i) {
         if (!blocks_[i].alive) { slot = i; break; }
@@ -207,38 +202,21 @@ void TitleScene::SpawnOne_() {
     b.alive = true;
     b.t = 0.0f;
 
-    // 出現位置
     float spawnX = spawnLeftX_ + (spawnRightX_ - spawnLeftX_) * r0;
     b.baseX = spawnX;
     b.pos = {spawnX, spawnTopY_, 0.0f};
 
-    // 落下モーション
     b.fallSpeed = 5.0f + r1 * 2.0f;
     b.swayAmp = 2.0f + r2 * 1.5f;
     b.swayFreq = 0.6f + r1 * 0.4f;
     b.phase = r2 * 6.28318f;
 
-    // サイズと回転は固定
     b.w = 1.0f;
     b.h = 1.0f;
     b.d = 1.0f;
     b.rotZDeg = 0.0f;
 
-    // 種類は 0..10 を順番ローテ
-    // 0:Solid
-    // 1:FragileAny
-    // 2:FragileTop
-    // 3:FragileBottom
-    // 4:Regen
-    // 5:Spring
-    // 6:Spike
-    // 7:SwitchOn
-    // 8:SwitchOff
-    // 9:SwitchBlockOn
-    //10:SwitchBlockOff
-    // (JumpOnly はこのローテに入れたいなら増やしてもOK。
-    //  今回は JumpOnly を SwitchBlockOff と差し替えず、下で分岐で扱うなら拡張する。
-    //  とりあえず 0..10 の11種類に JumpOnly も含めたいなら下のマッピングで扱う)
+    // 0..10 ローテ
     b.kind = nextKindIndex_ % 11;
     nextKindIndex_++;
 }
@@ -252,15 +230,11 @@ void TitleScene::UpdateDebris_(float dt) {
         if (!b.alive) continue;
 
         b.t += dt;
-
-        // 重力っぽい落下（等速）
         b.pos.y -= b.fallSpeed * dt;
 
-        // 横方向にフラフラ
         float sway = std::sinf(b.t * b.swayFreq + b.phase) * b.swayAmp;
         b.pos.x = b.baseX + sway;
 
-        // 画面のかなり下まで落ちたら消す
         if (b.pos.y < despawnY_) {
             b.alive = false;
         }
@@ -284,11 +258,11 @@ void TitleScene::DrawDebris_() {
         case 4:  useModel = &mdlRegen_;           break;
         case 5:  useModel = &mdlSpring_;          break;
         case 6:  useModel = &mdlSpike_;           break;
-        case 7:  useModel = &mdlSwitchOn_;        break; // スイッチ本体(ON)
-        case 8:  useModel = &mdlSwitchOff_;       break; // スイッチ本体(OFF)
-        case 9:  useModel = &mdlSwitchBlockOn_;   break; // スイッチ床ON
-        case 10: useModel = &mdlSwitchBlockOff_;  break; // スイッチ床OFF
-        default: useModel = &mdlJumpOnly_;        break; // 念のためfallback
+        case 7:  useModel = &mdlSwitchOn_;        break;
+        case 8:  useModel = &mdlSwitchOff_;       break;
+        case 9:  useModel = &mdlSwitchBlockOn_;   break;
+        case 10: useModel = &mdlSwitchBlockOff_;  break;
+        default: useModel = &mdlJumpOnly_;        break;
         }
 
         DrawModel_(
@@ -307,14 +281,12 @@ void TitleScene::DrawDebris_() {
 void TitleScene::Update(float dt) {
     RefreshCameraOrtho_();
 
-    // 一定間隔で新しいブロックを落とす
     spawnTimer_ += dt;
     if (spawnTimer_ >= spawnInterval_) {
         spawnTimer_ = 0.0f;
         SpawnOne_();
     }
 
-    // ブロック挙動更新
     UpdateDebris_(dt);
 
     // スペースでステージセレクトへ
@@ -333,11 +305,14 @@ void TitleScene::Draw() {
 
     mr->Begin(cmd, dx, camera_);
 
-    // 1) 背景（夜の工事現場レイヤ）
+    // 背景〜手前のレイヤー
     DrawTitleBackground_();
 
-    // 2) タイトル演出の降ってくるブロック達（手前に描く）
+    // 落下ブロック雨
     DrawDebris_();
+
+    // ど真ん中にタイトルロゴ
+    DrawTitleLogo_();
 
     mr->End(cmd);
 }
@@ -356,7 +331,7 @@ void TitleScene::DrawModel_(
     auto *cmd = dx->GetCommandList();
     auto *mr = render_->modelRenderer;
 
-    auto Deg = [](float d) { return XMConvertToRadians(d); };
+    auto DegF = [](float d) { return XMConvertToRadians(d); };
 
     Transform tr{};
     tr.pos = pos;
@@ -366,16 +341,16 @@ void TitleScene::DrawModel_(
         fullScale.z * 0.5f
     };
     tr.rot = {
-        Deg(rotDeg.x),
-        Deg(rotDeg.y),
-        Deg(rotDeg.z)
+        DegF(rotDeg.x),
+        DegF(rotDeg.y),
+        DegF(rotDeg.z)
     };
 
     mr->Draw(cmd, m, tr, alphaMul);
 }
 
 // =======================================================
-// LoadTextureSRV_ : TitleScene版（GameSceneとほぼ同じ）
+// LoadTextureSRV_ : TitleScene版
 // =======================================================
 bool TitleScene::LoadTextureSRV_(
     const std::wstring &fileU16,
@@ -438,8 +413,10 @@ bool TitleScene::LoadTextureSRV_(
     );
     if (FAILED(hr)) return false;
 
-    UINT64 uploadSize = GetRequiredIntermediateSize(outTex.Get(), 0, (UINT)useMeta.mipLevels);
-    ComPtr<ID3D12Resource> upload = BufferUtility::CreateUploadBuffer(device, uploadSize);
+    UINT64 uploadSize =
+        GetRequiredIntermediateSize(outTex.Get(), 0, (UINT)useMeta.mipLevels);
+    ComPtr<ID3D12Resource> upload =
+        BufferUtility::CreateUploadBuffer(device, uploadSize);
 
     // 一時コマンドでテクスチャ転送
     ComPtr<ID3D12CommandQueue> queue;
@@ -449,7 +426,8 @@ bool TitleScene::LoadTextureSRV_(
         device->CreateCommandQueue(&qd, IID_PPV_ARGS(&queue));
     }
     ComPtr<ID3D12CommandAllocator> alloc;
-    device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
+    device->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&alloc));
 
     ComPtr<ID3D12GraphicsCommandList> list;
     device->CreateCommandList(
@@ -501,7 +479,8 @@ bool TitleScene::LoadTextureSRV_(
 
     // SRV作成
     ID3D12DescriptorHeap *srvHeap = engine_->directXCommon->GetSrvHeap();
-    UINT inc = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+    UINT inc = device->GetDescriptorHandleIncrementSize(
+        D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
     D3D12_CPU_DESCRIPTOR_HANDLE cpu = srvHeap->GetCPUDescriptorHandleForHeapStart();
     cpu.ptr += SIZE_T(inc) * srvIndex;
@@ -522,18 +501,18 @@ bool TitleScene::LoadTextureSRV_(
     return true;
 }
 
+// =======================================================
+// DrawTitleBackground_ : 夜景・クレーン・手前の柵など
+// =======================================================
 void TitleScene::DrawTitleBackground_() {
-    // StageSelectScene::DrawBackgroundLayers_ をベースにしたやつ
-    // ここでは worldW_ / worldH_ を使って同じノリの工事夜景を描く
-
     float W = worldW_;
     float H = worldH_;
 
     auto Lerp = [](float a, float b, float t) { return a + (b - a) * t; };
 
-    // 1) 空っぽい奥行きレイヤ（夜空と薄い色ムラ）
+    // 1) 奥レイヤ（空ベタ）
     DrawModel_(
-        mdlSpring_,                     // 空っぽい面として流用
+        mdlSpring_,
         {0.0f, H * 0.50f, 38.0f},
         {W * 2.6f, H * 2.2f, 0.25f},
         {0,0,0},
@@ -541,7 +520,7 @@ void TitleScene::DrawTitleBackground_() {
     );
 
     DrawModel_(
-        mdlJumpOnly_,                   // ちょい違う色で重ねる
+        mdlJumpOnly_,
         {0.0f, H * 0.48f, 37.8f},
         {W * 2.6f, H * 1.9f, 0.25f},
         {0,0,-4.0f},
@@ -551,7 +530,6 @@ void TitleScene::DrawTitleBackground_() {
     for (int i = -3; i <= 3; ++i) {
         float rx = i * (W * 0.35f);
         float ry = H * (0.70f + 0.03f * std::sin(i * 0.9f));
-        // 擬似ランダム幅
         float randv = float(((i * 31 * 2654435761u) & 255)) / 255.0f;
         float rw = W * Lerp(0.50f, 0.80f, randv);
         float rh = H * 0.06f;
@@ -580,7 +558,6 @@ void TitleScene::DrawTitleBackground_() {
                 float rw = Lerp(wMin, wMax, r);
                 float rh = Lerp(hMin, hMax, 1.0f - r);
 
-                // ビル本体
                 DrawModel_(
                     mdlSolid_,
                     {rx, yBase + rh * 0.5f, z},
@@ -589,7 +566,6 @@ void TitleScene::DrawTitleBackground_() {
                     1.0f
                 );
 
-                // 屋上の機材箱（SwitchBlockOffでアクセント）
                 DrawModel_(
                     mdlSwitchBlockOff_,
                     {rx + rw * 0.14f, yBase + rh + 0.12f, z - 0.03f},
@@ -598,7 +574,6 @@ void TitleScene::DrawTitleBackground_() {
                     1.0f
                 );
 
-                // 警告灯っぽい点（SwitchBlockOn）
                 if (warnLight && ((i + (int)z) % 5 == 0)) {
                     DrawModel_(
                         mdlSwitchBlockOn_,
@@ -634,7 +609,6 @@ void TitleScene::DrawTitleBackground_() {
     );
 
     // 3) クレーン・吊り荷・ライト
-    // 支柱
     DrawModel_(
         mdlJumpOnly_,
         {-W * 0.32f, H * 0.86f, 24.8f},
@@ -643,7 +617,6 @@ void TitleScene::DrawTitleBackground_() {
         1.0f
     );
 
-    // アーム
     DrawModel_(
         mdlSolid_,
         {-W * 0.06f, H * 1.03f, 24.6f},
@@ -652,7 +625,6 @@ void TitleScene::DrawTitleBackground_() {
         1.0f
     );
 
-    // 縦フレーム
     DrawModel_(
         mdlSolid_,
         {W * 0.22f, H * 0.88f, 24.5f},
@@ -661,7 +633,6 @@ void TitleScene::DrawTitleBackground_() {
         1.0f
     );
 
-    // クレーン操作盤はスイッチOFFの箱っぽさで
     DrawModel_(
         mdlSwitchOff_,
         {W * 0.22f, H * 0.72f, 24.4f},
@@ -670,7 +641,6 @@ void TitleScene::DrawTitleBackground_() {
         1.0f
     );
 
-    // 吊り荷
     DrawModel_(
         mdlSolid_,
         {W * 0.22f, H * 0.55f, 24.3f},
@@ -679,7 +649,6 @@ void TitleScene::DrawTitleBackground_() {
         1.0f
     );
 
-    // 投光器ヘッド（SwitchOnで光ってる感じ）
     DrawModel_(
         mdlSwitchOn_,
         {W * 0.22f, H * 0.47f, 24.2f},
@@ -688,11 +657,10 @@ void TitleScene::DrawTitleBackground_() {
         1.0f
     );
 
-    // 4) 手前手すり・注意テープ
+    // 4) 前面の手すり・注意テープ
     {
         float railY = -0.6f;
 
-        // メイン柵
         DrawModel_(
             mdlSolid_,
             {0.0f, railY, -0.40f},
@@ -701,7 +669,6 @@ void TitleScene::DrawTitleBackground_() {
             1.0f
         );
 
-        // 手すりの繰り返し板
         for (int i = -3; i <= 3; ++i) {
             float x = i * (W * 0.16f);
             DrawModel_(
@@ -713,7 +680,6 @@ void TitleScene::DrawTitleBackground_() {
             );
         }
 
-        // 黄色テープ風の細い板（JumpOnlyモデルの細切れ）
         for (int i = -2; i <= 2; ++i) {
             DrawModel_(
                 mdlJumpOnly_,
@@ -725,9 +691,8 @@ void TitleScene::DrawTitleBackground_() {
         }
     }
 
-    // 5) 両サイド投光器 (ポール＋ライト＋注意サイン板)
+    // 5) 投光器 (左右)
     auto Flood = [&](XMFLOAT3 b, float rotZDeg) {
-        // ポール
         DrawModel_(
             mdlSolid_,
             {b.x, b.y, 22.0f},
@@ -736,7 +701,6 @@ void TitleScene::DrawTitleBackground_() {
             1.0f
         );
 
-        // ライトヘッド（SwitchOnで明るい想定）
         DrawModel_(
             mdlSwitchOn_,
             {b.x, b.y + 0.38f, 21.9f},
@@ -745,7 +709,6 @@ void TitleScene::DrawTitleBackground_() {
             1.0f
         );
 
-        // 警告パネルっぽい板（Spikeを薄く広げて貼る）
         DrawModel_(
             mdlSpike_,
             {b.x + 0.10f, b.y + 0.26f, 21.7f},
@@ -764,4 +727,22 @@ void TitleScene::DrawTitleBackground_() {
 
     Flood({-W * 0.48f, H * 0.82f, 0}, 10.0f);
     Flood({W * 0.52f, H * 0.74f, 0}, 18.0f);
+}
+
+// =======================================================
+// DrawTitleLogo_ : 画面中央にタイトル文字
+// =======================================================
+void TitleScene::DrawTitleLogo_() {
+    float centerX = 0.0f;
+    float centerY = worldH_ * 0.65f;
+
+    XMFLOAT3 logoScale = {4.0f, 4.0f, 1.0f};
+
+    DrawModel_(
+        mdlTitleLogo_,
+        {centerX, centerY, -0.8f},
+        logoScale,
+        {0.0f, 0.0f, 0.0f},
+        1.0f
+    );
 }
