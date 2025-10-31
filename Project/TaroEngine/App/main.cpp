@@ -2,9 +2,8 @@
 #include "WinApp.h"
 #include "EngineContext.h"
 #include "RenderContext.h"
-#include "GameScene.h"
-#include "TitleScene.h"
 #include "SceneManager.h"
+#include "TestScene.h"
 #include "FileLogger.h"
 #include "OutputLogger.h"
 #include "LoggerManager.h"
@@ -77,7 +76,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ===============================
 	SceneManager sceneManager;
 	sceneManager.Initialize(&engineContext, &renderContext);
-	sceneManager.ChangeScene(std::make_unique<TitleScene>());
+	sceneManager.ChangeScene(std::make_unique<TestScene>());
 	engineContext.sceneManager = &sceneManager;
 
 	// ===============================
