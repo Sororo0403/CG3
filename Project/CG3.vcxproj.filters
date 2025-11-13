@@ -66,12 +66,6 @@
     <Filter Include="Source\Graphics\Rendering">
       <UniqueIdentifier>{cac204e3-d0ce-4f87-a056-0317c6c47b14}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Actor">
-      <UniqueIdentifier>{837a8d5e-a527-4ac7-8e34-2e31011ef25d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Actor">
-      <UniqueIdentifier>{d3025542-028e-45e5-bf40-24786b7b9a85}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -103,9 +97,6 @@
     </ClCompile>
     <ClCompile Include="TaroEngine\Platform\WinApp.cpp">
       <Filter>Source\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Scene\GameScene.cpp">
-      <Filter>Source\Scene</Filter>
     </ClCompile>
     <ClCompile Include="TaroEngine\Scene\SceneManager.cpp">
       <Filter>Source\Scene</Filter>
@@ -140,13 +131,7 @@
     <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
       <Filter>Source\Graphics\Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="TaroEngine\Scene\TitleScene.cpp">
-      <Filter>Source\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Scene\StageSelectScene.cpp">
-      <Filter>Source\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Scene\ClearScene.cpp">
+    <ClCompile Include="TaroEngine\Scene\TestScene.cpp">
       <Filter>Source\Scene</Filter>
     </ClCompile>
   </ItemGroup>
@@ -177,9 +162,6 @@
     </ClInclude>
     <ClInclude Include="TaroEngine\Core\EngineContext.h">
       <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\GameScene.h">
-      <Filter>Include\Scene</Filter>
     </ClInclude>
     <ClInclude Include="TaroEngine\Scene\IScene.h">
       <Filter>Include\Scene</Filter>
@@ -250,17 +232,8 @@
     <ClInclude Include="TaroEngine\Platform\WinApp.h">
       <Filter>Include\Core</Filter>
     </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\TitleScene.h">
+    <ClInclude Include="TaroEngine\Scene\TestScene.h">
       <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\StageSelectScene.h">
-      <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\ClearScene.h">
-      <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\Difficulty.h">
-      <Filter>Source\Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
