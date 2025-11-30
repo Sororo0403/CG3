@@ -44,10 +44,12 @@ public:
 	// Getter
 	D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(ID3D12DescriptorHeap *heap, UINT index) const;
 	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(ID3D12DescriptorHeap *heap, UINT index) const;
+	UINT GetSrvDescriptorSize() const { return descriptorSizeSRV_; }
 	ID3D12Device *GetDevice() const { return device_.Get(); }
 	ID3D12GraphicsCommandList *GetCommandList() const { return commandList_.Get(); }
 	ID3D12DescriptorHeap *GetSrvHeap() const { return srvHeap_.Get(); }
 	uint32_t GetFrameIndex() const { return currentBackBufferIndex_; }
+
 private:
 	/// <summary>
 	/// ディスクリプタヒープを作成する

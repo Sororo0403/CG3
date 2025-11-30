@@ -42,6 +42,24 @@
     <Filter Include="Include\Engine\WinApp">
       <UniqueIdentifier>{68b610a5-6c10-4365-b2ff-5d25ab944ac4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\Engine\Shader">
+      <UniqueIdentifier>{88debb6f-6bc8-4842-a711-494e556158d2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Engine\Sprite">
+      <UniqueIdentifier>{9ab89995-aa48-47f4-8684-46e9b433bf0d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Engine\Sprite">
+      <UniqueIdentifier>{d5d23a68-6d1a-4acf-8687-8571da68df34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source\Engine\Texture">
+      <UniqueIdentifier>{b209c0bf-a379-4576-8f59-66b1c2ba2878}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Engine\Texture">
+      <UniqueIdentifier>{1a14240a-53bc-4c68-b638-41c040c4e8c7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Include\Engine\Shader">
+      <UniqueIdentifier>{c0cc18e5-cfeb-4fd6-85db-2ddd8065c3db}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -74,8 +92,17 @@
     <ClCompile Include="Source\Engine\WinApp\WinApp.cpp">
       <Filter>Source\Engine\WinApp</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Engine\Shader\ShaderCompiler.cpp">
+      <Filter>Source\Engine\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Sprite\SpriteRenderer.cpp">
+      <Filter>Source\Engine\Sprite</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Engine\main.cpp">
       <Filter>Source\Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Engine\Texture\TextureManager.cpp">
+      <Filter>Source\Engine\Texture</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -112,5 +139,27 @@
     <ClInclude Include="Source\Engine\DirectX\DirectXCommon.h">
       <Filter>Include\Engine\DirectX</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Engine\Sprite\SpriteRenderer.h">
+      <Filter>Include\Engine\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Texture\TextureManager.h">
+      <Filter>Include\Engine\Texture</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Engine\Shader\ShaderCompiler.h">
+      <Filter>Include\Engine\Shader</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\Sprite.VS.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\Sprite.PS.hlsl">
+      <Filter>Shader</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shaders\Sprite.hlsli">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>
