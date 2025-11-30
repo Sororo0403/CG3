@@ -20,18 +20,13 @@ public:
 	/// <summary>
 	/// メッセージポンプを1回分実行する
 	/// </summary>
+	/// <returns>WM_QUITがきたら true</returns>
 	bool ProcessMessage();
 
-	/// <summary>
-	/// ウィンドウハンドルを取得する
-	/// </summary>
 	HWND GetHwnd() const { return hwnd_; }
-
-	/// <summary>
-	/// インスタンスハンドルを取得
-	/// </summary>
-	/// <returns>インスタンスハンドル</returns>
 	HINSTANCE GetHInstance() const { return wc_.hInstance; }
+	LONG GetClientWidth() const { return clientWidth_; }
+	LONG GetClientHeight() const { return clientHeight_; }
 
 private:
 	/// <summary>
@@ -42,4 +37,6 @@ private:
 private:
 	HWND hwnd_;
 	WNDCLASS wc_{};
+	LONG clientWidth_;
+	LONG clientHeight_;
 };

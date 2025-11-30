@@ -1,19 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Source\Graphics">
-      <UniqueIdentifier>{408120d2-e08a-47dc-9f45-e1940a031b68}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\App">
-      <UniqueIdentifier>{6046ee8b-a975-4281-9722-2c5348eb8e9a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Core">
-      <UniqueIdentifier>{24535162-fc17-4c76-8802-f2e6bd579cdc}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shader">
       <UniqueIdentifier>{256aee4d-a107-4aa5-95ed-bcf43d3eed45}</UniqueIdentifier>
     </Filter>
@@ -21,353 +8,109 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Include\Graphics">
-      <UniqueIdentifier>{54979f6f-596a-4740-aae4-a10b201ee1d4}</UniqueIdentifier>
+    <Filter Include="Source">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Include\Core">
-      <UniqueIdentifier>{dcccfdb5-7c2f-4fc2-9625-91fe40c669ff}</UniqueIdentifier>
+    <Filter Include="Source\Engine">
+      <UniqueIdentifier>{83c3ef36-97fe-476a-b076-16911f2e7b48}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Math">
-      <UniqueIdentifier>{f9b842af-17ea-4c57-84a2-1e6e6397ab0f}</UniqueIdentifier>
+    <Filter Include="Source\Engine\DirectX">
+      <UniqueIdentifier>{811cae81-be11-4e43-bc3f-e6da599d3db9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Scene">
-      <UniqueIdentifier>{b8f9b00d-ddb4-4460-a9be-e4af010a26c7}</UniqueIdentifier>
+    <Filter Include="Source\Engine\Input">
+      <UniqueIdentifier>{8d3cc650-9393-4861-9766-5f350c69f304}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Scene">
-      <UniqueIdentifier>{483fc31a-9852-40a0-aa41-0a87c3f3caf2}</UniqueIdentifier>
+    <Filter Include="Source\Engine\WinApp">
+      <UniqueIdentifier>{d4894c62-ae2a-4e1a-87e7-4b7ffd350979}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Graphics\LowLevel">
-      <UniqueIdentifier>{7ea6e075-2f56-4c03-8737-c44dd29a06ba}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Include\ThirdParty">
-      <UniqueIdentifier>{a39ff30e-cb2a-497e-b5a6-743b55b5fbc4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Include\ThirdParty\ImGui">
-      <UniqueIdentifier>{9a28578a-7d68-4055-8a9a-334b66bee167}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\Graphics\LowLevel">
-      <UniqueIdentifier>{048c6d1a-e042-4900-baef-e776d4d333e5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source\ThirdParty">
+    <Filter Include="Externals">
       <UniqueIdentifier>{4c09f61f-94aa-45af-865e-3e84d7d5d292}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\ThirdParty\ImGui">
+    <Filter Include="Externals\ImGui">
       <UniqueIdentifier>{f5ae23c4-7007-4dfe-a563-9b858a105780}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Core\Logger">
-      <UniqueIdentifier>{7e84f2fa-0a1d-4794-9495-6c86894bee47}</UniqueIdentifier>
+    <Filter Include="Include\Engine">
+      <UniqueIdentifier>{05cff582-6312-4ba9-8f2c-4a648a46dd47}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Core\Logger">
-      <UniqueIdentifier>{4df610ca-56a8-4f2e-93ed-6d6d9753c632}</UniqueIdentifier>
+    <Filter Include="Include\Engine\DirectX">
+      <UniqueIdentifier>{6a22807b-1e77-4569-83f1-f8854af782ef}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Include\Graphics\Rendering">
-      <UniqueIdentifier>{a4600d60-3839-4a10-8859-161cdf91921b}</UniqueIdentifier>
+    <Filter Include="Include\Engine\Input">
+      <UniqueIdentifier>{6f7b672d-b80a-4d3b-81fc-f16b10687049}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source\Graphics\Rendering">
-      <UniqueIdentifier>{cac204e3-d0ce-4f87-a056-0317c6c47b14}</UniqueIdentifier>
+    <Filter Include="Include\Engine\WinApp">
+      <UniqueIdentifier>{68b610a5-6c10-4365-b2ff-5d25ab944ac4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_demo.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_draw.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_impl_dx12.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_tables.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
-      <Filter>Source\ThirdParty\ImGui</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\App\main.cpp">
-      <Filter>Source\App</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Platform\Input.cpp">
-      <Filter>Source\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Platform\WinApp.cpp">
-      <Filter>Source\Core</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Scene\SceneManager.cpp">
-      <Filter>Source\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\LowLevel\D3DResourceLeakChecker.cpp">
-      <Filter>Source\Graphics\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\LowLevel\DirectXCommon.cpp">
-      <Filter>Source\Graphics\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Core\Logger\OutputLogger.cpp">
-      <Filter>Source\Core\Logger</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Core\Logger\FileLogger.cpp">
-      <Filter>Source\Core\Logger</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Core\Logger\LoggerManager.cpp">
-      <Filter>Source\Core\Logger</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\Rendering\ModelRenderer.cpp">
-      <Filter>Source\Graphics\Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Mesh.cpp">
-      <Filter>Source\Graphics\Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.cpp">
-      <Filter>Source\Graphics\LowLevel</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Model.cpp">
-      <Filter>Source\Graphics\Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Graphics\Rendering\Camera.cpp">
-      <Filter>Source\Graphics\Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="TaroEngine\Scene\TestScene.cpp">
-      <Filter>Source\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\main.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\DirectX\D3DResourceLeakChecker.cpp">
-      <Filter>Source</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\DirectX\DirectXCommon.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\DirectX\ShaderCompiler.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Graphics\Camera.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Graphics\Mesh.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Graphics\Model.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\DirectX\ModelRenderer.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Graphics\Texture2D.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Logger\FileLogger.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Logger\LoggerManager.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Logger\OutputLogger.cpp">
-      <Filter>Source</Filter>
+      <Filter>Source\Engine\DirectX</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\Input\Input.cpp">
-      <Filter>Source</Filter>
+      <Filter>Source\Engine\Input</Filter>
     </ClCompile>
     <ClCompile Include="Source\Engine\WinApp\WinApp.cpp">
-      <Filter>Source</Filter>
+      <Filter>Source\Engine\WinApp</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Scene\SceneManager.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Engine\Scene\TestScene.cpp">
-      <Filter>Source</Filter>
+    <ClCompile Include="Source\Engine\main.cpp">
+      <Filter>Source\Engine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_impl_dx12.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_impl_win32.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imgui_internal.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_rectpack.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_textedit.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_truetype.h">
-      <Filter>Include\ThirdParty\ImGui</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\EngineContext.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\IScene.h">
-      <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\SceneManager.h">
-      <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\LowLevel\DirectXCommon.h">
-      <Filter>Include\Graphics\LowLevel</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\LowLevel\D3DResourceLeakChecker.h">
-      <Filter>Include\Graphics\LowLevel</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Logger\ILogger.h">
-      <Filter>Include\Core\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Logger\OutputLogger.h">
-      <Filter>Include\Core\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Logger\LogUtility.h">
-      <Filter>Include\Core\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Logger\LogLevel.h">
-      <Filter>Include\Core\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Logger\FileLogger.h">
-      <Filter>Include\Core\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\Logger\LoggerManager.h">
-      <Filter>Include\Core\Logger</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\RenderContext.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Rendering\ModelRenderer.h">
-      <Filter>Include\Graphics\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Mesh.h">
-      <Filter>Include\Graphics\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\LowLevel\BufferUtility.h">
-      <Filter>Include\Graphics\LowLevel</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Core\StringUtility.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\LowLevel\ShaderCompiler.h">
-      <Filter>Include\Graphics\LowLevel</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Model.h">
-      <Filter>Include\Graphics\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\Transform.h">
-      <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\Vertex.h">
-      <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Math\VertexRef.h">
-      <Filter>Include\Math</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Graphics\Rendering\Camera.h">
-      <Filter>Include\Graphics\Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Platform\Input.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Platform\WinApp.h">
-      <Filter>Include\Core</Filter>
-    </ClInclude>
-    <ClInclude Include="TaroEngine\Scene\TestScene.h">
-      <Filter>Include\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\EngineContext.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\RenderContext.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Utility\StringUtility.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Utility\BufferUtility.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\D3DResourceLeakChecker.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\DirectXCommon.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\ShaderCompiler.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Graphics\Camera.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Graphics\Mesh.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Graphics\Model.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\ModelRenderer.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Graphics\Texture2D.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Logger\FileLogger.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Logger\ILogger.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Logger\LoggerManager.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Logger\LogLevel.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Logger\LogUtility.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Logger\OutputLogger.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Math\Transform.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Math\Vertex.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Math\VertexRef.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Engine\Input\Input.h">
-      <Filter>Include</Filter>
+      <Filter>Externals\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Source\Engine\WinApp\WinApp.h">
-      <Filter>Include</Filter>
+      <Filter>Include\Engine\WinApp</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Scene\IScene.h">
-      <Filter>Include</Filter>
+    <ClInclude Include="Source\Engine\Input\Input.h">
+      <Filter>Include\Engine\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Scene\SceneManager.h">
-      <Filter>Include</Filter>
+    <ClInclude Include="Source\Engine\DirectX\DirectXCommon.h">
+      <Filter>Include\Engine\DirectX</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Scene\TestScene.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Resources\Shaders\ModelVS.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
-    <FxCompile Include="Resources\Shaders\ModelPS.hlsl">
-      <Filter>Shader</Filter>
-    </FxCompile>
   </ItemGroup>
 </Project>

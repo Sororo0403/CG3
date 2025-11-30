@@ -57,7 +57,7 @@ void Input::Update() {
 	}
 }
 
-void Input::ResetStates() noexcept {
+void Input::ResetStates() {
 	std::memset(nowKey_, 0, sizeof(nowKey_));
 	std::memset(prevKey_, 0, sizeof(prevKey_));
 }

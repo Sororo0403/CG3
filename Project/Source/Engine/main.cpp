@@ -1,134 +1,44 @@
-#include "DirectXCommon.h"
-#include "WinApp.h"
-#include "EngineContext.h"
-#include "RenderContext.h"
-#include "SceneManager.h"
-#include "TestScene.h"
-#include "FileLogger.h"
-#include "OutputLogger.h"
-#include "LoggerManager.h"
-#include "ShaderCompiler.h"
-#include "Input.h"
-#include "ModelRenderer.h"
+#include "DirectX/DirectXCommon.h"
+#include "WinApp/WinApp.h"
+#include "Input/Input.h"
+#include <Windows.h>
+#include <string>
 
-#include <memory>
-#include <chrono>
-
-/// <summary>
-/// アプリのエントリポイント。
-/// </summary>
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
-	// ===============================
-	// アプリ初期化
-	// ===============================
 	// winApp
+	const LONG kClientWidth = 1280;
+	const LONG kClientHeight = 720;
+	const std::wstring kWindowTitle = L"GE3";
+
 	std::unique_ptr<WinApp> winApp = std::make_unique<WinApp>();
-	winApp->Initialize();
+	winApp->Initialize(kClientWidth, kClientHeight, kWindowTitle);
 
 	// DirectX
 	std::unique_ptr<DirectXCommon> directXCommon = std::make_unique<DirectXCommon>();
 	directXCommon->Initialize(winApp.get());
 
-
-	// ===============================
-	// ロガー設定
-	// ===============================
-	LoggerManager loggerManager;
-	loggerManager.AddLogger(std::make_shared<OutputLogger>());
-
-	std::shared_ptr<FileLogger> fileLogger = std::make_shared<FileLogger>();
-	fileLogger->SetFilePath("log.txt");
-	loggerManager.AddLogger(fileLogger);
-
-	// ===============================
-	// コンパイラ初期化
-	// ===============================
-	// ShaderCompiler
-	std::shared_ptr<ShaderCompiler> shaderCompiler = std::make_shared<ShaderCompiler>();
-	shaderCompiler->Initialize(&loggerManager);
-
-	std::shared_ptr<ModelRenderer> modelRenderer = std::make_shared<ModelRenderer>();
-	modelRenderer->Initialize(directXCommon->GetDevice(), shaderCompiler.get());
-
-	// ===============================
-	// インプット初期化
-	// ===============================
 	// Input
 	std::unique_ptr<Input> input = std::make_unique<Input>();
 	input->Initialize(winApp->GetHInstance(), winApp->GetHwnd());
 
-	// ===============================
-	// コンテキスト初期化
-	// ===============================
-	// EngineContext
-	EngineContext engineContext{};
-	engineContext.input = input.get();
-	engineContext.directXCommon = directXCommon.get();
+	// クリアカラー
+	const float kClearColor[4] = {0.0f,1.0f,1.0f,1.0f};
 
-	// RenderContext
-	RenderContext renderContext{};
-	renderContext.commandList = nullptr;
-	renderContext.shaderCompiler = shaderCompiler.get();
-	renderContext.modelRenderer = modelRenderer.get();
-
-	// ===============================
-	// シーンマネージャ初期化
-	// ===============================
-	SceneManager sceneManager;
-	sceneManager.Initialize(&engineContext, &renderContext);
-	sceneManager.ChangeScene(std::make_unique<TestScene>());
-	engineContext.sceneManager = &sceneManager;
-
-	// ===============================
-	// メインループ
-	// ===============================
-	using Clock = std::chrono::high_resolution_clock;
-
-	constexpr float kDeltaTimeClampMin = 1.0f / 240.0f;
-	constexpr float kDeltaTimeClampMax = 1.0f / 15.0f;
-	constexpr float kClearColor[4] = {0.1f, 0.25f, 0.5f, 1.0f};
-
-	auto prev = Clock::now();
-	bool running = true;
-
-	while (running) {
+	while (true) {
 		// Windowsメッセージ処理
 		if (winApp->ProcessMessage()) {
 			break;
 		}
 
-		// 経過時間(秒)
-		const auto now = Clock::now();
-		float deltaTime = std::chrono::duration<float>(now - prev).count();
-		prev = now;
-
-		// dt のクランプ（下限・上限）
-		if (deltaTime < kDeltaTimeClampMin) { deltaTime = kDeltaTimeClampMin; }
-		if (deltaTime > kDeltaTimeClampMax) { deltaTime = kDeltaTimeClampMax; }
-
-		// インプット更新
+		// Input更新
 		input->Update();
 
-		// --- 更新 ---
-		sceneManager.Update(deltaTime);
-
-		// --- 描画 ---
+		// 描画前処理
 		directXCommon->PreDraw(kClearColor);
 
-		renderContext.commandList = directXCommon->GetCommandList();
-		renderContext.shaderCompiler = shaderCompiler.get();
-
-		sceneManager.Draw();
-
+		// 描画終了処理
 		directXCommon->PostDraw();
 	}
-
-	// ===============================
-	// 終了処理
-	// ===============================
-	sceneManager.Finalize();
-	directXCommon->Finalize();
-	winApp->Finalize();
 
 	return 0;
 }

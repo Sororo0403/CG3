@@ -13,6 +13,10 @@ WinApp::~WinApp() {
 }
 
 void WinApp::Initialize(LONG clientWidth, LONG clientHeight, const std::wstring &windowTitle) {
+	// クライアント領域
+	clientWidth_ = clientWidth;
+	clientHeight_ = clientHeight;
+
 	// ウィンドウクラス登録
 	wc_.lpfnWndProc = WinApp::WindowProc;
 	wc_.lpszClassName = L"WindowClass";
