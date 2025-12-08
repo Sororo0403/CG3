@@ -32,3 +32,6 @@ packages/
 *.bak
 *.tmp_proj
 ~$*
+
+# imgui
+imgui.ini
