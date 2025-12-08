@@ -22,7 +22,6 @@ void Input::Initialize(HINSTANCE hInstance, HWND hwnd) {
 
 	assert(SUCCEEDED(hr));
 
-	// キーボード
 	hr = directInput_->CreateDevice(GUID_SysKeyboard, keyboard_.GetAddressOf(), nullptr);
 	assert(SUCCEEDED(hr));
 

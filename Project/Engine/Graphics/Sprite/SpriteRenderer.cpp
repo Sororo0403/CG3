@@ -70,8 +70,8 @@ void SpriteRenderer::CreatePipeline_() {
 		IID_PPV_ARGS(&rootSignature_));
 	assert(SUCCEEDED(hr));
 
-	ComPtr<IDxcBlob> vs = shaderCompiler_->Compile(L"Shaders/Sprite.VS.hlsl", L"vs_6_0");
-	ComPtr<IDxcBlob> ps = shaderCompiler_->Compile(L"Shaders/Sprite.PS.hlsl", L"ps_6_0");
+	ComPtr<IDxcBlob> vs = shaderCompiler_->Compile(L"Resources/Shaders/Sprite.VS.hlsl", L"vs_6_0");
+	ComPtr<IDxcBlob> ps = shaderCompiler_->Compile(L"Resources/Shaders/Sprite.PS.hlsl", L"ps_6_0");
 
 	D3D12_INPUT_ELEMENT_DESC inputElems[2]{};
 	inputElems[0].SemanticName = "POSITION";

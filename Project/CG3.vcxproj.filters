@@ -83,25 +83,25 @@
     <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
       <Filter>Externals\ImGui</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\DirectX\DirectXCommon.cpp">
+    <ClCompile Include="Engine\Core\DirectX\DirectXCommon.cpp">
       <Filter>Source\Engine\DirectX</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Input\Input.cpp">
+    <ClCompile Include="Engine\Input\Input.cpp">
       <Filter>Source\Engine\Input</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\WinApp\WinApp.cpp">
+    <ClCompile Include="Engine\Core\WinApp\WinApp.cpp">
       <Filter>Source\Engine\WinApp</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Shader\ShaderCompiler.cpp">
+    <ClCompile Include="Engine\Graphics\Shader\ShaderCompiler.cpp">
       <Filter>Source\Engine\Shader</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Sprite\SpriteRenderer.cpp">
+    <ClCompile Include="Engine\Graphics\Sprite\SpriteRenderer.cpp">
       <Filter>Source\Engine\Sprite</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\main.cpp">
+    <ClCompile Include="Engine\main.cpp">
       <Filter>Source\Engine</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Engine\Texture\TextureManager.cpp">
+    <ClCompile Include="Engine\Graphics\Texture\TextureManager.cpp">
       <Filter>Source\Engine\Texture</Filter>
     </ClCompile>
   </ItemGroup>
@@ -130,35 +130,35 @@
     <ClInclude Include="Externals\imgui\imstb_truetype.h">
       <Filter>Externals\ImGui</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\WinApp\WinApp.h">
+    <ClInclude Include="Engine\Core\WinApp\WinApp.h">
       <Filter>Include\Engine\WinApp</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Input\Input.h">
+    <ClInclude Include="Engine\Input\Input.h">
       <Filter>Include\Engine\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\DirectX\DirectXCommon.h">
+    <ClInclude Include="Engine\Core\DirectX\DirectXCommon.h">
       <Filter>Include\Engine\DirectX</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Sprite\SpriteRenderer.h">
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteRenderer.h">
       <Filter>Include\Engine\Sprite</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Texture\TextureManager.h">
+    <ClInclude Include="Engine\Graphics\Texture\TextureManager.h">
       <Filter>Include\Engine\Texture</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Engine\Shader\ShaderCompiler.h">
+    <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h">
       <Filter>Include\Engine\Shader</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\Sprite.VS.hlsl">
+    <FxCompile Include="Resources\Shaders\Sprite.VS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\Sprite.PS.hlsl">
+    <FxCompile Include="Resources\Shaders\Sprite.PS.hlsl">
       <Filter>Shader</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Shaders\Sprite.hlsli">
+    <None Include="Resources\Shaders\Sprite.hlsli">
       <Filter>Shader</Filter>
     </None>
   </ItemGroup>

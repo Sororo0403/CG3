@@ -47,7 +47,6 @@ private:
 private:
 	Microsoft::WRL::ComPtr<IDirectInput8> directInput_;
 
-	// キーボード
 	Microsoft::WRL::ComPtr<IDirectInputDevice8> keyboard_;
 	BYTE nowKey_[256] = {};
 	BYTE prevKey_[256] = {};
