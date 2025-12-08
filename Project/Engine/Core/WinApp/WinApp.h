@@ -12,10 +12,10 @@ public:
 	/// <summary>
 	/// 初期化処理
 	/// </summary>
-	/// <param name="clientWidth">クライアント領域の横幅</param>
-	/// <param name="clientHeight">クライアント領域の高さ</param>
-	/// <param name="windowTitle">ウィンドウタイトル</param>
-	void Initialize(LONG clientWidth, LONG clientHeight, const std::wstring &windowTitle);
+	/// <param name="width">ウィンドウの横幅</param>
+	/// <param name="height">ウィンドウの高さ</param>
+	/// <param name="title">ウィンドウタイトル</param>
+	void Initialize(LONG width, LONG height, const std::wstring &title);
 
 	/// <summary>
 	/// メッセージポンプを1回分実行する
@@ -26,8 +26,8 @@ public:
 	// Getter
 	HWND GetHwnd() const { return hwnd_; }
 	HINSTANCE GetHInstance() const { return wc_.hInstance; }
-	LONG GetClientWidth() const { return clientWidth_; }
-	LONG GetClientHeight() const { return clientHeight_; }
+	LONG GetWidth() const { return width_; }
+	LONG GetHeight() const { return height_; }
 
 private:
 	/// <summary>
@@ -38,6 +38,7 @@ private:
 private:
 	HWND hwnd_;
 	WNDCLASS wc_{};
-	LONG clientWidth_;
-	LONG clientHeight_;
+
+	LONG width_;
+	LONG height_;
 };
