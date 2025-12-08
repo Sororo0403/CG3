@@ -1,6 +1,6 @@
 #include "DirectX/DirectXCommon.h"
 #include "WinApp/WinApp.h"
-#include "Input/Input.h"
+#include "Input.h"
 #include "Sprite/SpriteRenderer.h"
 #include "Shader/ShaderCompiler.h"
 #include <Windows.h>
