@@ -23,6 +23,7 @@ public:
 	/// <returns>WM_QUITがきたら true</returns>
 	bool ProcessMessage();
 
+	// Getter
 	HWND GetHwnd() const { return hwnd_; }
 	HINSTANCE GetHInstance() const { return wc_.hInstance; }
 	LONG GetClientWidth() const { return clientWidth_; }
