@@ -52,6 +52,9 @@
     <Filter Include="Engine\Utils\CrashHandler">
       <UniqueIdentifier>{5e52eb73-18cc-4b3e-8b0d-37415c9a52d5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Utils\String">
+      <UniqueIdentifier>{3e262475-2959-4948-9067-da9fef2c0647}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -173,6 +176,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Utils\CrashHandler\CrashHandler.h">
       <Filter>Engine\Utils\CrashHandler</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\String\StringUtil.h">
+      <Filter>Engine\Utils\String</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

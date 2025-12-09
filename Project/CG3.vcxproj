@@ -208,6 +208,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />
     <ClInclude Include="Engine\Utils\Logger\Logger.h" />
     <ClInclude Include="Engine\Utils\Logger\LogLevel.h" />
+    <ClInclude Include="Engine\Utils\String\StringUtil.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_impl_dx12.h" />
