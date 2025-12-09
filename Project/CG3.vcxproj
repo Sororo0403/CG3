@@ -148,7 +148,10 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Engine\Utils\Logger\ConsoleLogger.cpp" />
+    <ClCompile Include="Engine\Utils\Logger\ConsoleLogger.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
+      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
+    </ClCompile>
     <ClCompile Include="Engine\Graphics\Shader\ShaderCompiler.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -157,8 +160,14 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Utils\Logger\FileLogger.cpp" />
-    <ClCompile Include="Engine\Utils\Logger\LoggerManager.cpp" />
+    <ClCompile Include="Engine\Utils\Logger\FileLogger.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
+      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="Engine\Utils\Logger\LoggerManager.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
+      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
+    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Engine\Input\Input.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
