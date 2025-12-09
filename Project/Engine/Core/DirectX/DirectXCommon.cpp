@@ -1,16 +1,13 @@
 #define NOMINMAX
 #include "DirectXCommon.h"
 #include "Logger/Logger.h"
-#include "WinApp/WinApp.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_dx12.h"
 #include "imgui/imgui_impl_win32.h"
 #include <cassert>
-#include <chrono>
 #include <d3d12.h>
 #include <directx/d3dx12.h>
 #include <dxgi1_6.h>
-#include <thread>
 
 using Microsoft::WRL::ComPtr;
 
@@ -39,7 +36,6 @@ void DirectXCommon::Initialize(HWND hwnd, int width, int height) {
   width_ = width;
   height_ = height;
 
-  InitializeFixFPS();
   InitializeDevice();
   InitializeCommand();
   InitializeSwapChain();
@@ -112,8 +108,6 @@ void DirectXCommon::PostDraw() {
 
   swapChain_->Present(1, 0);
   LOG_DEBUG("Present called");
-
-  UpdateFixFPS();
 }
 
 void DirectXCommon::WaitForGpu() {
@@ -124,27 +118,6 @@ void DirectXCommon::WaitForGpu() {
     fence_->SetEventOnCompletion(fenceToWait, fenceEvent_);
     WaitForSingleObject(fenceEvent_, INFINITE);
   }
-}
-
-void DirectXCommon::InitializeFixFPS() {
-  fpsReference_ = std::chrono::steady_clock::now();
-}
-
-void DirectXCommon::UpdateFixFPS() {
-  using clock = std::chrono::steady_clock;
-  using micro = std::chrono::microseconds;
-
-  const micro target(kTargetFrameMicroSec);
-  micro elapsed =
-      std::chrono::duration_cast<micro>(clock::now() - fpsReference_);
-
-  if (elapsed < target) {
-    while (clock::now() - fpsReference_ < target) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-  }
-
-  fpsReference_ += target;
 }
 
 void DirectXCommon::InitializeDevice() {

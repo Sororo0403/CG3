@@ -1,12 +1,8 @@
 #pragma once
-#define NOMINMAX
-
-#include <chrono>
+#include <cstdint>
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
-
-class WinApp;
 
 class DirectXCommon {
 public:
@@ -18,31 +14,42 @@ public:
   /// <summary>
   /// 初期化処理
   /// </summary>
-  /// <param name="winApp"></param>
+  /// <param name="hwnd">ウィンドウハンドル</param>
+  /// <param name="width">クライアント領域の横幅</param>
+  /// <param name="height">クライアント領域の縦幅</param>
   void Initialize(HWND hwnd, int width, int height);
 
+  /// <summary>
+  /// 描画前処理
+  /// </summary>
+  /// <param name="clearColor">描画時のクリアカラー</param>
   void PreDraw(const float clearColor[4]);
+
+  /// <summary>
+  /// 描画後処理
+  /// </summary>
   void PostDraw();
+
+  /// <summary>
+  /// GPU が現在実行中のコマンドをすべて完了するまで待機
+  /// </summary>
   void WaitForGpu();
 
+  // Getter
   ID3D12Device *GetDevice() const { return device_.Get(); }
   ID3D12GraphicsCommandList *GetCommandList() const {
     return commandList_.Get();
   }
   ID3D12DescriptorHeap *GetSrvHeap() const { return srvHeap_.Get(); }
-
   UINT GetSrvDescriptorSize() const { return descriptorSizeSRV_; }
-
   UINT GetBackBufferIndex() const { return currentBackBufferIndex_; }
-
   D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(ID3D12DescriptorHeap *heap,
                                            UINT index) const;
   D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(ID3D12DescriptorHeap *heap,
                                            UINT index) const;
 
 private:
-  // Initialization
-  void InitializeFixFPS();
+  // Initialize
   void InitializeDevice();
   void InitializeCommand();
   void InitializeSwapChain();
@@ -56,9 +63,14 @@ private:
   void InitializeScissorRect();
   void InitializeImGui();
 
+  /// <summary>
+  /// 指定したバックバッファのフェンス値が完了するまで待機
+  /// </summary>
   void WaitForFrame(UINT frameIndex);
-  void UpdateFixFPS();
 
+  /// <summary>
+  /// 指定した種類・サイズのディスクリプタヒープを生成
+  /// </summary>
   ID3D12DescriptorHeap *CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
                                              UINT numDescriptors,
                                              bool shaderVisible);
@@ -100,7 +112,4 @@ private:
   D3D12_RECT scissorRect_{};
 
   UINT currentBackBufferIndex_ = 0;
-
-  static constexpr long long kTargetFrameMicroSec = 16667;
-  std::chrono::steady_clock::time_point fpsReference_;
 };
