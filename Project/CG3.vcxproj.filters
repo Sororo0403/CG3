@@ -40,6 +40,12 @@
     <Filter Include="Shader\Sprite">
       <UniqueIdentifier>{bec03735-bf66-4322-86d8-92600f200422}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Utils">
+      <UniqueIdentifier>{fd962204-e763-4bf5-bcd1-f3cf1c801a84}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Utils\Logger">
+      <UniqueIdentifier>{3cc6a470-c838-44df-a25b-48b478cf9080}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -82,7 +88,9 @@
       <Filter>Engine\Core\WinApp</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Engine\Utils\Logger\Logger.cpp" />
+    <ClCompile Include="Engine\Utils\Logger\FileLogger.cpp">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -127,7 +135,15 @@
     <ClInclude Include="Engine\Input\Input.h">
       <Filter>Engine\Input</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Utils\Logger\Logger.h" />
+    <ClInclude Include="Engine\Utils\Logger\FileLogger.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\Logger\ILogger.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\Logger\LogLevel.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">
