@@ -1,125 +1,209 @@
 #include "TextureManager.h"
 #include "DirectX/DirectXCommon.h"
+#include "Logger/Logger.h"
+#include "directx/d3dx12.h"
+
 #include <cassert>
+#include <vector>
 
 using namespace Microsoft::WRL;
 using namespace DirectX;
 
-DirectXCommon *TextureManager::s_dx_ = nullptr;
-uint32_t TextureManager::s_nextIndex_ = 1; // 0番はImGuiなど予約すると楽
-std::unordered_map<std::string, uint32_t> TextureManager::s_pathToId_;
-std::unordered_map<uint32_t, TextureManager::Texture> TextureManager::s_textures_;
-
-void TextureManager::Initialize(DirectXCommon *dx) {
-    s_dx_ = dx;
-    s_nextIndex_ = 1;
-    s_pathToId_.clear();
-    s_textures_.clear();
+TextureManager *TextureManager::GetInstance() {
+  static TextureManager instance;
+  return &instance;
 }
 
-void TextureManager::Finalize() {
-    s_textures_.clear();
-    s_pathToId_.clear();
-    s_dx_ = nullptr;
+TextureManager::~TextureManager() {
+  LOG_INFO("TextureManager destructor: clearing textures");
+
+  textures_.clear();
+  pathToId_.clear();
+  dx_ = nullptr;
+}
+
+void TextureManager::Initialize(DirectXCommon *dx) {
+  LOG_INFO("TextureManager initialized");
+
+  dx_ = dx;
+  nextIndex_ = 1;
+  pathToId_.clear();
+  textures_.clear();
 }
 
 uint32_t TextureManager::LoadTexture(const std::string &filePath) {
-    assert(s_dx_);
-    if (auto it = s_pathToId_.find(filePath); it != s_pathToId_.end()) {
-        return it->second;
-    }
+  assert(dx_);
 
-    auto image = LoadTextureFromFile_(filePath);
-    const auto &metadata = image.GetMetadata();
-    auto tex = CreateTextureResource_(s_dx_->GetDevice(), metadata);
-    UploadTextureData_(tex.Get(), image);
+  LOG_INFO("LoadTexture: " + filePath);
 
-    ID3D12Device *device = s_dx_->GetDevice();
-    ID3D12DescriptorHeap *heap = s_dx_->GetSrvHeap();
-    UINT descriptorSize = s_dx_->GetSrvDescriptorSize();
+  // 既にロード済みなら再利用
+  if (auto it = pathToId_.find(filePath); it != pathToId_.end()) {
+    LOG_DEBUG("Texture reused: " + filePath);
+    return it->second;
+  }
 
-    UINT index = s_nextIndex_++;
-    D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = heap->GetCPUDescriptorHandleForHeapStart();
-    cpuHandle.ptr += static_cast<SIZE_T>(index) * descriptorSize;
+  LOG_DEBUG("Loading new texture: " + filePath);
 
-    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = heap->GetGPUDescriptorHandleForHeapStart();
-    gpuHandle.ptr += static_cast<UINT64>(index) * descriptorSize;
+  // 画像ファイル読み込み
+  auto image = LoadTextureFromFile(filePath);
+  const auto &metadata = image.GetMetadata();
 
-    D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-    srvDesc.Format = metadata.format;
-    srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = static_cast<UINT>(metadata.mipLevels);
+  LOG_INFO("Image loaded. Size = " + std::to_string(metadata.width) + "x" +
+           std::to_string(metadata.height) +
+           " MipLevels = " + std::to_string(metadata.mipLevels));
 
-    device->CreateShaderResourceView(tex.Get(), &srvDesc, cpuHandle);
+  // GPUリソース生成
+  auto tex = CreateTextureResource(dx_->GetDevice(), metadata);
+  UploadTextureData(tex.Get(), image);
 
-    Texture texInfo{};
-    texInfo.resource = tex;
-    texInfo.gpuHandle = gpuHandle;
+  LOG_INFO("GPU texture created successfully: " + filePath);
 
-    uint32_t id = index;
-    s_textures_[id] = texInfo;
-    s_pathToId_[filePath] = id;
-    return id;
+  // SRV登録
+  ID3D12Device *device = dx_->GetDevice();
+  ID3D12DescriptorHeap *heap = dx_->GetSrvHeap();
+  UINT descriptorSize = dx_->GetSrvDescriptorSize();
+
+  UINT index = nextIndex_++;
+
+  D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle =
+      heap->GetCPUDescriptorHandleForHeapStart();
+  cpuHandle.ptr += static_cast<SIZE_T>(index) * descriptorSize;
+
+  D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle =
+      heap->GetGPUDescriptorHandleForHeapStart();
+  gpuHandle.ptr += static_cast<UINT64>(index) * descriptorSize;
+
+  D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+  srvDesc.Format = metadata.format;
+  srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+  srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+  srvDesc.Texture2D.MipLevels = static_cast<UINT>(metadata.mipLevels);
+
+  device->CreateShaderResourceView(tex.Get(), &srvDesc, cpuHandle);
+
+  LOG_DEBUG("SRV created for texture ID: " + std::to_string(index));
+
+  Texture texInfo{};
+  texInfo.resource = tex;
+  texInfo.gpuHandle = gpuHandle;
+
+  textures_[index] = texInfo;
+  pathToId_[filePath] = index;
+
+  LOG_INFO("Texture load completed: " + filePath);
+
+  return index;
 }
 
-const TextureManager::Texture &TextureManager::GetTexture(uint32_t id) {
-    return s_textures_.at(id);
+const Texture &TextureManager::GetTexture(uint32_t id) const {
+  LOG_DEBUG("GetTexture: id = " + std::to_string(id));
+  return textures_.at(id);
 }
 
-// ==== ここから下は、元の大きなコードの関数をほぼそのまま移植 ==== 
+ScratchImage TextureManager::LoadTextureFromFile(const std::string &filePath) {
+  LOG_DEBUG("LoadTextureFromFile: " + filePath);
 
-ScratchImage TextureManager::LoadTextureFromFile_(const std::string &filePath) {
-    ScratchImage image{};
-    std::wstring filePathW(filePath.begin(), filePath.end());
-    HRESULT hr = LoadFromWICFile(filePathW.c_str(), WIC_FLAGS_FORCE_SRGB, nullptr, image);
-    assert(SUCCEEDED(hr));
+  ScratchImage image{};
+  std::wstring filePathW(filePath.begin(), filePath.end());
 
-    ScratchImage mipImages{};
-    hr = GenerateMipMaps(
-        image.GetImages(), image.GetImageCount(), image.GetMetadata(),
-        TEX_FILTER_SRGB, 0, mipImages);
-    assert(SUCCEEDED(hr));
+  HRESULT hr =
+      LoadFromWICFile(filePathW.c_str(), WIC_FLAGS_FORCE_SRGB, nullptr, image);
 
-    return mipImages;
+  if (FAILED(hr)) {
+    LOG_ERROR("LoadFromWICFile failed: " + filePath);
+  }
+
+  ScratchImage mipImages{};
+  hr = GenerateMipMaps(image.GetImages(), image.GetImageCount(),
+                       image.GetMetadata(), TEX_FILTER_SRGB, 0, mipImages);
+
+  if (FAILED(hr)) {
+    LOG_ERROR("GenerateMipMaps failed: " + filePath);
+  }
+
+  LOG_DEBUG("MipMaps generated for " + filePath);
+
+  return mipImages;
 }
 
-ComPtr<ID3D12Resource> TextureManager::CreateTextureResource_(
-    ID3D12Device *device, const TexMetadata &metadata) {
-    D3D12_RESOURCE_DESC desc{};
-    desc.Width = static_cast<UINT>(metadata.width);
-    desc.Height = static_cast<UINT>(metadata.height);
-    desc.MipLevels = static_cast<UINT16>(metadata.mipLevels);
-    desc.DepthOrArraySize = static_cast<UINT16>(metadata.arraySize);
-    desc.Format = metadata.format;
-    desc.SampleDesc.Count = 1;
-    desc.Dimension = static_cast<D3D12_RESOURCE_DIMENSION>(metadata.dimension);
+ComPtr<ID3D12Resource>
+TextureManager::CreateTextureResource(ID3D12Device *device,
+                                      const TexMetadata &metadata) {
+  LOG_DEBUG("CreateTextureResource: " + std::to_string(metadata.width) + "x" +
+            std::to_string(metadata.height));
 
-    D3D12_HEAP_PROPERTIES heap{};
-    heap.Type = D3D12_HEAP_TYPE_CUSTOM;
-    heap.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_WRITE_BACK;
-    heap.MemoryPoolPreference = D3D12_MEMORY_POOL_L0;
+  CD3DX12_RESOURCE_DESC desc = CD3DX12_RESOURCE_DESC::Tex2D(
+      metadata.format, metadata.width, static_cast<UINT>(metadata.height),
+      static_cast<UINT16>(metadata.arraySize),
+      static_cast<UINT16>(metadata.mipLevels));
 
-    ComPtr<ID3D12Resource> resource;
-    HRESULT hr = device->CreateCommittedResource(
-        &heap, D3D12_HEAP_FLAG_NONE, &desc,
-        D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-        IID_PPV_ARGS(&resource));
-    assert(SUCCEEDED(hr));
-    return resource;
+  CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
+
+  ComPtr<ID3D12Resource> texture;
+  HRESULT hr = device->CreateCommittedResource(
+      &heapProps, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_COPY_DEST,
+      nullptr, IID_PPV_ARGS(&texture));
+
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateCommittedResource failed for texture");
+  }
+
+  return texture;
 }
 
-void TextureManager::UploadTextureData_(
-    ID3D12Resource *texture, const ScratchImage &mipImages) {
-    const TexMetadata &meta = mipImages.GetMetadata();
-    for (size_t mip = 0; mip < meta.mipLevels; ++mip) {
-        const Image *img = mipImages.GetImage(mip, 0, 0);
-        HRESULT hr = texture->WriteToSubresource(
-            static_cast<UINT>(mip),
-            nullptr,
-            img->pixels,
-            static_cast<UINT>(img->rowPitch),
-            static_cast<UINT>(img->slicePitch));
-        assert(SUCCEEDED(hr));
-    }
+void TextureManager::UploadTextureData(ID3D12Resource *texture,
+                                       const ScratchImage &mipImages) {
+  LOG_DEBUG("UploadTextureData start");
+
+  ID3D12Device *device = dx_->GetDevice();
+  ID3D12GraphicsCommandList *cmdList = dx_->GetCommandList();
+
+  const TexMetadata &meta = mipImages.GetMetadata();
+
+  // SUBRESOURCE_DATA 作成
+  std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+  subresources.reserve(meta.mipLevels);
+
+  for (UINT mip = 0; mip < static_cast<UINT>(meta.mipLevels); ++mip) {
+    const Image *img = mipImages.GetImage(mip, 0, 0);
+
+    D3D12_SUBRESOURCE_DATA data{};
+    data.pData = img->pixels;
+    data.RowPitch = img->rowPitch;
+    data.SlicePitch = img->slicePitch;
+
+    subresources.push_back(data);
+  }
+
+  // 必要なサイズ
+  UINT64 uploadSize = GetRequiredIntermediateSize(
+      texture, 0, static_cast<UINT>(meta.mipLevels));
+
+  // UploadBuffer
+  CD3DX12_HEAP_PROPERTIES uploadHeapProps(D3D12_HEAP_TYPE_UPLOAD);
+  CD3DX12_RESOURCE_DESC uploadDesc = CD3DX12_RESOURCE_DESC::Buffer(uploadSize);
+
+  ComPtr<ID3D12Resource> uploadBuffer;
+  HRESULT hr = device->CreateCommittedResource(
+      &uploadHeapProps, D3D12_HEAP_FLAG_NONE, &uploadDesc,
+      D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&uploadBuffer));
+
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateCommittedResource (UPLOAD) failed");
+  }
+
+  // UpdateSubresources
+  UpdateSubresources(cmdList, texture, uploadBuffer.Get(), 0, 0,
+                     static_cast<UINT>(meta.mipLevels), subresources.data());
+
+  LOG_DEBUG("UpdateSubresources OK");
+
+  // 遷移
+  CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+      texture, D3D12_RESOURCE_STATE_COPY_DEST,
+      D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+  cmdList->ResourceBarrier(1, &barrier);
+
+  LOG_DEBUG("Texture barrier applied");
 }

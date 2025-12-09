@@ -38,7 +38,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // DirectX
   std::unique_ptr<DirectXCommon> directXCommon =
       std::make_unique<DirectXCommon>();
-  directXCommon->Initialize(winApp->GetHwnd(),winApp->GetWidth(),winApp->GetHeight());
+  directXCommon->Initialize(winApp->GetHwnd(), winApp->GetWidth(),
+                            winApp->GetHeight());
 
   // Input
   std::unique_ptr<Input> input = std::make_unique<Input>();
@@ -48,8 +49,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   ShaderCompiler shaderCompiler;
 
   // TextureManager
-  TextureManager textureManager;
-  textureManager.Initialize(directXCommon.get());
+  TextureManager *textureManager = TextureManager::GetInstance();
+  textureManager->Initialize(directXCommon.get());
 
   // SpriteRenderer
   SpriteRenderer spriteRenderer;
@@ -60,7 +61,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
   // テクスチャ
   uint32_t textureId =
-      textureManager.LoadTexture("Resources/Textures/uvChecker.png");
+      textureManager->LoadTexture("Resources/Textures/uvChecker.png");
   const float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
   while (true) {

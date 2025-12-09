@@ -180,6 +180,9 @@
     <ClInclude Include="Engine\Utils\String\StringUtil.h">
       <Filter>Engine\Utils\String</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Graphics\Texture\Texture.h">
+      <Filter>Engine\Graphics\Texture</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">

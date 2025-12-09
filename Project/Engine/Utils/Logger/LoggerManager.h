@@ -1,9 +1,9 @@
 #pragma once
 #include "ILogger.h"
 #include "LogLevel.h"
+#include <format>
 #include <memory>
 #include <vector>
-#include <format>
 
 class LoggerManager {
 public:
@@ -38,6 +38,8 @@ private:
   // シングルトン
   LoggerManager() = default;
   ~LoggerManager() = default;
+  LoggerManager(const LoggerManager &) = delete;
+  LoggerManager &operator=(const LoggerManager &) = delete;
 
 private:
   LogLevel minLevel_ = LogLevel::DEBUG;

@@ -257,7 +257,7 @@ void SpriteRenderer::DrawSprite(
 
 	ID3D12GraphicsCommandList *cmd = dx_->GetCommandList();
 
-	const auto &tex = TextureManager::GetTexture(textureId);
+	const auto &tex = TextureManager::GetInstance()->GetTexture(textureId);
 
 	// CB 更新
 	float screenW = static_cast<float>(1280);
