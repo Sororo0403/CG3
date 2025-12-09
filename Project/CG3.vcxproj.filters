@@ -46,6 +46,9 @@
     <Filter Include="Engine\Utils\Logger">
       <UniqueIdentifier>{3cc6a470-c838-44df-a25b-48b478cf9080}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Utils\Time">
+      <UniqueIdentifier>{2bb88a13-2570-45b3-9962-7da86d70a055}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -143,6 +146,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Utils\Logger\LogLevel.h">
       <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\Time\TimeUtils.h">
+      <Filter>Engine\Utils\Time</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

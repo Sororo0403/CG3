@@ -1,20 +1,7 @@
 #include "FileLogger.h"
+#include "Time/TimeUtils.h"
 #include <filesystem>
 #include <iostream>
-
-static std::string NowTimeString() {
-  using namespace std::chrono;
-
-  auto now = system_clock::now();
-  auto itt = system_clock::to_time_t(now);
-
-  std::tm tm{};
-  localtime_s(&tm, &itt);
-
-  char buf[64];
-  std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
-  return buf;
-}
 
 FileLogger::~FileLogger() {
   if (file_.is_open()) {
@@ -23,23 +10,20 @@ FileLogger::~FileLogger() {
 }
 
 void FileLogger::Initialize() {
-  namespace fs = std::filesystem;
+  std::filesystem::path exe = std::filesystem::current_path();
 
-  fs::path exe = fs::current_path();
-
-  // Visual Studio の $(Configuration) をそのまま使う
 #ifndef CONFIG_NAME
 #define CONFIG_NAME "Unknown"
 #endif
 
-  std::string config = CONFIG_NAME; // "Debug" / "Release" / "Development" など
+  std::string config = CONFIG_NAME;
 
   // 日付入りログ名
-  auto t = NowTimeString();
+  auto t = TimeUtils::NowTimeString();
   std::string day = t.substr(0, 10);
 
-  fs::path dir = exe / "../Generated/Outputs" / config / "Logs";
-  fs::create_directories(dir);
+  std::filesystem::path dir = exe / "../Generated/Outputs" / config / "Logs";
+  std::filesystem::create_directories(dir);
 
   filePath_ = (dir / (day + ".log")).string();
   file_.open(filePath_, std::ios::out | std::ios::app);
@@ -51,7 +35,7 @@ void FileLogger::Write(LogLevel level, const std::string &message,
     return;
   }
 
-  std::string time = NowTimeString();
+  std::string time = TimeUtils::NowTimeString();
 
   const char *levelStr = "";
   switch (level) {
@@ -74,4 +58,3 @@ void FileLogger::Write(LogLevel level, const std::string &message,
                std::to_string(line) + ")"
         << std::endl;
 }
-
