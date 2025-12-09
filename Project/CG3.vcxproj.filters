@@ -97,6 +97,9 @@
     <ClCompile Include="Engine\Utils\Logger\ConsoleLogger.cpp">
       <Filter>Engine\Utils\Logger</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Utils\Logger\LoggerManager.cpp">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -157,6 +160,9 @@
       <Filter>Engine\Utils\Logger</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />
+    <ClInclude Include="Engine\Utils\Logger\LoggerManager.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">
