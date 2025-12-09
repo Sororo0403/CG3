@@ -5,9 +5,9 @@
 namespace TimeUtils {
 
 /// <summary>
-/// 現在のローカル日時を "YYYY-MM-DD HH:MM:SS" 形式の文字列として返します
+/// "YYYY-MM-DD_HH-MM-SS" の形式で現在時刻を返す
 /// </summary>
-/// <returns>フォーマット済みの現在時刻文字列</returns>
+/// <returns>時刻文字列</returns>
 inline std::string NowTimeString() {
   auto now = std::chrono::system_clock::now();
   auto itt = std::chrono::system_clock::to_time_t(now);
@@ -16,7 +16,7 @@ inline std::string NowTimeString() {
   localtime_s(&tm, &itt);
 
   char buf[64];
-  std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm);
+  std::strftime(buf, sizeof(buf), "%Y-%m-%d_%H-%M-%S", &tm);
   return buf;
 }
 
