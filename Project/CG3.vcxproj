@@ -148,6 +148,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Utils\Logger\ConsoleLogger.cpp" />
     <ClCompile Include="Engine\Graphics\Shader\ShaderCompiler.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -183,12 +184,14 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Utils\Logger\ConsoleLogger.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Core\DirectX\DirectXCommon.h" />
     <ClInclude Include="Engine\Input\Input.h" />
     <ClInclude Include="Engine\Core\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Utils\Logger\FileLogger.h" />
     <ClInclude Include="Engine\Utils\Logger\ILogger.h" />
+    <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />
     <ClInclude Include="Engine\Utils\Logger\LogLevel.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />

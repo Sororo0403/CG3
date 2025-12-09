@@ -94,6 +94,9 @@
     <ClCompile Include="Engine\Utils\Logger\FileLogger.cpp">
       <Filter>Engine\Utils\Logger</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Utils\Logger\ConsoleLogger.cpp">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -150,6 +153,10 @@
     <ClInclude Include="Engine\Utils\Time\TimeUtils.h">
       <Filter>Engine\Utils\Time</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Utils\Logger\ConsoleLogger.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">

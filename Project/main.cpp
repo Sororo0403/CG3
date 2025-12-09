@@ -1,5 +1,6 @@
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
+#include "Logger/ConsoleLogger.h"
 #include "Logger/FileLogger.h"
 #include "Logger/ILogger.h"
 #include "Shader/ShaderCompiler.h"
@@ -38,10 +39,10 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   SpriteRenderer spriteRenderer;
   spriteRenderer.Initialize(directXCommon.get(), &shaderCompiler);
 
-  // FileLogger
-  std::unique_ptr<ILogger> fileLogger = std::make_unique<FileLogger>();
-  fileLogger->Initialize();
-  fileLogger->Write(LogLevel::INFO, "ログのテストです。", __FILE__, __LINE__);
+  // Logger
+  std::unique_ptr<ILogger> consoleLogger = std::make_unique<ConsoleLogger>();
+  consoleLogger->Write(LogLevel::INFO, "ログのテストです。", __FILE__,
+                       __LINE__);
 
   // クリアカラー
   const float kClearColor[4] = {0.0f, 1.0f, 1.0f, 1.0f};

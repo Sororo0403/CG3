@@ -10,11 +10,6 @@ public:
   virtual ~ILogger() = default;
 
   /// <summary>
-  /// 初期化処理
-  /// </summary>
-  virtual void Initialize() = 0;
-
-  /// <summary>
   /// ログ情報を書き込み
   /// </summary>
   /// <param name="level">ログレベル</param>

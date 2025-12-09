@@ -1,15 +1,10 @@
 #include "FileLogger.h"
+#include "LogFormatter.h"
 #include "Time/TimeUtils.h"
 #include <filesystem>
 #include <iostream>
 
-FileLogger::~FileLogger() {
-  if (file_.is_open()) {
-    file_.close();
-  }
-}
-
-void FileLogger::Initialize() {
+FileLogger::FileLogger() {
   namespace fs = std::filesystem;
 
   fs::path exe = fs::current_path();
@@ -42,16 +37,20 @@ void FileLogger::Initialize() {
   }
 }
 
+FileLogger::~FileLogger() {
+  if (file_.is_open()) {
+    file_.close();
+  }
+}
+
 void FileLogger::Write(LogLevel level, const std::string &message,
                        const char *file, int line) {
-  if (!file_.is_open()) {
+  if (!file_.is_open())
     return;
-  }
 
-  // 現在時刻文字列
-  const std::string time = TimeUtils::NowTimeString();
+  std::string time = TimeUtils::NowTimeString();
+  std::string formatted =
+      LogFormatter::Format(time, level, message, file, line);
 
-  // ログ書式
-  file_ << "[" << time << "][" << ToString(level) << "] " << message << " ("
-        << file << ":" << line << ")" << std::endl;
+  file_ << formatted << std::endl;
 }

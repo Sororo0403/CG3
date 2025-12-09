@@ -6,14 +6,14 @@
 class FileLogger : public ILogger {
 public:
   /// <summary>
+  /// コンストラクタ
+  /// </summary>
+  FileLogger();
+
+  /// <summary>
   /// デストラクタ
   /// </summary>
   ~FileLogger() override;
-
-  /// <summary>
-  /// 初期化処理
-  /// </summary>
-  void Initialize() override;
 
   /// <summary>
   /// ログ情報を書き込み
