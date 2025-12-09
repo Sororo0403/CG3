@@ -32,27 +32,12 @@ DirectXCommon::~DirectXCommon() {
   LOG_INFO("DirectXCommon destructor end");
 }
 
-void DirectXCommon::Initialize(const WinApp *winApp) {
+void DirectXCommon::Initialize(HWND hwnd, int width, int height) {
   LOG_INFO("DirectXCommon::Initialize start");
-  assert(winApp);
-  winApp_ = winApp;
 
-  RECT rc{};
-  GetClientRect(winApp_->GetHwnd(), &rc);
-  LOG_INFO("Window size acquired");
-
-#ifdef _DEBUG
-  {
-    ComPtr<ID3D12Debug1> debugController;
-    if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)))) {
-      debugController->EnableDebugLayer();
-      debugController->SetEnableGPUBasedValidation(TRUE);
-      LOG_INFO("D3D12 debug layer enabled");
-    } else {
-      LOG_WARN("Failed to enable D3D12 debug layer");
-    }
-  }
-#endif
+  hwnd_ = hwnd;
+  width_ = width;
+  height_ = height;
 
   InitializeFixFPS();
   InitializeDevice();
@@ -234,15 +219,13 @@ void DirectXCommon::InitializeSwapChain() {
 
   ComPtr<IDXGISwapChain1> sc1;
   HRESULT hr = dxgiFactory_->CreateSwapChainForHwnd(
-      commandQueue_.Get(), winApp_->GetHwnd(), &desc, nullptr, nullptr,
-      sc1.GetAddressOf());
+      commandQueue_.Get(), hwnd_, &desc, nullptr, nullptr, sc1.GetAddressOf());
   assert(SUCCEEDED(hr));
 
   hr = sc1.As(&swapChain_);
   assert(SUCCEEDED(hr));
 
-  dxgiFactory_->MakeWindowAssociation(winApp_->GetHwnd(),
-                                      DXGI_MWA_NO_ALT_ENTER);
+  dxgiFactory_->MakeWindowAssociation(hwnd_, DXGI_MWA_NO_ALT_ENTER);
 }
 
 void DirectXCommon::InitializeDescriptorHeaps() {
@@ -272,8 +255,8 @@ void DirectXCommon::InitializeDepthBuffer() {
   CD3DX12_HEAP_PROPERTIES heapProps(D3D12_HEAP_TYPE_DEFAULT);
 
   CD3DX12_RESOURCE_DESC resDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-      DXGI_FORMAT_D24_UNORM_S8_UINT, winApp_->GetWidth(), winApp_->GetHeight(),
-      1, 1, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+      DXGI_FORMAT_D24_UNORM_S8_UINT, width_, height_, 1, 1, 1, 0,
+      D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
 
   CD3DX12_CLEAR_VALUE clear(DXGI_FORMAT_D24_UNORM_S8_UINT, 1.0f, 0);
 
@@ -325,8 +308,8 @@ void DirectXCommon::InitializeFence() {
 void DirectXCommon::InitializeViewport() {
   viewport_.TopLeftX = 0;
   viewport_.TopLeftY = 0;
-  viewport_.Width = (float)winApp_->GetWidth();
-  viewport_.Height = (float)winApp_->GetHeight();
+  viewport_.Width = static_cast<float>(width_);
+  viewport_.Height = static_cast<float>(height_);
   viewport_.MinDepth = 0;
   viewport_.MaxDepth = 1;
 }
@@ -334,8 +317,8 @@ void DirectXCommon::InitializeViewport() {
 void DirectXCommon::InitializeScissorRect() {
   scissorRect_.left = 0;
   scissorRect_.top = 0;
-  scissorRect_.right = winApp_->GetWidth();
-  scissorRect_.bottom = winApp_->GetHeight();
+  scissorRect_.right = width_;
+  scissorRect_.bottom = height_;
 }
 
 void DirectXCommon::InitializeImGui() {
@@ -343,7 +326,7 @@ void DirectXCommon::InitializeImGui() {
   ImGui::CreateContext();
   ImGui::StyleColorsDark();
 
-  ImGui_ImplWin32_Init(winApp_->GetHwnd());
+  ImGui_ImplWin32_Init(hwnd_);
   ImGui_ImplDX12_Init(device_.Get(), kBufferCount,
                       DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, srvHeap_.Get(),
                       srvHeap_->GetCPUDescriptorHandleForHeapStart(),

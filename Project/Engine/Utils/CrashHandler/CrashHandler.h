@@ -10,17 +10,12 @@ namespace CrashHandler {
 
 /// <summary>
 /// ../Generated/Outputs/<config>/Dumps を返す
-/// Logs と同階層
 /// </summary>
 inline std::filesystem::path GetDumpDirectory() {
   namespace fs = std::filesystem;
 
   fs::path exe = fs::current_path();
-
-  // FileLogger と同じ Outputs/<config> を参照
   fs::path base = exe / "../Generated/Outputs" / CONFIG_NAME;
-
-  // Logs と同階層に Dumps フォルダを作る
   fs::path dumpDir = base / "Dumps";
 
   fs::create_directories(dumpDir);

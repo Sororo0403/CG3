@@ -10,9 +10,17 @@ class WinApp;
 
 class DirectXCommon {
 public:
+  /// <summary>
+  /// デストラクタ
+  /// </summary>
   ~DirectXCommon();
 
-  void Initialize(const WinApp *winApp);
+  /// <summary>
+  /// 初期化処理
+  /// </summary>
+  /// <param name="winApp"></param>
+  void Initialize(HWND hwnd, int width, int height);
+
   void PreDraw(const float clearColor[4]);
   void PostDraw();
   void WaitForGpu();
@@ -33,8 +41,8 @@ public:
                                            UINT index) const;
 
 private:
+  // Initialization
   void InitializeFixFPS();
-  void UpdateFixFPS();
   void InitializeDevice();
   void InitializeCommand();
   void InitializeSwapChain();
@@ -47,14 +55,18 @@ private:
   void InitializeViewport();
   void InitializeScissorRect();
   void InitializeImGui();
+
   void WaitForFrame(UINT frameIndex);
+  void UpdateFixFPS();
 
   ID3D12DescriptorHeap *CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
-                                              UINT numDescriptors,
-                                              bool shaderVisible);
+                                             UINT numDescriptors,
+                                             bool shaderVisible);
 
 private:
-  const WinApp *winApp_ = nullptr;
+  HWND hwnd_;
+  int width_;
+  int height_;
 
   Microsoft::WRL::ComPtr<IDXGIFactory7> dxgiFactory_;
   Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter_;

@@ -38,7 +38,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // DirectX
   std::unique_ptr<DirectXCommon> directXCommon =
       std::make_unique<DirectXCommon>();
-  directXCommon->Initialize(winApp.get());
+  directXCommon->Initialize(winApp->GetHwnd(),winApp->GetWidth(),winApp->GetHeight());
 
   // Input
   std::unique_ptr<Input> input = std::make_unique<Input>();
