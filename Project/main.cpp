@@ -12,6 +12,16 @@
 #include <string>
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+  // Logger
+  LoggerManager::GetInstance()->AddLogger(std::make_unique<ConsoleLogger>());
+  LoggerManager::GetInstance()->AddLogger(std::make_unique<FileLogger>());
+
+#ifdef _DEBUG
+  LoggerManager::GetInstance()->SetMinLevel(LogLevel::DEBUG);
+#else
+  LoggerManager::GetInstance()->SetMinLevel(LogLevel::INFO);
+#endif
+
   // winApp
   const LONG kClientWidth = 1280;
   const LONG kClientHeight = 720;
@@ -39,16 +49,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // SpriteRenderer
   SpriteRenderer spriteRenderer;
   spriteRenderer.Initialize(directXCommon.get(), &shaderCompiler);
-
-  // Logger
-  LoggerManager::GetInstance()->AddLogger(std::make_unique<ConsoleLogger>());
-  LoggerManager::GetInstance()->AddLogger(std::make_unique<FileLogger>());
-
-#ifdef _DEBUG
-  LoggerManager::GetInstance()->SetMinLevel(LogLevel::DEBUG);
-#else
-  LoggerManager::GetInstance()->SetMinLevel(LogLevel::INFO);
-#endif
 
   // クリアカラー
   const float kClearColor[4] = {0.0f, 1.0f, 1.0f, 1.0f};
