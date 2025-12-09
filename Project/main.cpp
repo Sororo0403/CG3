@@ -1,3 +1,4 @@
+#include "CrashHandler/CrashHandler.h"
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
 #include "Logger/ConsoleLogger.h"
@@ -12,14 +13,18 @@
 #include <string>
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+  // CrashHandler
+  CrashHandler::Install();
+
   // Logger
-  LoggerManager::GetInstance()->AddLogger(std::make_unique<ConsoleLogger>());
-  LoggerManager::GetInstance()->AddLogger(std::make_unique<FileLogger>());
+  LoggerManager *loggerManager = LoggerManager::GetInstance();
+  loggerManager->AddLogger(std::make_unique<ConsoleLogger>());
+  loggerManager->AddLogger(std::make_unique<FileLogger>());
 
 #ifdef _DEBUG
-  LoggerManager::GetInstance()->SetMinLevel(LogLevel::DEBUG);
+  loggerManager->SetMinLevel(LogLevel::DEBUG);
 #else
-  LoggerManager::GetInstance()->SetMinLevel(LogLevel::INFO);
+  loggerManager->SetMinLevel(LogLevel::INFO);
 #endif
 
   // winApp

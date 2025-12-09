@@ -9,10 +9,6 @@ FileLogger::FileLogger() {
 
   fs::path exe = fs::current_path();
 
-#ifndef CONFIG_NAME
-#define CONFIG_NAME "Unknown"
-#endif
-
   // VS プロジェクトから渡した構成名
   const std::string config = CONFIG_NAME;
 
