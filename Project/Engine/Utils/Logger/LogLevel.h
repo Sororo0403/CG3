@@ -9,6 +9,9 @@ enum class LogLevel { DEBUG, INFO, WARNING, ERR };
 /// </summary>
 /// <returns>レベル名</returns>
 constexpr std::string_view ToString(LogLevel level) {
+  if (level == LogLevel::DEBUG) {
+    return "DEBUG";
+  }
   if (level == LogLevel::INFO) {
     return "INFO";
   }
@@ -17,9 +20,6 @@ constexpr std::string_view ToString(LogLevel level) {
   }
   if (level == LogLevel::ERR) {
     return "ERROR";
-  }
-  if (level == LogLevel::DEBUG) {
-    return "DEBUG";
   }
   return "UNKNOWN";
 }

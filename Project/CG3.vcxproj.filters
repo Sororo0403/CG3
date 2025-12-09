@@ -159,11 +159,15 @@
     <ClInclude Include="Engine\Utils\Logger\ConsoleLogger.h">
       <Filter>Engine\Utils\Logger</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />
     <ClInclude Include="Engine\Utils\Logger\LoggerManager.h">
       <Filter>Engine\Utils\Logger</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Utils\String\StringUtil.h" />
+    <ClInclude Include="Engine\Utils\Logger\LogFormatter.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\Logger\Logger.h">
+      <Filter>Engine\Utils\Logger</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">

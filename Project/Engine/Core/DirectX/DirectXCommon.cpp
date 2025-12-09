@@ -1,20 +1,16 @@
 #define NOMINMAX
 #include "DirectXCommon.h"
+#include "Logger/Logger.h"
 #include "WinApp/WinApp.h"
-
-#include "Logger/LoggerManager.h"
-
-#include <cassert>
-#include <chrono>
-#include <thread>
-
-#include <d3d12.h>
-#include <directx/d3dx12.h>
-#include <dxgi1_6.h>
-
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_dx12.h"
 #include "imgui/imgui_impl_win32.h"
+#include <cassert>
+#include <chrono>
+#include <d3d12.h>
+#include <directx/d3dx12.h>
+#include <dxgi1_6.h>
+#include <thread>
 
 using Microsoft::WRL::ComPtr;
 
@@ -43,7 +39,7 @@ void DirectXCommon::Initialize(const WinApp *winApp) {
 
   RECT rc{};
   GetClientRect(winApp_->GetHwnd(), &rc);
-  LOG_INFO("Window size: {} x {}", rc.right, rc.bottom);
+  LOG_INFO("Window size acquired");
 
 #ifdef _DEBUG
   {
@@ -77,7 +73,7 @@ void DirectXCommon::Initialize(const WinApp *winApp) {
 
 void DirectXCommon::PreDraw(const float clearColor[4]) {
   currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
-  LOG_DEBUG("PreDraw: BufferIndex = {}", currentBackBufferIndex_);
+  LOG_DEBUG("PreDraw start");
 
   WaitForFrame(currentBackBufferIndex_);
 
@@ -130,7 +126,7 @@ void DirectXCommon::PostDraw() {
   fenceValues_[currentBackBufferIndex_] = fv;
 
   swapChain_->Present(1, 0);
-  LOG_DEBUG("Present()");
+  LOG_DEBUG("Present called");
 
   UpdateFixFPS();
 }
@@ -167,12 +163,12 @@ void DirectXCommon::UpdateFixFPS() {
 }
 
 void DirectXCommon::InitializeDevice() {
-  LOG_INFO("Creating DXGI Factory…");
+  LOG_INFO("Creating DXGI Factory");
 
   HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory_));
   assert(SUCCEEDED(hr));
 
-  LOG_INFO("Selecting High Performance GPU…");
+  LOG_INFO("Selecting high performance GPU");
 
   for (UINT i = 0; dxgiFactory_->EnumAdapterByGpuPreference(
                        i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
@@ -182,7 +178,7 @@ void DirectXCommon::InitializeDevice() {
     adapter_->GetDesc3(&desc);
 
     if (!(desc.Flags & DXGI_ADAPTER_FLAG3_SOFTWARE)) {
-      LOG_INFO("GPU Selected");
+      LOG_INFO("GPU selected");
       break;
     }
     adapter_.Reset();
@@ -197,7 +193,7 @@ void DirectXCommon::InitializeDevice() {
   for (auto lv : levels) {
     hr = D3D12CreateDevice(adapter_.Get(), lv, IID_PPV_ARGS(&device_));
     if (SUCCEEDED(hr)) {
-      LOG_INFO("D3D12 Device Created");
+      LOG_INFO("D3D12 device created");
       break;
     }
   }
@@ -258,7 +254,7 @@ void DirectXCommon::InitializeDescriptorHeaps() {
       D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
   rtvHeap_.Attach(CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_RTV,
-                                        kBufferCount, false));
+                                       kBufferCount, false));
   dsvHeap_.Attach(
       CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false));
   srvHeap_.Attach(
@@ -356,7 +352,7 @@ void DirectXCommon::InitializeImGui() {
 
 ID3D12DescriptorHeap *
 DirectXCommon::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
-                                     UINT numDescriptors, bool shaderVisible) {
+                                    UINT numDescriptors, bool shaderVisible) {
   D3D12_DESCRIPTOR_HEAP_DESC desc{};
   desc.Type = type;
   desc.NumDescriptors = numDescriptors;

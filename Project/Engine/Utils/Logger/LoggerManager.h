@@ -1,9 +1,9 @@
 #pragma once
 #include "ILogger.h"
 #include "LogLevel.h"
-#include <format>
 #include <memory>
 #include <vector>
+#include <format>
 
 class LoggerManager {
 public:
@@ -44,12 +44,3 @@ private:
 
   std::vector<std::unique_ptr<ILogger>> loggers_;
 };
-
-#define LOG_INTERNAL(level, fmt, ...)                                          \
-  LoggerManager::GetInstance()->Write(level, std::format(fmt, ##__VA_ARGS__),  \
-                                      __FILE__, __LINE__)
-
-#define LOG_INFO(fmt, ...) LOG_INTERNAL(LogLevel::INFO, fmt, ##__VA_ARGS__)
-#define LOG_WARN(fmt, ...) LOG_INTERNAL(LogLevel::WARNING, fmt, ##__VA_ARGS__)
-#define LOG_ERROR(fmt, ...) LOG_INTERNAL(LogLevel::ERR, fmt, ##__VA_ARGS__)
-#define LOG_DEBUG(fmt, ...) LOG_INTERNAL(LogLevel::DEBUG, fmt, ##__VA_ARGS__)
