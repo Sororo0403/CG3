@@ -2,7 +2,7 @@
 #include <string_view>
 
 // ログレベル
-enum class LogLevel { INFO, WARNING, ERR, DEBUG };
+enum class LogLevel { DEBUG, INFO, WARNING, ERR };
 
 /// <summary>
 /// LogLevel を文字列に変換します。

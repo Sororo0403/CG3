@@ -1,9 +1,9 @@
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
-#include "Logger/LoggerManager.h"
 #include "Logger/ConsoleLogger.h"
 #include "Logger/FileLogger.h"
 #include "Logger/ILogger.h"
+#include "Logger/LoggerManager.h"
 #include "Shader/ShaderCompiler.h"
 #include "Sprite/SpriteRenderer.h"
 #include "WinApp/WinApp.h"
@@ -43,7 +43,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // Logger
   LoggerManager::GetInstance()->AddLogger(std::make_unique<ConsoleLogger>());
   LoggerManager::GetInstance()->AddLogger(std::make_unique<FileLogger>());
-  LOG_INFO("ログシステムの初期化が完了しました。");
+
+#ifdef _DEBUG
+  LoggerManager::GetInstance()->SetMinLevel(LogLevel::DEBUG);
+#else
+  LoggerManager::GetInstance()->SetMinLevel(LogLevel::INFO);
+#endif
 
   // クリアカラー
   const float kClearColor[4] = {0.0f, 1.0f, 1.0f, 1.0f};

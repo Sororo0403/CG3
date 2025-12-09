@@ -11,7 +11,11 @@ void LoggerManager::AddLogger(std::unique_ptr<ILogger> logger) {
 
 void LoggerManager::Write(LogLevel level, const std::string &message,
                           const char *file, int line) {
-  for (auto &l : loggers_) {
-    l->Write(level, message, file, line);
+  if (static_cast<int>(level) < static_cast<int>(minLevel_)) {
+    return;
+  }
+
+  for (auto &logger : loggers_) {
+    logger->Write(level, message, file, line);
   }
 }

@@ -28,12 +28,19 @@ public:
   void Write(LogLevel level, const std::string &message, const char *file,
              int line);
 
+  /// <summary>
+  /// 出力する最小ログレベル
+  /// </summary>
+  void SetMinLevel(LogLevel level) { minLevel_ = level; }
+
 private:
   // シングルトン
   LoggerManager() = default;
   ~LoggerManager() = default;
 
 private:
+  LogLevel minLevel_ = LogLevel::DEBUG;
+
   std::vector<std::unique_ptr<ILogger>> loggers_;
 };
 
