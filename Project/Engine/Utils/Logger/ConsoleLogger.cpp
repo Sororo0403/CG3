@@ -1,6 +1,6 @@
 #include "ConsoleLogger.h"
 #include "LogFormatter.h"
-#include "Time/TimeUtils.h"
+#include "Time/TimeUtil.h"
 #include <iostream>
 
 #ifdef _WIN32
@@ -10,7 +10,7 @@
 void ConsoleLogger::Write(LogLevel level, const std::string &message,
                           const char *file, int line) {
   // 現在時刻
-  std::string time = TimeUtils::NowTimeString();
+  std::string time = TimeUtil::NowTimeString();
 
   // 書式済み文字列
   std::string formatted =

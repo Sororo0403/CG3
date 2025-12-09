@@ -194,6 +194,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Engine\Utils\Logger\ILogger.h" />
     <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />
     <ClInclude Include="Engine\Utils\Logger\LogLevel.h" />
+    <ClInclude Include="Engine\Utils\String\StringUtil.h" />
     <ClInclude Include="Externals\imgui\imconfig.h" />
     <ClInclude Include="Externals\imgui\imgui.h" />
     <ClInclude Include="Externals\imgui\imgui_impl_dx12.h" />
@@ -204,7 +205,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Engine\Graphics\Texture\TextureManager.h" />
     <ClInclude Include="Engine\Graphics\Sprite\SpriteRenderer.h" />
-    <ClInclude Include="Engine\Utils\Time\TimeUtils.h" />
+    <ClInclude Include="Engine\Utils\Time\TimeUtil.h" />
     <ClInclude Include="Engine\Utils\Logger\LoggerManager.h" />
   </ItemGroup>
   <ItemGroup>

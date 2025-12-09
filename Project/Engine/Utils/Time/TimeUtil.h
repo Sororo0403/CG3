@@ -2,7 +2,7 @@
 #include <chrono>
 #include <string>
 
-namespace TimeUtils {
+namespace TimeUtil {
 
 /// <summary>
 /// "YYYY-MM-DD_HH-MM-SS" の形式で現在時刻を返す
@@ -20,4 +20,4 @@ inline std::string NowTimeString() {
   return buf;
 }
 
-} // namespace TimeUtils
+} // namespace TimeUtil

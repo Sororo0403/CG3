@@ -153,7 +153,7 @@
     <ClInclude Include="Engine\Utils\Logger\LogLevel.h">
       <Filter>Engine\Utils\Logger</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Utils\Time\TimeUtils.h">
+    <ClInclude Include="Engine\Utils\Time\TimeUtil.h">
       <Filter>Engine\Utils\Time</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Utils\Logger\ConsoleLogger.h">
@@ -163,6 +163,7 @@
     <ClInclude Include="Engine\Utils\Logger\LoggerManager.h">
       <Filter>Engine\Utils\Logger</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Utils\String\StringUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">
