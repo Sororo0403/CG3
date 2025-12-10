@@ -156,7 +156,7 @@ void TextureManager::UploadTextureData(ID3D12Resource *texture,
   LOG_DEBUG("UploadTextureData start");
 
   ID3D12Device *device = dx_->GetDevice();
-  ID3D12GraphicsCommandList *cmdList = dx_->GetCommandList();
+  auto *queue = dx_->GetCommandQueue();
 
   const TexMetadata &meta = mipImages.GetMetadata();
 
@@ -171,7 +171,6 @@ void TextureManager::UploadTextureData(ID3D12Resource *texture,
     data.pData = img->pixels;
     data.RowPitch = img->rowPitch;
     data.SlicePitch = img->slicePitch;
-
     subresources.push_back(data);
   }
 
@@ -187,23 +186,40 @@ void TextureManager::UploadTextureData(ID3D12Resource *texture,
   HRESULT hr = device->CreateCommittedResource(
       &uploadHeapProps, D3D12_HEAP_FLAG_NONE, &uploadDesc,
       D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, IID_PPV_ARGS(&uploadBuffer));
-
   if (FAILED(hr)) {
     LOG_ERROR("CreateCommittedResource (UPLOAD) failed");
+    return;
   }
 
-  // UpdateSubresources
-  UpdateSubresources(cmdList, texture, uploadBuffer.Get(), 0, 0,
-                     static_cast<UINT>(meta.mipLevels), subresources.data());
+  // 専用コマンドアロケータ＋リストを作る
+  ComPtr<ID3D12CommandAllocator> allocator;
+  ComPtr<ID3D12GraphicsCommandList> cmdList;
 
+  hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                      IID_PPV_ARGS(&allocator));
+  assert(SUCCEEDED(hr));
+
+  hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
+                                 allocator.Get(), nullptr,
+                                 IID_PPV_ARGS(&cmdList));
+  assert(SUCCEEDED(hr));
+
+  // コピー + バリア
+  UpdateSubresources(cmdList.Get(), texture, uploadBuffer.Get(), 0, 0,
+                     static_cast<UINT>(meta.mipLevels), subresources.data());
   LOG_DEBUG("UpdateSubresources OK");
 
-  // 遷移
   CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
       texture, D3D12_RESOURCE_STATE_COPY_DEST,
       D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
   cmdList->ResourceBarrier(1, &barrier);
-
   LOG_DEBUG("Texture barrier applied");
+
+  // クローズして実行・完了待ち
+  hr = cmdList->Close();
+  assert(SUCCEEDED(hr));
+
+  ID3D12CommandList *lists[] = {cmdList.Get()};
+  queue->ExecuteCommandLists(1, lists);
+  dx_->WaitForGpu();
 }
