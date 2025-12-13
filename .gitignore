@@ -35,3 +35,7 @@ packages/
 
 # imgui
 imgui.ini
+
+# Sprite editor data
+sprites.json
+autosave_sprites.json

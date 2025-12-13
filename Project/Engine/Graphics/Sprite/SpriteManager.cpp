@@ -5,6 +5,8 @@
 #include <vector>
 #include <fstream>
 
+#include "nlohmann/json.hpp"
+
 #include "SpriteRenderer.h"
 #include "SpriteLayerUtil.h"
 #include "Logger/Logger.h"
@@ -15,6 +17,10 @@ SpriteManager::SpriteManager(SpriteRenderer *renderer) : renderer_(renderer) {
     assert(renderer_);
     LOG_INFO("SpriteManager: Created.");
 }
+
+// ==================================================
+// Lifecycle
+// ==================================================
 
 uint32_t SpriteManager::Create(uint32_t textureId, SpriteLayer layer) {
     uint32_t id = nextId_++;
@@ -32,6 +38,7 @@ uint32_t SpriteManager::Create(uint32_t textureId, SpriteLayer layer) {
     entry.sprite.transform.z = 0.0f;
 
     sprites_.emplace(id, std::move(entry));
+    dirty_ = true;
 
     LOG_DEBUG("SpriteManager: Sprite created. id=" + std::to_string(id));
     return id;
@@ -43,12 +50,15 @@ void SpriteManager::Destroy(uint32_t id) {
         LOG_WARN("SpriteManager: Destroy failed. Invalid id.");
         return;
     }
+
     sprites_.erase(it);
+    dirty_ = true;
 }
 
 void SpriteManager::Clear() {
     sprites_.clear();
     nextId_ = 1;
+    dirty_ = true;
 }
 
 void SpriteManager::Begin() {
@@ -58,7 +68,6 @@ void SpriteManager::Begin() {
 void SpriteManager::DrawAll() {
     assert(renderer_);
 
-    // Entry* で描画リストを作る（render情報も使うため）
     std::vector<Entry *> drawList;
     drawList.reserve(sprites_.size());
 
@@ -66,7 +75,6 @@ void SpriteManager::DrawAll() {
         drawList.push_back(&entry);
     }
 
-    // Layer 順で安定ソート
     std::stable_sort(drawList.begin(), drawList.end(),
                      [](const Entry *a, const Entry *b) {
                          return static_cast<uint32_t>(a->render.layer) <
@@ -81,7 +89,11 @@ void SpriteManager::DrawAll() {
     }
 }
 
-bool SpriteManager::SaveToJson(const std::string &path) const {
+// ==================================================
+// JSON
+// ==================================================
+
+bool SpriteManager::SaveToJson(const std::string &path) {
     json root;
     root["sprites"] = json::array();
 
@@ -114,26 +126,31 @@ bool SpriteManager::SaveToJson(const std::string &path) const {
 
     std::ofstream ofs(path);
     if (!ofs) {
+        LOG_ERROR("SpriteManager: Failed to open file for save.");
         return false;
     }
 
-    ofs << root.dump(4); // インデント付き
+    ofs << root.dump(4);
+    dirty_ = false;
+
+    LOG_INFO("SpriteManager: Saved to " + path);
     return true;
 }
 
 bool SpriteManager::LoadFromJson(const std::string &path) {
     std::ifstream ifs(path);
     if (!ifs) {
+        LOG_ERROR("SpriteManager: Failed to open file for load.");
         return false;
     }
 
     json root;
     ifs >> root;
 
-    Clear(); // 既存 Sprite を全削除（重要）
+    Clear();
 
     for (auto &j : root["sprites"]) {
-        uint32_t id = Create(1, SpriteLayerUtil::StringToSpriteLayer(
+        uint32_t id = Create(0, SpriteLayerUtil::StringToSpriteLayer(
                                     j["layer"].get<std::string>()));
 
         SetVisible(id, j["visible"].get<bool>());
@@ -167,13 +184,21 @@ bool SpriteManager::LoadFromJson(const std::string &path) {
         sprite->uvRect.w = js["uvRect"][3];
     }
 
+    dirty_ = false;
+
+    LOG_INFO("SpriteManager: Loaded from " + path);
     return true;
 }
+
+// ==================================================
+// Setter / Getter
+// ==================================================
 
 void SpriteManager::SetVisible(uint32_t id, bool visible) {
     auto it = sprites_.find(id);
     if (it != sprites_.end()) {
         it->second.render.visible = visible;
+        dirty_ = true;
     }
 }
 
@@ -181,6 +206,7 @@ void SpriteManager::SetLayer(uint32_t id, SpriteLayer layer) {
     auto it = sprites_.find(id);
     if (it != sprites_.end()) {
         it->second.render.layer = layer;
+        dirty_ = true;
     }
 }
 
@@ -190,7 +216,9 @@ void SpriteManager::SetTexture(uint32_t id, uint32_t textureId) {
         LOG_WARN("SpriteManager: SetTexture failed. Invalid id.");
         return;
     }
+
     it->second.sprite.textureId = textureId;
+    dirty_ = true;
 }
 
 Sprite *SpriteManager::GetSprite(uint32_t id) {
@@ -205,10 +233,7 @@ SpriteLayer SpriteManager::GetLayer(uint32_t id) const {
 
 uint32_t SpriteManager::GetTexture(uint32_t id) const {
     auto it = sprites_.find(id);
-    if (it == sprites_.end()) {
-        return 0;
-    }
-    return it->second.sprite.textureId;
+    return (it != sprites_.end()) ? it->second.sprite.textureId : 0;
 }
 
 bool SpriteManager::IsVisible(uint32_t id) const {
