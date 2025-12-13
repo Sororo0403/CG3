@@ -1,9 +1,10 @@
 #include "Sprite.hlsli"
 
-cbuffer SpriteCB : register(b0) {
+cbuffer SpriteCB : register(b0)
+{
     float4x4 gWVP;
-    float4   gColor;
-    float4   gUVRect;
+    float4 gColor;
+    float4 gUVRect;
 };
 
 Texture2D<float4> gTexture : register(t0);

@@ -4,6 +4,6 @@
 #include <wrl.h>
 
 struct Texture {
-  Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-  D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{};
+    Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+    D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle{};
 };

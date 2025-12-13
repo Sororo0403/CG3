@@ -9,11 +9,13 @@ cbuffer SpriteCB : register(b0)
 
 SpriteVSOutput main(SpriteVSInput input)
 {
-    SpriteVSOutput o;
-    o.pos = float4(input.pos, 1.0f);
+    SpriteVSOutput output;
+
+    output.pos = mul(gWVP, float4(input.pos, 1.0f));
 
     float2 uv = input.uv;
     uv = gUVRect.xy + uv * gUVRect.zw;
-    o.uv = uv;
-    return o;
+    output.uv = uv;
+
+    return output;
 }

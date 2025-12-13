@@ -87,7 +87,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
       dx.get(), shaderCompiler.get(), textureManager.get());
   spriteRenderer->Initialize();
 
-  // 正射影（左上原点・UI向け）
+  // 正射影
   spriteRenderer->SetProjection(XMMatrixOrthographicOffCenterLH(
       0.0f, static_cast<float>(winApp->GetWidth()),
       static_cast<float>(winApp->GetHeight()), 0.0f, 0.0f, 1.0f));

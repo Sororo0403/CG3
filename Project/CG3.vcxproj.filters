@@ -55,9 +55,6 @@
     <Filter Include="Engine\Utils\String">
       <UniqueIdentifier>{3e262475-2959-4948-9067-da9fef2c0647}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Engine\Graphics\PSO">
-      <UniqueIdentifier>{343ed606-9b9b-4e20-8d45-9e664ae39895}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Engine\Math">
       <UniqueIdentifier>{12bac756-014f-4a0c-b2d5-3e33ce289cd0}</UniqueIdentifier>
     </Filter>

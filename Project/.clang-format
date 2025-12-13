@@ -1,23 +1,41 @@
+# ======================================
+# Base style
+# ======================================
 BasedOnStyle: LLVM
 
-# --------------------------------------
-# Visual Studio XML ドキュコメント保護設定
-# --------------------------------------
+# ======================================
+# Indentation
+# ======================================
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
 
-# コメント整形をしない
+# ======================================
+# Visual Studio XML Doc Comment 保護
+# ======================================
 ReflowComments: false
-
-# /// コメントを整形対象から除外
 CommentPragmas: '^///'
-
-# 末尾コメントの整列禁止
 AlignTrailingComments: false
-
-# 空行を消さない
+SpacesBeforeTrailingComments: 1
 KeepEmptyLinesAtTheStartOfBlocks: true
 
-# 末尾コメントの前のスペース
-SpacesBeforeTrailingComments: 1
-
-# include 順序は手動管理
+# ======================================
+# Includes
+# ======================================
 SortIncludes: false
+
+# ======================================
+# Spacing
+# ======================================
+SpaceAfterCStyleCast: true
+SpacesInAngles: false
+SpacesInContainerLiterals: true
+SpacesInCStyleCastParentheses: false
+
+# ======================================
+# Brace / Formatting
+# ======================================
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: false

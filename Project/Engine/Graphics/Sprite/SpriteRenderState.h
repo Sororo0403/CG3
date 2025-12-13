@@ -3,6 +3,6 @@
 #include "SpriteLayer.h"
 
 struct SpriteRenderState {
-  SpriteLayer layer = SpriteLayer::UI;
-  bool visible = true;
+    SpriteLayer layer = SpriteLayer::UI;
+    bool visible = true;
 };
