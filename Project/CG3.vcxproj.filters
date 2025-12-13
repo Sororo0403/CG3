@@ -61,6 +61,15 @@
     <Filter Include="Engine\Graphics\PSO">
       <UniqueIdentifier>{2e6d6b62-40fb-4789-9e20-1bcbdad04a3c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics\Mesh">
+      <UniqueIdentifier>{b6cb14f4-3d1b-493a-8322-50cf132b5566}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Graphics\Model">
+      <UniqueIdentifier>{412e7d06-14ab-4a5e-bcc1-01aa6dcd78f2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shader\Model">
+      <UniqueIdentifier>{658314b5-8dca-4fba-88fe-a0db5aa26c7d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -127,6 +136,17 @@
     <ClCompile Include="Engine\Graphics\PSO\PSOManager.cpp">
       <Filter>Engine\Graphics\PSO</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Graphics\Model\ModelManager.cpp">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Model\ModelRenderer.cpp">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Mesh\MeshManager.cpp">
+      <Filter>Engine\Graphics\Mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Model\ModelEditor.cpp" />
+    <ClCompile Include="Engine\Graphics\Camera\Camera.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -246,6 +266,27 @@
     <ClInclude Include="Engine\Graphics\PSO\PSOManager.h">
       <Filter>Engine\Graphics\PSO</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Graphics\Mesh\Mesh.h">
+      <Filter>Engine\Graphics\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Math\Transform.h">
+      <Filter>Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Model\Model.h">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Model\ModelManager.h">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Model\ModelRenderer.h">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Mesh\MeshManager.h">
+      <Filter>Engine\Graphics\Mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Model\ModelEditor.h" />
+    <ClInclude Include="Engine\Graphics\Model\ModelRenderState.h" />
+    <ClInclude Include="Engine\Graphics\Camera\Camera.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">
@@ -254,10 +295,19 @@
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.VS.hlsl">
       <Filter>Shader\Sprite</Filter>
     </FxCompile>
+    <FxCompile Include="Resources\Shaders\Model\Model.PS.hlsl">
+      <Filter>Shader\Model</Filter>
+    </FxCompile>
+    <FxCompile Include="Resources\Shaders\Model\Model.VS.hlsl">
+      <Filter>Shader\Model</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Shaders\Sprite\Sprite.hlsli">
       <Filter>Shader\Sprite</Filter>
+    </None>
+    <None Include="Resources\Shaders\Model\Model.hlsli">
+      <Filter>Shader\Model</Filter>
     </None>
   </ItemGroup>
 </Project>

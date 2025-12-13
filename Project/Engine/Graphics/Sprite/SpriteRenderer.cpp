@@ -18,9 +18,12 @@ using Microsoft::WRL::ComPtr;
 SpriteRenderer::SpriteRenderer(DirectXCommon *dx,
                                ShaderCompiler *shaderCompiler,
                                TextureManager *textureManager,
-                               PSOManager *psoManager)
+                               PSOManager *psoManager, float width,
+                               float height)
     : dx_(dx), shaderCompiler_(shaderCompiler), textureManager_(textureManager),
       psoManager_(psoManager) {
+    projection_ =
+        XMMatrixOrthographicOffCenterLH(0.0f, width, height, 0.0f, 0.0f, 1.0f);
 }
 
 void SpriteRenderer::Initialize() {

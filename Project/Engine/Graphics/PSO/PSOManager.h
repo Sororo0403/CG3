@@ -21,9 +21,7 @@ class PSOManager {
     /// </summary>
     void Initialize();
 
-    // ==============================
     // Sprite
-    // ==============================
     ID3D12RootSignature *GetSpriteRoot() const {
         return spriteRoot_.Get();
     }
@@ -31,9 +29,18 @@ class PSOManager {
         return spritePSO_.Get();
     }
 
+    // Model
+    ID3D12RootSignature *GetModelRoot() const {
+        return modelRoot_.Get();
+    }
+    ID3D12PipelineState *GetModelPSO() const {
+        return modelPSO_.Get();
+    }
+
   private:
-    // 初期化ヘルパー
+    // Create
     void CreateSpritePipeline();
+    void CreateModelPipeline();
 
   private:
     ID3D12Device *device_ = nullptr;
@@ -42,4 +49,8 @@ class PSOManager {
     // Sprite 用
     Microsoft::WRL::ComPtr<ID3D12RootSignature> spriteRoot_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> spritePSO_;
+
+    // Model 用
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> modelRoot_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> modelPSO_;
 };

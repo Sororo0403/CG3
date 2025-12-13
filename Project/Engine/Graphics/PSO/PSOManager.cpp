@@ -20,6 +20,7 @@ void PSOManager::Initialize() {
     LOG_INFO("PSOManager: Initialize");
 
     CreateSpritePipeline();
+    CreateModelPipeline();
 }
 
 // ======================================================
@@ -151,4 +152,95 @@ void PSOManager::CreateSpritePipeline() {
         LOG_ERROR("PSOManager: CreateGraphicsPipelineState failed");
         assert(false);
     }
+}
+
+void PSOManager::CreateModelPipeline() {
+    LOG_INFO("PSOManager: CreateModelPipeline");
+
+    // ------------------------------
+    // RootSignature
+    // ------------------------------
+    D3D12_ROOT_PARAMETER params[1]{};
+
+    // b0 : ConstantBuffer (WVP)
+    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+    params[0].Descriptor.ShaderRegister = 0;
+    params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+    D3D12_ROOT_SIGNATURE_DESC rsDesc{};
+    rsDesc.NumParameters = _countof(params);
+    rsDesc.pParameters = params;
+    rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> rsBlob;
+    Microsoft::WRL::ComPtr<ID3DBlob> rsError;
+
+    HRESULT hr = D3D12SerializeRootSignature(
+        &rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &rsBlob, &rsError);
+
+    if (FAILED(hr)) {
+        LOG_ERROR("PSOManager: Model RootSignature serialize failed");
+        if (rsError) {
+            OutputDebugStringA(
+                static_cast<char *>(rsError->GetBufferPointer()));
+        }
+        assert(false);
+    }
+
+    hr = device_->CreateRootSignature(0, rsBlob->GetBufferPointer(),
+                                      rsBlob->GetBufferSize(),
+                                      IID_PPV_ARGS(&modelRoot_));
+
+    assert(SUCCEEDED(hr));
+
+    // ------------------------------
+    // Shader
+    // ------------------------------
+    auto vs =
+        shaderCompiler_->CompileShader("Model/Model.VS.hlsl", "main", "vs_6_0");
+    auto ps =
+        shaderCompiler_->CompileShader("Model/Model.PS.hlsl", "main", "ps_6_0");
+
+    // ------------------------------
+    // InputLayout (Mesh::Vertex)
+    // ------------------------------
+    D3D12_INPUT_ELEMENT_DESC layout[] = {
+        {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+         D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12,
+         D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+        {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24,
+         D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+    };
+
+    // ------------------------------
+    // PSO
+    // ------------------------------
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
+    pso.pRootSignature = modelRoot_.Get();
+    pso.InputLayout = {layout, _countof(layout)};
+    pso.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+    pso.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+
+    pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+
+    pso.NumRenderTargets = 1;
+    pso.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    pso.SampleDesc.Count = 1;
+    pso.SampleMask = UINT_MAX;
+
+    pso.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+    pso.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    pso.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+    // ★ Model は深度 ON / Cull ON
+    pso.DepthStencilState.DepthEnable = TRUE;
+    pso.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+    pso.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+    pso.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+
+    hr = device_->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&modelPSO_));
+
+    assert(SUCCEEDED(hr));
 }

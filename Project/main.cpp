@@ -17,6 +17,13 @@
 #include "Texture/TextureDropQueue.h"
 #include "Texture/TextureEditor.h"
 
+#include "Mesh/MeshManager.h"
+#include "Model/ModelManager.h"
+#include "Model/ModelRenderer.h"
+#include "Model/ModelEditor.h"
+
+#include "Camera/Camera.h"
+
 #include "PSO/PSOManager.h"
 #include "Sprite/SpriteRenderer.h"
 #include "Sprite/SpriteManager.h"
@@ -105,19 +112,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     // SpriteRenderer
     // ==================================================
     auto spriteRenderer = std::make_unique<SpriteRenderer>(
-        dx.get(), shaderCompiler.get(), textureManager.get(), psoManager.get());
+        dx.get(), shaderCompiler.get(), textureManager.get(), psoManager.get(),
+        static_cast<float>(winApp->GetWidth()),
+        static_cast<float>(winApp->GetHeight()));
     spriteRenderer->Initialize();
-
-    // 正射影
-    spriteRenderer->SetProjection(XMMatrixOrthographicOffCenterLH(
-        0.0f, static_cast<float>(winApp->GetWidth()),
-        static_cast<float>(winApp->GetHeight()), 0.0f, 0.0f, 1.0f));
 
     // ==================================================
     // SpriteManager
     // ==================================================
-    auto spriteManager =
-        std::make_unique<SpriteManager>(spriteRenderer.get());
+    auto spriteManager = std::make_unique<SpriteManager>(spriteRenderer.get());
 
     // ==================================================
     // SpriteEditor (ImGui)
@@ -127,12 +130,45 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     spriteEditor->Initialize();
 
     // ==================================================
+    // MeshManager
+    // ==================================================
+    auto meshManager = std::make_unique<MeshManager>(dx->GetDevice());
+
+    // ==================================================
+    // ModelRenderer
+    // ==================================================
+    auto modelRenderer = std::make_unique<ModelRenderer>(
+        dx.get(), psoManager.get(), meshManager.get());
+    modelRenderer->Initialize();
+
+    // ==================================================
+    // ModelManager
+    // ==================================================
+    auto modelManager =
+        std::make_unique<ModelManager>(modelRenderer.get(), meshManager.get());
+
+    // ==================================================
+    // ModelEditor (ImGui)
+    // ==================================================
+    auto modelEditor =
+        std::make_unique<ModelEditor>(meshManager.get(), modelManager.get());
+
+    // ==================================================
     // Sprite 作成（テスト用）
     // ==================================================
     uint32_t texId =
         textureManager->LoadTexture("Resources/Textures/uvChecker.png");
 
     spriteManager->Create(texId, SpriteLayer::UI);
+
+    // ==================================================
+    // Camera
+    // ==================================================
+    Camera camera;
+    camera.SetPosition({0.0f, 0.0f, -5.0f});
+    camera.SetPerspective(DirectX::XM_PIDIV4,
+                          float(winApp->GetWidth()) / winApp->GetHeight(), 0.1f,
+                          1000.0f);
 
     // ==================================================
     // Clear Color
@@ -165,6 +201,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
         // Sprite Editor
         // ===============================
         spriteEditor->DrawImGui();
+
+        // ===============================
+        // Model Editor
+        // ===============================
+        modelEditor->DrawImGui();
+
+        // ===============================
+        // Model Draw
+        // ===============================
+        modelManager->Begin();
+        modelManager->DrawAll(&camera);
 
         // ===============================
         // Sprite Draw

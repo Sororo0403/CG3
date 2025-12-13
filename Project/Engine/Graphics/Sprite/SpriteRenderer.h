@@ -20,10 +20,10 @@ class SpriteRenderer {
   public:
     /// <summary>
     /// SpriteRenderer を生成する。
-    /// 描画に必要な DirectX / Shader / Texture / PSO 管理を受け取る。
     /// </summary>
     SpriteRenderer(DirectXCommon *dx, ShaderCompiler *shaderCompiler,
-                   TextureManager *textureManager, PSOManager *psoManager);
+                   TextureManager *textureManager, PSOManager *psoManager,
+                   float width, float height);
 
     /// <summary>
     /// 初期化処理
@@ -39,13 +39,6 @@ class SpriteRenderer {
     /// 指定された Sprite を1枚描画する。
     /// </summary>
     void Draw(const Sprite &sprite);
-
-    /// <summary>
-    /// スプライト用の射影行列を設定する。
-    /// </summary>
-    void SetProjection(const DirectX::XMMATRIX &proj) {
-        projection_ = proj;
-    }
 
   private:
     struct SpriteCB {
