@@ -3,8 +3,13 @@
 #include <windows.h>
 #include <string>
 
+class TextureDropQueue;
+
 class WinApp {
   public:
+    WinApp(LONG width, LONG height, const std::wstring &title,
+           TextureDropQueue *textureDropQueue);
+
     /// <summary>
     /// デストラクタ
     /// </summary>
@@ -13,10 +18,7 @@ class WinApp {
     /// <summary>
     /// 初期化処理
     /// </summary>
-    /// <param name="width">ウィンドウの横幅</param>
-    /// <param name="height">ウィンドウの高さ</param>
-    /// <param name="title">ウィンドウタイトル</param>
-    void Initialize(LONG width, LONG height, const std::wstring &title);
+    void Initialize();
 
     /// <summary>
     /// メッセージポンプを1回分実行する
@@ -51,4 +53,7 @@ class WinApp {
 
     LONG width_;
     LONG height_;
+    std::wstring title_;
+
+    TextureDropQueue *textureDropQueue_ = nullptr;
 };

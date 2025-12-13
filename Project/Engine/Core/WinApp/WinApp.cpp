@@ -1,14 +1,19 @@
 #include "WinApp.h"
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_win32.h"
-
+#include <shellapi.h>
 #include <cassert>
 
 #include "Logger/Logger.h"
+#include "Texture/TextureDropQueue.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg,
                                               WPARAM wParam, LPARAM lParam);
+
+WinApp::WinApp(LONG width, LONG height, const std::wstring &title,
+               TextureDropQueue *textureDropQueue)
+    : width_(width), height_(height), title_(title),
+      textureDropQueue_(textureDropQueue) {
+}
 
 WinApp::~WinApp() {
     LOG_INFO("WinApp destructor called");
@@ -27,11 +32,8 @@ WinApp::~WinApp() {
     }
 }
 
-void WinApp::Initialize(LONG width, LONG height, const std::wstring &title) {
+void WinApp::Initialize() {
     LOG_INFO("WinApp::Initialize start");
-
-    width_ = width;
-    height_ = height;
 
     wc_.lpfnWndProc = WinApp::WindowProc;
     wc_.lpszClassName = L"WindowClass";
@@ -47,10 +49,10 @@ void WinApp::Initialize(LONG width, LONG height, const std::wstring &title) {
     RECT wrc{0, 0, width_, height_};
     AdjustWindowRect(&wrc, WS_OVERLAPPEDWINDOW, FALSE);
 
-    hwnd_ = CreateWindow(wc_.lpszClassName, title.c_str(), WS_OVERLAPPEDWINDOW,
+    hwnd_ = CreateWindow(wc_.lpszClassName, title_.c_str(), WS_OVERLAPPEDWINDOW,
                          CW_USEDEFAULT, CW_USEDEFAULT, wrc.right - wrc.left,
                          wrc.bottom - wrc.top, nullptr, nullptr, wc_.hInstance,
-                         nullptr);
+                         this);
 
     if (!hwnd_) {
         LOG_ERROR("CreateWindow failed");
@@ -58,6 +60,9 @@ void WinApp::Initialize(LONG width, LONG height, const std::wstring &title) {
     }
 
     ShowWindow(hwnd_, SW_SHOW);
+
+    DragAcceptFiles(hwnd_, TRUE);
+
     LOG_INFO("WinApp::Initialize completed");
 }
 
@@ -78,11 +83,45 @@ bool WinApp::ProcessMessage() {
 
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
                                     LPARAM lparam) {
+    WinApp *app = nullptr;
+
+    if (msg == WM_NCCREATE) {
+        auto *cs = reinterpret_cast<CREATESTRUCT *>(lparam);
+        app = reinterpret_cast<WinApp *>(cs->lpCreateParams);
+
+        SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(app));
+    } else {
+        app = reinterpret_cast<WinApp *>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+    }
+
     if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam)) {
         return true;
     }
 
     switch (msg) {
+
+    case WM_DROPFILES: {
+        if (!app || !app->textureDropQueue_) {
+            break;
+        }
+
+        HDROP hDrop = reinterpret_cast<HDROP>(wparam);
+        UINT count = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
+
+        wchar_t pathW[MAX_PATH]{};
+
+        for (UINT i = 0; i < count; ++i) {
+            DragQueryFile(hDrop, i, pathW, MAX_PATH);
+
+            std::wstring ws(pathW);
+            std::string path(ws.begin(), ws.end());
+
+            app->textureDropQueue_->Push(path);
+        }
+
+        DragFinish(hDrop);
+        return 0;
+    }
 
     case WM_DESTROY:
         LOG_INFO("WM_DESTROY");

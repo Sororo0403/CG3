@@ -48,10 +48,12 @@ class SpriteManager {
     // Setter
     void SetVisible(uint32_t id, bool visible);
     void SetLayer(uint32_t id, SpriteLayer layer);
+    void SetTexture(uint32_t id, uint32_t textureId);
 
     // Getter
     Sprite *GetSprite(uint32_t id);
     SpriteLayer GetLayer(uint32_t id) const;
+    uint32_t GetTexture(uint32_t id) const;
     bool IsVisible(uint32_t id) const;
 
     // Editor

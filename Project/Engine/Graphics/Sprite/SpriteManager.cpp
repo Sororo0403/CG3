@@ -21,9 +21,9 @@ uint32_t SpriteManager::Create(uint32_t textureId, SpriteLayer layer) {
 
     entry.sprite.textureId = textureId;
     entry.sprite.size = {256.0f, 256.0f};
-    entry.sprite.transform.position = {100.0f, 100.0f};
+    entry.sprite.transform.position = {0.0f, 0.0f};
     entry.sprite.transform.scale = {1.0f, 1.0f};
-    entry.sprite.transform.pivot = {0.5f, 0.5f};
+    entry.sprite.transform.pivot = {0.0f, 0.0f};
     entry.sprite.transform.rotation = 0.0f;
     entry.sprite.transform.z = 0.0f;
 
@@ -72,21 +72,6 @@ void SpriteManager::DrawAll() {
     }
 }
 
-Sprite *SpriteManager::GetSprite(uint32_t id) {
-    auto it = sprites_.find(id);
-    return (it != sprites_.end()) ? &it->second.sprite : nullptr;
-}
-
-SpriteLayer SpriteManager::GetLayer(uint32_t id) const {
-    auto it = sprites_.find(id);
-    return (it != sprites_.end()) ? it->second.render.layer : SpriteLayer::UI;
-}
-
-bool SpriteManager::IsVisible(uint32_t id) const {
-    auto it = sprites_.find(id);
-    return (it != sprites_.end()) ? it->second.render.visible : false;
-}
-
 void SpriteManager::SetVisible(uint32_t id, bool visible) {
     auto it = sprites_.find(id);
     if (it != sprites_.end()) {
@@ -99,4 +84,36 @@ void SpriteManager::SetLayer(uint32_t id, SpriteLayer layer) {
     if (it != sprites_.end()) {
         it->second.render.layer = layer;
     }
+}
+
+void SpriteManager::SetTexture(uint32_t id, uint32_t textureId) {
+    auto it = sprites_.find(id);
+    if (it == sprites_.end()) {
+        LOG_WARN("SpriteManager: SetTexture failed. Invalid id.");
+        return;
+    }
+    it->second.sprite.textureId = textureId;
+}
+
+Sprite *SpriteManager::GetSprite(uint32_t id) {
+    auto it = sprites_.find(id);
+    return (it != sprites_.end()) ? &it->second.sprite : nullptr;
+}
+
+SpriteLayer SpriteManager::GetLayer(uint32_t id) const {
+    auto it = sprites_.find(id);
+    return (it != sprites_.end()) ? it->second.render.layer : SpriteLayer::UI;
+}
+
+uint32_t SpriteManager::GetTexture(uint32_t id) const {
+    auto it = sprites_.find(id);
+    if (it == sprites_.end()) {
+        return 0;
+    }
+    return it->second.sprite.textureId;
+}
+
+bool SpriteManager::IsVisible(uint32_t id) const {
+    auto it = sprites_.find(id);
+    return (it != sprites_.end()) ? it->second.render.visible : false;
 }
