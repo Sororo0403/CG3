@@ -1,40 +1,86 @@
 #include "ShaderCompiler.h"
-#include "Logger/Logger.h"
-#include "String/StringUtil.h"
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
 #include <cassert>
-#include <string>
 #include <vector>
 
-using namespace Microsoft::WRL;
+#include "Logger/Logger.h"
+#include "String/StringUtil.h"
 
-ShaderCompiler::ShaderCompiler() {
-  LOG_INFO("ShaderCompiler: Initializing DXC compiler");
+using Microsoft::WRL::ComPtr;
 
-  HRESULT hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils_));
-  assert(SUCCEEDED(hr));
+ShaderCompiler::~ShaderCompiler() {
+  if (!initialized_) {
+    return;
+  }
 
-  hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler_));
-  assert(SUCCEEDED(hr));
+  includeHandler_.Reset();
+  compiler_.Reset();
+  utils_.Reset();
+  initialized_ = false;
 
-  hr = utils_->CreateDefaultIncludeHandler(&includeHandler_);
-  assert(SUCCEEDED(hr));
-
-  LOG_INFO("ShaderCompiler: DXC initialized successfully");
+  LOG_INFO("ShaderCompiler: Finalized.");
 }
 
-ComPtr<IDxcBlob> ShaderCompiler::Compile(const std::wstring &filePath,
-                                         const std::wstring &profile,
-                                         const std::wstring &includeDir) {
-  LOG_INFO(std::string("ShaderCompiler: Compile start → ") +
-           StringUtil::ToUTF8(filePath));
+void ShaderCompiler::Initialize() {
+  if (initialized_) {
+    LOG_INFO("ShaderCompiler: Already initialized.");
+    return;
+  }
 
-  // ファイル読み込み
-  LOG_DEBUG("ShaderCompiler: Loading shader file...");
+  LOG_INFO("ShaderCompiler: Initializing DXC...");
 
-  ComPtr<IDxcBlobEncoding> source = nullptr;
-  HRESULT hr = utils_->LoadFile(filePath.c_str(), nullptr, &source);
+  HRESULT hr = DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils_));
   if (FAILED(hr)) {
-    LOG_ERROR("ShaderCompiler: Failed to load file");
+    LOG_ERROR("ShaderCompiler: Failed to create DxcUtils.");
+    assert(false);
+  }
+
+  hr = DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler_));
+  if (FAILED(hr)) {
+    LOG_ERROR("ShaderCompiler: Failed to create DxcCompiler.");
+    assert(false);
+  }
+
+  hr = utils_->CreateDefaultIncludeHandler(&includeHandler_);
+  if (FAILED(hr)) {
+    LOG_ERROR("ShaderCompiler: Failed to create IncludeHandler.");
+    assert(false);
+  }
+
+  initialized_ = true;
+  LOG_INFO("ShaderCompiler: DXC initialization completed.");
+}
+
+ComPtr<IDxcBlob> ShaderCompiler::CompileShader(const std::string &filePath,
+                                               const std::string &entryPoint,
+                                               const std::string &profile,
+                                               const std::string &includeDir) {
+  LOG_INFO("ShaderCompiler: Compile start → " + filePath);
+
+  std::string fullPath;
+  if (!shaderRoot_.empty()) {
+    fullPath = shaderRoot_ + "/" + filePath;
+  } else {
+    fullPath = filePath;
+  }
+
+  LOG_INFO("ShaderCompiler: LoadFile → " + fullPath);
+
+  // UTF-8 → UTF-16 変換（★ fullPath を使う）
+  std::wstring wFilePath = StringUtil::UTF8ToUTF16(fullPath);
+  std::wstring wEntryPoint = StringUtil::UTF8ToUTF16(entryPoint);
+  std::wstring wProfile = StringUtil::UTF8ToUTF16(profile);
+  std::wstring wIncludeDir = StringUtil::UTF8ToUTF16(includeDir);
+
+  // HLSL ファイル読み込み
+  ComPtr<IDxcBlobEncoding> source = nullptr;
+  HRESULT hr = utils_->LoadFile(wFilePath.c_str(), nullptr, &source);
+
+  if (FAILED(hr)) {
+    LOG_ERROR("ShaderCompiler: Failed to load shader file → " + filePath);
     assert(false);
   }
 
@@ -43,61 +89,64 @@ ComPtr<IDxcBlob> ShaderCompiler::Compile(const std::wstring &filePath,
   buffer.Size = source->GetBufferSize();
   buffer.Encoding = DXC_CP_UTF8;
 
-  LOG_DEBUG("ShaderCompiler: File loaded OK");
-
-  // コンパイル引数
-  LOG_DEBUG("ShaderCompiler: Setting compiler arguments...");
-
+  // -----------------------------
+  // DXC コンパイル引数
+  // -----------------------------
   std::vector<LPCWSTR> args = {
-      filePath.c_str(), L"-E",  L"main", L"-T", profile.c_str(), L"-Zi",
-      L"-Qembed_debug", L"-Od", L"-Zpr", L"-WX"};
+      wFilePath.c_str(), // ソース名（エラー表示用）
+      L"-E",
+      wEntryPoint.c_str(), // エントリポイント
+      L"-T",
+      wProfile.c_str(), // シェーダープロファイル
+      L"-Zi", // デバッグ情報
+      L"-Qembed_debug", // DXIL 内にデバッグ情報埋め込み
+      L"-Zpr", // 行列を列メジャー指定
+      L"-Od", // 最適化無効（デバッグ重視）
+      L"-WX" // 警告をエラー扱い
+  };
 
-  if (!includeDir.empty()) {
+  // include ディレクトリ（任意）
+  if (!wIncludeDir.empty()) {
     args.push_back(L"-I");
-    args.push_back(includeDir.c_str());
-
-    LOG_DEBUG(std::string("ShaderCompiler: IncludeDir = ") +
-              StringUtil::ToUTF8(includeDir));
+    args.push_back(wIncludeDir.c_str());
   }
 
-  // コンパイル
-  LOG_INFO("ShaderCompiler: Compiling...");
-
+  // -----------------------------
+  // コンパイル実行
+  // -----------------------------
   ComPtr<IDxcResult> result;
   hr = compiler_->Compile(&buffer, args.data(), (UINT32)args.size(),
                           includeHandler_.Get(), IID_PPV_ARGS(&result));
 
   if (FAILED(hr)) {
-    LOG_ERROR("ShaderCompiler: Compile failed at DXC call");
+    LOG_ERROR("ShaderCompiler: DXC compile call failed.");
     assert(false);
   }
 
-  // エラー出力
+  // -----------------------------
+  // エラーチェック
+  // -----------------------------
   ComPtr<IDxcBlobUtf8> errors = nullptr;
   result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
 
   if (errors && errors->GetStringLength() > 0) {
-    LOG_ERROR("ShaderCompiler: HLSL compile errors detected:");
-    LOG_ERROR(errors->GetStringPointer());
-
-    OutputDebugStringA("=== HLSL Compile Error ===\n");
+    LOG_ERROR("ShaderCompiler: Errors detected:");
     OutputDebugStringA(errors->GetStringPointer());
-    OutputDebugStringA("\n==========================\n");
-
-    assert(false && "Shader compile error");
-  }
-
-  LOG_INFO("ShaderCompiler: Compile completed (no errors)");
-
-  // バイナリ取得
-  ComPtr<IDxcBlob> shaderBlob = nullptr;
-  hr = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
-  if (FAILED(hr)) {
-    LOG_ERROR("ShaderCompiler: Failed to retrieve shader object");
     assert(false);
   }
 
-  LOG_INFO("ShaderCompiler: Shader object output OK");
+  // -----------------------------
+  // シェーダーオブジェクト取得
+  // -----------------------------
+  ComPtr<IDxcBlob> shaderBlob = nullptr;
+  hr = result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&shaderBlob), nullptr);
+
+  if (FAILED(hr)) {
+    LOG_ERROR("ShaderCompiler: Failed to retrieve compiled shader object.");
+    assert(false);
+  }
+
+  LOG_INFO("ShaderCompiler: Compile completed → OK");
 
   return shaderBlob;
 }

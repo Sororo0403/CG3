@@ -1,8 +1,10 @@
 #include "FileLogger.h"
-#include "LogFormatter.h"
-#include "Time/TimeUtil.h"
+
 #include <filesystem>
 #include <iostream>
+
+#include "LogFormatter.h"
+#include "Time/TimeUtil.h"
 
 FileLogger::FileLogger() {
   namespace fs = std::filesystem;

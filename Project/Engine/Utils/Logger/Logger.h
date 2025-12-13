@@ -1,4 +1,5 @@
 #pragma once
+
 #include "LoggerManager.h"
 
 #define LOG(level, msg)                                                        \

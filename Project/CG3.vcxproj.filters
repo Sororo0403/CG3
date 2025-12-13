@@ -55,6 +55,9 @@
     <Filter Include="Engine\Utils\String">
       <UniqueIdentifier>{3e262475-2959-4948-9067-da9fef2c0647}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics\PSO">
+      <UniqueIdentifier>{343ed606-9b9b-4e20-8d45-9e664ae39895}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -78,7 +81,7 @@
     <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
       <Filter>Externals\imgui</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\DirectX\DirectXCommon.cpp">
+    <ClCompile Include="Engine\Graphics\DirectX\DirectXCommon.cpp">
       <Filter>Engine\Core\DirectX</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Input\Input.cpp">
@@ -106,6 +109,9 @@
     <ClCompile Include="Engine\Utils\Logger\LoggerManager.cpp">
       <Filter>Engine\Utils\Logger</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Graphics\Sprite\SpriteManager.cpp">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -132,7 +138,7 @@
     <ClInclude Include="Externals\imgui\imstb_truetype.h">
       <Filter>Externals\imgui</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\DirectX\DirectXCommon.h">
+    <ClInclude Include="Engine\Graphics\DirectX\DirectXCommon.h">
       <Filter>Engine\Core\DirectX</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Core\WinApp\WinApp.h">
@@ -183,6 +189,13 @@
     <ClInclude Include="Engine\Graphics\Texture\Texture.h">
       <Filter>Engine\Graphics\Texture</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Graphics\Sprite\Sprite.h">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteManager.h">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Utils\DirectX12\DirectX12Util.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">

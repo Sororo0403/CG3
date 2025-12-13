@@ -1,3 +1,8 @@
+#include <Windows.h>
+#include <DirectXMath.h>
+#include <memory>
+#include <string>
+
 #include "CrashHandler/CrashHandler.h"
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
@@ -7,16 +12,34 @@
 #include "Logger/LoggerManager.h"
 #include "Shader/ShaderCompiler.h"
 #include "Sprite/SpriteRenderer.h"
+#include "Sprite/SpriteManager.h"
+#include "Texture/TextureManager.h"
 #include "WinApp/WinApp.h"
-#include <Windows.h>
-#include <memory>
-#include <string>
+
+using namespace DirectX;
+
+// ===============================
+// ImGui 用デバッグ変数
+// ===============================
+static float spritePos[2] = {100.0f, 100.0f};
+static float spriteSize[2] = {256.0f, 256.0f};
+static float spriteColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+static float spriteRotDeg = 0.0f;
+static float spriteZ = 0.0f;
+static float spritePivot[2] = {0.5f, 0.5f};
+static float spriteUV[4] = {0.0f, 0.0f, 1.0f, 1.0f};
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
+
+  // ==================================================
   // CrashHandler
+  // ==================================================
   CrashHandler::Install();
 
+  // ==================================================
   // Logger
+  // ==================================================
   LoggerManager *loggerManager = LoggerManager::GetInstance();
   loggerManager->AddLogger(std::make_unique<ConsoleLogger>());
   loggerManager->AddLogger(std::make_unique<FileLogger>());
@@ -27,61 +50,93 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   loggerManager->SetMinLevel(LogLevel::INFO);
 #endif
 
-  // winApp
+  // ==================================================
+  // WinApp
+  // ==================================================
   const LONG kClientWidth = 1280;
   const LONG kClientHeight = 720;
   const std::wstring kWindowTitle = L"GE3";
 
-  std::unique_ptr<WinApp> winApp = std::make_unique<WinApp>();
+  auto winApp = std::make_unique<WinApp>();
   winApp->Initialize(kClientWidth, kClientHeight, kWindowTitle);
 
-  // DirectX
-  std::unique_ptr<DirectXCommon> directXCommon =
-      std::make_unique<DirectXCommon>();
-  directXCommon->Initialize(winApp->GetHwnd(), winApp->GetWidth(),
-                            winApp->GetHeight());
-
+  // ==================================================
   // Input
-  std::unique_ptr<Input> input = std::make_unique<Input>();
+  // ==================================================
+  auto input = std::make_unique<Input>();
   input->Initialize(winApp->GetHInstance(), winApp->GetHwnd());
 
+  // ==================================================
+  // DirectX
+  // ==================================================
+  auto dx = std::make_unique<DirectXCommon>(
+      winApp->GetHwnd(), winApp->GetWidth(), winApp->GetHeight());
+
+  dx->Initialize();
+
+  // ==================================================
   // ShaderCompiler
-  ShaderCompiler shaderCompiler;
+  // ==================================================
+  auto shaderCompiler = std::make_unique<ShaderCompiler>();
+  shaderCompiler->Initialize();
+  shaderCompiler->SetShaderRoot("Resources/Shaders");
 
+  // ==================================================
   // TextureManager
-  TextureManager *textureManager = TextureManager::GetInstance();
-  textureManager->Initialize(directXCommon.get());
+  // ==================================================
+  auto textureManager = std::make_unique<TextureManager>(dx.get());
+  textureManager->Initialize();
 
+  // ==================================================
   // SpriteRenderer
-  SpriteRenderer spriteRenderer;
-  spriteRenderer.Initialize(directXCommon.get(), &shaderCompiler);
+  // ==================================================
+  auto spriteRenderer = std::make_unique<SpriteRenderer>(
+      dx.get(), shaderCompiler.get(), textureManager.get());
+  spriteRenderer->Initialize();
 
-  // クリアカラー
-  const float kClearColor[4] = {0.0f, 1.0f, 1.0f, 1.0f};
+  // 正射影行列は Renderer に一度だけ渡す
+  spriteRenderer->SetProjection(XMMatrixOrthographicOffCenterLH(
+      0.0f, static_cast<float>(winApp->GetWidth()),
+      static_cast<float>(winApp->GetHeight()), 0.0f, 0.0f, 1.0f));
 
-  // テクスチャ
-  uint32_t textureId =
+  // ==================================================
+  // SpriteManager
+  // ==================================================
+  auto spriteManager = std::make_unique<SpriteManager>(spriteRenderer.get());
+
+  // ==================================================
+  // Sprite 作成（純データ）
+  // ==================================================
+  uint32_t texId =
       textureManager->LoadTexture("Resources/Textures/uvChecker.png");
-  const float color[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 
+  spriteManager->Create(texId, SpriteManager::Layer::UI);
+
+  // ==================================================
+  // Clear Color
+  // ==================================================
+  const float kClearColor[4] = {0.1f, 0.1f, 0.2f, 1.0f};
+
+  // ==================================================
+  // Main Loop
+  // ==================================================
   while (true) {
-    // Windowsメッセージ処理
     if (winApp->ProcessMessage()) {
       break;
     }
 
-    // Input更新
     input->Update();
 
-    // 描画前処理
-    directXCommon->PreDraw(kClearColor);
+    dx->PreDraw(kClearColor);
 
-    // Sprite描画
-    spriteRenderer.DrawSprite(textureId, 0.0f, 0.0f, 256.0f, 256.0f, 0.0f, 0.0f,
-                              1.0f, 1.0f, color);
+    // ===============================
+    // Sprite 描画
+    // ===============================
+    spriteRenderer->Begin();
+    spriteManager->Begin();
+    spriteManager->DrawAll();
 
-    // 描画終了処理
-    directXCommon->PostDraw();
+    dx->PostDraw();
   }
 
   return 0;

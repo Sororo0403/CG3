@@ -1,291 +1,311 @@
 #include "SpriteRenderer.h"
+
 #include "DirectX/DirectXCommon.h"
+#include "Shader/ShaderCompiler.h"
+#include "Texture/TextureManager.h"
+#include "Sprite.h"
+#include "Logger/Logger.h"
+#include "DirectX12/DirectX12Util.h"
+
+#include <directx/d3dx12.h>
 #include <cassert>
-#include <cmath>
+#include <cstring>
 
-using namespace Microsoft::WRL;
+using namespace DirectX;
+using Microsoft::WRL::ComPtr;
 
-// 簡易行列ユーティリティ
-static void MakeIdentity4x4(float m[4][4]) {
-	std::memset(m, 0, sizeof(float) * 16);
-	for (int i = 0; i < 4; ++i) m[i][i] = 1.0f;
+SpriteRenderer::SpriteRenderer(DirectXCommon *dx,
+                               ShaderCompiler *shaderCompiler,
+                               TextureManager *textureManager)
+    : dx_(dx), shaderCompiler_(shaderCompiler),
+      textureManager_(textureManager) {}
+
+void SpriteRenderer::Initialize() {
+  CreateRootSignature();
+  CreatePipelineState();
+  CreateGeometry();
+  CreateConstantBuffer();
+
+  projection_ = XMMatrixIdentity();
 }
 
-void SpriteRenderer::Initialize(DirectXCommon *dx, ShaderCompiler *shaderCompiler) {
-	dx_ = dx;
-	shaderCompiler_ = shaderCompiler;
-	CreatePipeline_();
-	CreateGeometry_();
-	CreateConstantBuffer_();
+void SpriteRenderer::Begin() {
+  auto *cmd = dx_->GetCommandList();
+
+  cmd->SetPipelineState(pipelineState_.Get());
+  cmd->SetGraphicsRootSignature(rootSignature_.Get());
+
+  ID3D12DescriptorHeap *heaps[] = {dx_->GetSrvHeap()};
+  cmd->SetDescriptorHeaps(1, heaps);
+
+  cmd->IASetVertexBuffers(0, 1, &vbView_);
+  cmd->IASetIndexBuffer(&ibView_);
+  cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+  // CBリングの書き込み位置をリセット
+  cbCursor_ = 0;
 }
 
-void SpriteRenderer::CreatePipeline_() {
-	ID3D12Device *device = dx_->GetDevice();
+void SpriteRenderer::Draw(const Sprite &sprite) {
+  auto *cmd = dx_->GetCommandList();
 
-	// RootSignature: b0 (CBV), t0 (SRV), s0 (StaticSampler)
-	D3D12_ROOT_PARAMETER rootParams[2] = {};
+  // -----------------------------
+  // 行列計算（Sprite は struct なので Renderer が計算）
+  // 仕様：sprite.x,y は「左上」、pivot は 0..1（左上=0,0 中心=0.5,0.5）
+  // -----------------------------
+  const float w = sprite.width;
+  const float h = sprite.height;
 
-	rootParams[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	rootParams[0].Descriptor.ShaderRegister = 0;
-	rootParams[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+  // ピボットのワールド座標（左上基準）
+  const float pivotWorldX = sprite.x + w * sprite.pivotX;
+  const float pivotWorldY = sprite.y + h * sprite.pivotY;
 
-	D3D12_DESCRIPTOR_RANGE range{};
-	range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-	range.BaseShaderRegister = 0;
-	range.NumDescriptors = 1;
-	range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+  // ジオメトリは中心原点(-0.5..0.5)なので、pivot を原点に合わせるためのオフセット
+  // pivot=0.5 -> 0, pivot=0 -> +0.5w, pivot=1 -> -0.5w
+  const float localOffsetX = (0.5f - sprite.pivotX) * w;
+  const float localOffsetY = (0.5f - sprite.pivotY) * h;
 
-	rootParams[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	rootParams[1].DescriptorTable.NumDescriptorRanges = 1;
-	rootParams[1].DescriptorTable.pDescriptorRanges = &range;
-	rootParams[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+  XMMATRIX S = XMMatrixScaling(w, h, 1.0f);
+  XMMATRIX Toffset = XMMatrixTranslation(localOffsetX, localOffsetY, 0.0f);
+  XMMATRIX R = XMMatrixRotationZ(sprite.rotation);
+  XMMATRIX T = XMMatrixTranslation(pivotWorldX, pivotWorldY, sprite.z);
 
-	D3D12_STATIC_SAMPLER_DESC sampler{};
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-	sampler.ShaderRegister = 0;
-	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-	sampler.MaxLOD = D3D12_FLOAT32_MAX;
+  // Row-vector 前提の並び（一般的な DXMath の書き方）
+  XMMATRIX world = S * Toffset * R * T;
+  XMMATRIX mvp = world * projection_;
 
-	D3D12_ROOT_SIGNATURE_DESC desc{};
-	desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-	desc.NumParameters = _countof(rootParams);
-	desc.pParameters = rootParams;
-	desc.NumStaticSamplers = 1;
-	desc.pStaticSamplers = &sampler;
+  // -----------------------------
+  // CBリングに書き込む
+  // -----------------------------
+  if (cbCursor_ + cbStride_ > cbCapacity_) {
+    LOG_ERROR("SpriteRenderer: CB ring overflow. Increase max sprites.");
+    return;
+  }
 
-	ComPtr<ID3DBlob> sigBlob;
-	ComPtr<ID3DBlob> errBlob;
-	HRESULT hr = D3D12SerializeRootSignature(
-		&desc, D3D_ROOT_SIGNATURE_VERSION_1, &sigBlob, &errBlob);
-	if (FAILED(hr)) {
-		if (errBlob) OutputDebugStringA((char *)errBlob->GetBufferPointer());
-		assert(false);
-	}
+  SpriteCB cb{};
+  XMStoreFloat4x4(&cb.mvp, XMMatrixTranspose(mvp));
+  cb.color = XMFLOAT4(sprite.color[0], sprite.color[1], sprite.color[2],
+                      sprite.color[3]);
+  cb.uvRect = XMFLOAT4(sprite.uvRect[0], sprite.uvRect[1], sprite.uvRect[2],
+                       sprite.uvRect[3]);
 
-	hr = device->CreateRootSignature(
-		0, sigBlob->GetBufferPointer(), sigBlob->GetBufferSize(),
-		IID_PPV_ARGS(&rootSignature_));
-	assert(SUCCEEDED(hr));
+  std::memcpy(mappedCB_ + cbCursor_, &cb, sizeof(cb));
 
-	ComPtr<IDxcBlob> vs = shaderCompiler_->Compile(L"Resources/Shaders/Sprite/Sprite.VS.hlsl", L"vs_6_0");
-	ComPtr<IDxcBlob> ps = shaderCompiler_->Compile(L"Resources/Shaders/Sprite/Sprite.PS.hlsl", L"ps_6_0");
+  D3D12_GPU_VIRTUAL_ADDRESS cbGpu =
+      constantBuffer_->GetGPUVirtualAddress() + cbCursor_;
 
-	D3D12_INPUT_ELEMENT_DESC inputElems[2]{};
-	inputElems[0].SemanticName = "POSITION";
-	inputElems[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	inputElems[0].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+  cbCursor_ += cbStride_;
 
-	inputElems[1].SemanticName = "TEXCOORD";
-	inputElems[1].Format = DXGI_FORMAT_R32G32_FLOAT;
-	inputElems[1].AlignedByteOffset = D3D12_APPEND_ALIGNED_ELEMENT;
+  // -----------------------------
+  // テクスチャ + 描画
+  // -----------------------------
+  const auto &tex = textureManager_->GetTexture(sprite.textureId);
 
-	D3D12_INPUT_LAYOUT_DESC inputLayout{};
-	inputLayout.NumElements = _countof(inputElems);
-	inputLayout.pInputElementDescs = inputElems;
+  cmd->SetGraphicsRootConstantBufferView(0, cbGpu);
+  cmd->SetGraphicsRootDescriptorTable(1, tex.gpuHandle);
 
-	D3D12_BLEND_DESC blend{};
-	blend.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-	blend.RenderTarget[0].BlendEnable = TRUE;
-	blend.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	blend.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-	blend.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-	blend.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-	blend.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-	blend.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-
-	D3D12_RASTERIZER_DESC raster{};
-	raster.CullMode = D3D12_CULL_MODE_NONE;
-	raster.FillMode = D3D12_FILL_MODE_SOLID;
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
-	pso.pRootSignature = rootSignature_.Get();
-	pso.InputLayout = inputLayout;
-	pso.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
-	pso.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
-	pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	pso.NumRenderTargets = 1;
-	pso.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-	pso.BlendState = blend;
-	pso.RasterizerState = raster;
-	pso.SampleDesc.Count = 1;
-	pso.SampleMask = D3D12_DEFAULT_SAMPLE_MASK;
-	pso.DepthStencilState.DepthEnable = FALSE;
-	pso.DepthStencilState.StencilEnable = FALSE;
-
-	hr = device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipelineState_));
-	assert(SUCCEEDED(hr));
+  cmd->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
 
-void SpriteRenderer::CreateGeometry_() {
-	ID3D12Device *device = dx_->GetDevice();
+void SpriteRenderer::CreateRootSignature() {
+  LOG_INFO("SpriteRenderer: CreateRootSignature");
 
-	// 頂点(左下, 左上, 右下, 右上) 位置は後で行列でスケーリングするので NDC基準
-	SpriteVertex vertices[4] = {
-		{-0.5f, -0.5f, 0.0f, 0.0f, 0.0f}, // 左下
-		{-0.5f,  0.5f, 0.0f, 0.0f, 1.0f}, // 左上
-		{ 0.5f, -0.5f, 0.0f, 1.0f, 0.0f}, // 右下
-		{ 0.5f,  0.5f, 0.0f, 1.0f, 1.0f}, // 右上
-	};
+  ID3D12Device *device = dx_->GetDevice();
 
-	uint32_t indices[6] = {0,1,2, 1,3,2};
+  D3D12_ROOT_PARAMETER params[2]{};
 
-	// アップロードバッファ（簡易）
-	D3D12_HEAP_PROPERTIES heap{};
-	heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+  params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+  params[0].Descriptor.ShaderRegister = 0;
+  params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	D3D12_RESOURCE_DESC vdesc{};
-	vdesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	vdesc.Width = sizeof(vertices);
-	vdesc.Height = 1;
-	vdesc.DepthOrArraySize = 1;
-	vdesc.MipLevels = 1;
-	vdesc.SampleDesc.Count = 1;
-	vdesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+  D3D12_DESCRIPTOR_RANGE range{};
+  range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+  range.NumDescriptors = 1;
+  range.BaseShaderRegister = 0;
+  range.OffsetInDescriptorsFromTableStart =
+      D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	HRESULT hr = device->CreateCommittedResource(
-		&heap, D3D12_HEAP_FLAG_NONE, &vdesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&vertexBuffer_));
-	assert(SUCCEEDED(hr));
+  params[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+  params[1].DescriptorTable.NumDescriptorRanges = 1;
+  params[1].DescriptorTable.pDescriptorRanges = &range;
+  params[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-	void *mapped = nullptr;
-	vertexBuffer_->Map(0, nullptr, &mapped);
-	std::memcpy(mapped, vertices, sizeof(vertices));
-	vertexBuffer_->Unmap(0, nullptr);
+  D3D12_STATIC_SAMPLER_DESC sampler{};
+  sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+  sampler.AddressU = sampler.AddressV = sampler.AddressW =
+      D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+  sampler.ShaderRegister = 0;
+  sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+  sampler.MaxLOD = D3D12_FLOAT32_MAX;
 
-	vbView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-	vbView_.SizeInBytes = sizeof(vertices);
-	vbView_.StrideInBytes = sizeof(SpriteVertex);
+  D3D12_ROOT_SIGNATURE_DESC desc{};
+  desc.NumParameters = _countof(params);
+  desc.pParameters = params;
+  desc.NumStaticSamplers = 1;
+  desc.pStaticSamplers = &sampler;
+  desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
-	D3D12_RESOURCE_DESC idesc = vdesc;
-	idesc.Width = sizeof(indices);
-	hr = device->CreateCommittedResource(
-		&heap, D3D12_HEAP_FLAG_NONE, &idesc,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&indexBuffer_));
-	assert(SUCCEEDED(hr));
+  ComPtr<ID3DBlob> blob;
+  ComPtr<ID3DBlob> error;
 
-	indexBuffer_->Map(0, nullptr, &mapped);
-	std::memcpy(mapped, indices, sizeof(indices));
-	indexBuffer_->Unmap(0, nullptr);
+  HRESULT hr = D3D12SerializeRootSignature(&desc, D3D_ROOT_SIGNATURE_VERSION_1,
+                                           &blob, &error);
+  if (FAILED(hr)) {
+    LOG_ERROR("SpriteRenderer: RootSignature serialize failed");
+    if (error)
+      OutputDebugStringA((char *)error->GetBufferPointer());
+    assert(false);
+  }
 
-	ibView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
-	ibView_.SizeInBytes = sizeof(indices);
-	ibView_.Format = DXGI_FORMAT_R32_UINT;
+  hr = device->CreateRootSignature(0, blob->GetBufferPointer(),
+                                   blob->GetBufferSize(),
+                                   IID_PPV_ARGS(&rootSignature_));
+  if (FAILED(hr)) {
+    LOG_ERROR("SpriteRenderer: CreateRootSignature failed");
+    assert(false);
+  }
 }
 
-void SpriteRenderer::CreateConstantBuffer_() {
-	ID3D12Device *device = dx_->GetDevice();
+void SpriteRenderer::CreatePipelineState() {
+  LOG_INFO("SpriteRenderer: CreatePipelineState");
 
-	D3D12_HEAP_PROPERTIES heap{};
-	heap.Type = D3D12_HEAP_TYPE_UPLOAD;
+  ID3D12Device *device = dx_->GetDevice();
 
-	D3D12_RESOURCE_DESC desc{};
-	desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-	desc.Width = (sizeof(SpriteConstant) + 0xFF) & ~0xFF; // 256アライン
-	desc.Height = 1;
-	desc.DepthOrArraySize = 1;
-	desc.MipLevels = 1;
-	desc.SampleDesc.Count = 1;
-	desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+  auto vs =
+      shaderCompiler_->CompileShader("Sprite/Sprite.VS.hlsl", "main", "vs_6_0");
+  auto ps =
+      shaderCompiler_->CompileShader("Sprite/Sprite.PS.hlsl", "main", "ps_6_0");
 
-	HRESULT hr = device->CreateCommittedResource(
-		&heap, D3D12_HEAP_FLAG_NONE, &desc,
-		D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&constantBuffer_));
-	assert(SUCCEEDED(hr));
+  D3D12_INPUT_ELEMENT_DESC layout[] = {
+      {"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+       D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+      {"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 12,
+       D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+  };
 
-	constantBuffer_->Map(0, nullptr, reinterpret_cast<void **>(&cbData_));
+  D3D12_GRAPHICS_PIPELINE_STATE_DESC pso{};
+  pso.pRootSignature = rootSignature_.Get();
+  pso.InputLayout = {layout, _countof(layout)};
+  pso.VS = {vs->GetBufferPointer(), vs->GetBufferSize()};
+  pso.PS = {ps->GetBufferPointer(), ps->GetBufferSize()};
+  pso.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+  pso.NumRenderTargets = 1;
+  pso.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+  pso.SampleDesc.Count = 1;
+  pso.SampleMask = UINT_MAX;
+
+  pso.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+  pso.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+  pso.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
+  auto &rt = pso.BlendState.RenderTarget[0];
+  rt.BlendEnable = TRUE;
+  rt.SrcBlend = D3D12_BLEND_SRC_ALPHA;
+  rt.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+  rt.BlendOp = D3D12_BLEND_OP_ADD;
+  rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+  rt.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
+  rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
+  rt.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+  pso.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+
+  pso.DepthStencilState.DepthEnable = FALSE;
+  pso.DepthStencilState.StencilEnable = FALSE;
+
+  HRESULT hr =
+      device->CreateGraphicsPipelineState(&pso, IID_PPV_ARGS(&pipelineState_));
+  if (FAILED(hr)) {
+    LOG_ERROR("SpriteRenderer: CreateGraphicsPipelineState failed hr=" +
+              std::to_string((uint32_t)hr));
+    assert(false);
+  }
 }
 
-// 画面幅/高さ w,h と スプライト座標 x,y,width,height から WVPを作る
-void SpriteRenderer::MakeOrthoWVP_(
-	float screenW, float screenH,
-	float x, float y, float width, float height,
-	float out[4][4]) {
+void SpriteRenderer::CreateGeometry() {
+  LOG_INFO("SpriteRenderer: CreateGeometry");
 
-	// オルソ射影 (画面座標 0〜w,0〜h -> NDC)
-	float l = 0.0f;
-	float r = screenW;
-	float t = 0.0f;
-	float b = screenH;
-	float n = 0.0f;
-	float f = 1.0f;
+  ID3D12Device *device = dx_->GetDevice();
 
-	float mProj[4][4]{};
-	MakeIdentity4x4(mProj);
-	mProj[0][0] = 2.0f / (r - l);
-	mProj[1][1] = -2.0f / (b - t);
-	mProj[2][2] = 1.0f / (f - n);
-	mProj[3][0] = -(r + l) / (r - l);
-	mProj[3][1] = (b + t) / (b - t);
-	mProj[3][2] = -n / (f - n);
+  struct Vertex {
+    float position[3];
+    float uv[2];
+  };
 
-	// スプライトのモデル行列 (画面座標系)
-	float mWorld[4][4]{};
-	MakeIdentity4x4(mWorld);
-	mWorld[0][0] = width;
-	mWorld[1][1] = height;
-	mWorld[3][0] = x + width * 0.5f;
-	mWorld[3][1] = y + height * 0.5f;
-	mWorld[3][2] = 0.0f;
+  Vertex vertices[] = {
+      {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f}},
+      {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f}},
+      {{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f}},
+      {{0.5f, 0.5f, 0.0f}, {1.0f, 0.0f}},
+  };
 
-	// out = world * proj
-	float tmp[4][4]{};
-	for (int i = 0; i < 4; ++i) {
-		for (int j = 0; j < 4; ++j) {
-			tmp[i][j] =
-				mWorld[i][0] * mProj[0][j] +
-				mWorld[i][1] * mProj[1][j] +
-				mWorld[i][2] * mProj[2][j] +
-				mWorld[i][3] * mProj[3][j];
-		}
-	}
-	std::memcpy(out, tmp, sizeof(tmp));
+  uint32_t indices[] = {0, 1, 2, 1, 3, 2};
+
+  auto heap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+  auto vdesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(vertices));
+  HRESULT hr = device->CreateCommittedResource(
+      &heap, D3D12_HEAP_FLAG_NONE, &vdesc, D3D12_RESOURCE_STATE_GENERIC_READ,
+      nullptr, IID_PPV_ARGS(&vertexBuffer_));
+  if (FAILED(hr)) {
+    assert(false);
+  }
+
+  void *mapped = nullptr;
+  vertexBuffer_->Map(0, nullptr, &mapped);
+  std::memcpy(mapped, vertices, sizeof(vertices));
+  vertexBuffer_->Unmap(0, nullptr);
+
+  vbView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
+  vbView_.SizeInBytes = sizeof(vertices);
+  vbView_.StrideInBytes = sizeof(Vertex);
+
+  auto idesc = CD3DX12_RESOURCE_DESC::Buffer(sizeof(indices));
+  hr = device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &idesc,
+                                       D3D12_RESOURCE_STATE_GENERIC_READ,
+                                       nullptr, IID_PPV_ARGS(&indexBuffer_));
+  if (FAILED(hr)) {
+    assert(false);
+  }
+
+  indexBuffer_->Map(0, nullptr, &mapped);
+  std::memcpy(mapped, indices, sizeof(indices));
+  indexBuffer_->Unmap(0, nullptr);
+
+  ibView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
+  ibView_.SizeInBytes = sizeof(indices);
+  ibView_.Format = DXGI_FORMAT_R32_UINT;
 }
 
-void SpriteRenderer::DrawSprite(
-	uint32_t textureId,
-	float x, float y,
-	float width, float height,
-	float u0, float v0,
-	float uSize, float vSize,
-	const float color[4]) {
+void SpriteRenderer::CreateConstantBuffer() {
+  LOG_INFO("SpriteRenderer: CreateConstantBuffer");
 
-	ID3D12GraphicsCommandList *cmd = dx_->GetCommandList();
+  ID3D12Device *device = dx_->GetDevice();
 
-	const auto &tex = TextureManager::GetInstance()->GetTexture(textureId);
+  // 1フレームに描く最大数（足りなければ増やす）
+  constexpr uint32_t kMaxSpritesPerFrame = 1024;
 
-	// CB 更新
-	float screenW = static_cast<float>(1280);
-	float screenH = static_cast<float>(720);
-	MakeOrthoWVP_(screenW, screenH, x, y, width, height, cbData_->mWVP);
+  cbStride_ = DirectX12Util::Align256((uint32_t)sizeof(SpriteCB));
+  cbCapacity_ = cbStride_ * kMaxSpritesPerFrame;
 
-	cbData_->color[0] = color[0];
-	cbData_->color[1] = color[1];
-	cbData_->color[2] = color[2];
-	cbData_->color[3] = color[3];
+  auto heap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+  auto desc = CD3DX12_RESOURCE_DESC::Buffer(cbCapacity_);
 
-	cbData_->uvRect[0] = u0;
-	cbData_->uvRect[1] = v0;
-	cbData_->uvRect[2] = uSize;
-	cbData_->uvRect[3] = vSize;
+  HRESULT hr = device->CreateCommittedResource(
+      &heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_GENERIC_READ,
+      nullptr, IID_PPV_ARGS(&constantBuffer_));
+  if (FAILED(hr)) {
+    LOG_ERROR("SpriteRenderer: CreateConstantBuffer failed");
+    assert(false);
+  }
 
-	cmd->SetPipelineState(pipelineState_.Get());
-	cmd->SetGraphicsRootSignature(rootSignature_.Get());
+  void *p = nullptr;
+  hr = constantBuffer_->Map(0, nullptr, &p);
+  if (FAILED(hr) || !p) {
+    LOG_ERROR("SpriteRenderer: ConstantBuffer Map failed");
+    assert(false);
+  }
 
-	ID3D12DescriptorHeap *heaps[] = {dx_->GetSrvHeap()};
-	cmd->SetDescriptorHeaps(1, heaps);
-
-	cmd->IASetVertexBuffers(0, 1, &vbView_);
-	cmd->IASetIndexBuffer(&ibView_);
-	cmd->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	cmd->SetGraphicsRootConstantBufferView(0, constantBuffer_->GetGPUVirtualAddress());
-	cmd->SetGraphicsRootDescriptorTable(1, tex.gpuHandle);
-
-	cmd->DrawIndexedInstanced(6, 1, 0, 0, 0);
+  mappedCB_ = reinterpret_cast<uint8_t *>(p);
+  cbCursor_ = 0;
 }

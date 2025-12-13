@@ -1,11 +1,13 @@
 #include "ConsoleLogger.h"
-#include "LogFormatter.h"
-#include "Time/TimeUtil.h"
-#include <iostream>
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
+#include <iostream>
+
+#include "LogFormatter.h"
+#include "Time/TimeUtil.h"
 
 void ConsoleLogger::Write(LogLevel level, const std::string &message,
                           const char *file, int line) {

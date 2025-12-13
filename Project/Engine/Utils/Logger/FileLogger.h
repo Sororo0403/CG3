@@ -1,7 +1,9 @@
 #pragma once
-#include "ILogger.h"
+
 #include <fstream>
 #include <string>
+
+#include "ILogger.h"
 
 class FileLogger : public ILogger {
 public:

@@ -1,4 +1,5 @@
 #pragma once
+
 #include "ILogger.h"
 
 class ConsoleLogger : public ILogger {

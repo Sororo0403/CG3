@@ -1,15 +1,26 @@
 #define NOMINMAX
+
 #include "DirectXCommon.h"
-#include "Logger/Logger.h"
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_dx12.h"
-#include "imgui/imgui_impl_win32.h"
+
 #include <cassert>
+
 #include <d3d12.h>
 #include <directx/d3dx12.h>
 #include <dxgi1_6.h>
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_dx12.h"
+#include "imgui/imgui_impl_win32.h"
+
+#include "Logger/Logger.h"
+
 using Microsoft::WRL::ComPtr;
+
+DirectXCommon::DirectXCommon(HWND hwnd, int width, int height) {
+  hwnd_ = hwnd;
+  width_ = width;
+  height_ = height;
+}
 
 DirectXCommon::~DirectXCommon() {
   LOG_INFO("DirectXCommon destructor begin");
@@ -19,7 +30,6 @@ DirectXCommon::~DirectXCommon() {
   ImGui_ImplDX12_Shutdown();
   ImGui_ImplWin32_Shutdown();
   ImGui::DestroyContext();
-  LOG_DEBUG("ImGui shut down");
 
   if (fenceEvent_) {
     CloseHandle(fenceEvent_);
@@ -29,12 +39,8 @@ DirectXCommon::~DirectXCommon() {
   LOG_INFO("DirectXCommon destructor end");
 }
 
-void DirectXCommon::Initialize(HWND hwnd, int width, int height) {
+void DirectXCommon::Initialize() {
   LOG_INFO("DirectXCommon::Initialize start");
-
-  hwnd_ = hwnd;
-  width_ = width;
-  height_ = height;
 
   InitializeDevice();
   InitializeCommand();
@@ -54,7 +60,6 @@ void DirectXCommon::Initialize(HWND hwnd, int width, int height) {
 
 void DirectXCommon::PreDraw(const float clearColor[4]) {
   currentBackBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
-  LOG_DEBUG("PreDraw start");
 
   WaitForFrame(currentBackBufferIndex_);
 
@@ -62,7 +67,6 @@ void DirectXCommon::PreDraw(const float clearColor[4]) {
   allocator->Reset();
   commandList_->Reset(allocator, nullptr);
 
-  // Present -> RT
   CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
       backBuffers_[currentBackBufferIndex_].Get(), D3D12_RESOURCE_STATE_PRESENT,
       D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -100,22 +104,39 @@ void DirectXCommon::PostDraw() {
 
   ID3D12CommandList *lists[] = {commandList_.Get()};
   commandQueue_->ExecuteCommandLists(1, lists);
-  LOG_DEBUG("Command list executed");
 
   uint64_t fv = ++nextFenceValue_;
-  commandQueue_->Signal(fence_.Get(), fv);
+  HRESULT hr = commandQueue_->Signal(fence_.Get(), fv);
+  if (FAILED(hr)) {
+    LOG_ERROR("PostDraw: commandQueue->Signal failed");
+    assert(false);
+  }
   fenceValues_[currentBackBufferIndex_] = fv;
 
-  swapChain_->Present(1, 0);
-  LOG_DEBUG("Present called");
+  hr = swapChain_->Present(1, 0);
+  if (FAILED(hr)) {
+    LOG_ERROR("PostDraw: swapChain->Present failed");
+    assert(false);
+  }
 }
 
 void DirectXCommon::WaitForGpu() {
+  if (!commandQueue_ || !fence_)
+    return;
+
   uint64_t fenceToWait = ++nextFenceValue_;
-  commandQueue_->Signal(fence_.Get(), fenceToWait);
+  HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceToWait);
+  if (FAILED(hr)) {
+    LOG_ERROR("WaitForGpu: commandQueue->Signal failed");
+    assert(false);
+  }
 
   if (fence_->GetCompletedValue() < fenceToWait) {
-    fence_->SetEventOnCompletion(fenceToWait, fenceEvent_);
+    hr = fence_->SetEventOnCompletion(fenceToWait, fenceEvent_);
+    if (FAILED(hr)) {
+      LOG_ERROR("WaitForGpu: SetEventOnCompletion failed");
+      assert(false);
+    }
     WaitForSingleObject(fenceEvent_, INFINITE);
   }
 }
@@ -124,7 +145,10 @@ void DirectXCommon::InitializeDevice() {
   LOG_INFO("Creating DXGI Factory");
 
   HRESULT hr = CreateDXGIFactory(IID_PPV_ARGS(&dxgiFactory_));
-  assert(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateDXGIFactory failed");
+    assert(false);
+  }
 
   LOG_INFO("Selecting high performance GPU");
 
@@ -132,6 +156,7 @@ void DirectXCommon::InitializeDevice() {
                        i, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
                        IID_PPV_ARGS(&adapter_)) != DXGI_ERROR_NOT_FOUND;
        ++i) {
+
     DXGI_ADAPTER_DESC3 desc{};
     adapter_->GetDesc3(&desc);
 
@@ -142,21 +167,31 @@ void DirectXCommon::InitializeDevice() {
     adapter_.Reset();
   }
 
+  if (!adapter_) {
+    LOG_ERROR("No suitable GPU adapter found");
+    assert(false);
+  }
+
   static D3D_FEATURE_LEVEL levels[] = {
       D3D_FEATURE_LEVEL_12_2,
       D3D_FEATURE_LEVEL_12_1,
       D3D_FEATURE_LEVEL_12_0,
   };
 
+  bool created = false;
   for (auto lv : levels) {
     hr = D3D12CreateDevice(adapter_.Get(), lv, IID_PPV_ARGS(&device_));
     if (SUCCEEDED(hr)) {
       LOG_INFO("D3D12 device created");
+      created = true;
       break;
     }
   }
 
-  assert(device_);
+  if (!created) {
+    LOG_ERROR("D3D12CreateDevice failed");
+    assert(false);
+  }
 }
 
 void DirectXCommon::InitializeCommand() {
@@ -166,18 +201,27 @@ void DirectXCommon::InitializeCommand() {
   qdesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
   hr = device_->CreateCommandQueue(&qdesc, IID_PPV_ARGS(&commandQueue_));
-  assert(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateCommandQueue failed");
+    assert(false);
+  }
 
   for (UINT i = 0; i < kBufferCount; i++) {
     hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
                                          IID_PPV_ARGS(&commandAllocators_[i]));
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+      LOG_ERROR("CreateCommandAllocator failed index=" + std::to_string(i));
+      assert(false);
+    }
   }
 
   hr = device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT,
                                   commandAllocators_[0].Get(), nullptr,
                                   IID_PPV_ARGS(&commandList_));
-  assert(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateCommandList failed");
+    assert(false);
+  }
 
   commandList_->Close();
 }
@@ -193,12 +237,21 @@ void DirectXCommon::InitializeSwapChain() {
   ComPtr<IDXGISwapChain1> sc1;
   HRESULT hr = dxgiFactory_->CreateSwapChainForHwnd(
       commandQueue_.Get(), hwnd_, &desc, nullptr, nullptr, sc1.GetAddressOf());
-  assert(SUCCEEDED(hr));
+
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateSwapChainForHwnd failed");
+    assert(false);
+  }
 
   hr = sc1.As(&swapChain_);
-  assert(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    LOG_ERROR("SwapChain1::As failed");
+    assert(false);
+  }
 
   dxgiFactory_->MakeWindowAssociation(hwnd_, DXGI_MWA_NO_ALT_ENTER);
+
+  LOG_INFO("SwapChain created");
 }
 
 void DirectXCommon::InitializeDescriptorHeaps() {
@@ -215,13 +268,20 @@ void DirectXCommon::InitializeDescriptorHeaps() {
       CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_DSV, 1, false));
   srvHeap_.Attach(
       CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, 128, true));
+
+  LOG_INFO("Descriptor heaps created");
 }
 
 void DirectXCommon::InitializeBackBuffers() {
   for (UINT i = 0; i < kBufferCount; i++) {
     HRESULT hr = swapChain_->GetBuffer(i, IID_PPV_ARGS(&backBuffers_[i]));
-    assert(SUCCEEDED(hr));
+    if (FAILED(hr)) {
+      LOG_ERROR("GetBuffer failed index=" + std::to_string(i));
+      assert(false);
+    }
   }
+
+  LOG_INFO("Back buffers acquired");
 }
 
 void DirectXCommon::InitializeDepthBuffer() {
@@ -236,7 +296,13 @@ void DirectXCommon::InitializeDepthBuffer() {
   HRESULT hr = device_->CreateCommittedResource(
       &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
       D3D12_RESOURCE_STATE_DEPTH_WRITE, &clear, IID_PPV_ARGS(&depthStencil_));
-  assert(SUCCEEDED(hr));
+
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateCommittedResource for depth buffer failed");
+    assert(false);
+  }
+
+  LOG_INFO("Depth buffer created");
 }
 
 void DirectXCommon::InitializeRenderTargetViews() {
@@ -253,6 +319,8 @@ void DirectXCommon::InitializeRenderTargetViews() {
     device_->CreateRenderTargetView(backBuffers_[i].Get(), &rtvDesc,
                                     rtvHandles_[i]);
   }
+
+  LOG_INFO("RTVs created");
 }
 
 void DirectXCommon::InitializeDepthStencilView() {
@@ -263,19 +331,30 @@ void DirectXCommon::InitializeDepthStencilView() {
   device_->CreateDepthStencilView(
       depthStencil_.Get(), &desc,
       dsvHeap_->GetCPUDescriptorHandleForHeapStart());
+
+  LOG_INFO("DSV created");
 }
 
 void DirectXCommon::InitializeFence() {
   HRESULT hr =
       device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
-  assert(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateFence failed");
+    assert(false);
+  }
 
   fenceEvent_ = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-  assert(fenceEvent_ != nullptr);
+  if (!fenceEvent_) {
+    LOG_ERROR("CreateEvent for fenceEvent_ failed");
+    assert(false);
+  }
 
   nextFenceValue_ = 0;
-  for (auto &v : fenceValues_)
+  for (auto &v : fenceValues_) {
     v = 0;
+  }
+
+  LOG_INFO("Fence initialized");
 }
 
 void DirectXCommon::InitializeViewport() {
@@ -283,8 +362,8 @@ void DirectXCommon::InitializeViewport() {
   viewport_.TopLeftY = 0;
   viewport_.Width = static_cast<float>(width_);
   viewport_.Height = static_cast<float>(height_);
-  viewport_.MinDepth = 0;
-  viewport_.MaxDepth = 1;
+  viewport_.MinDepth = 0.0f;
+  viewport_.MaxDepth = 1.0f;
 }
 
 void DirectXCommon::InitializeScissorRect() {
@@ -304,6 +383,8 @@ void DirectXCommon::InitializeImGui() {
                       DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, srvHeap_.Get(),
                       srvHeap_->GetCPUDescriptorHandleForHeapStart(),
                       srvHeap_->GetGPUDescriptorHandleForHeapStart());
+
+  LOG_INFO("ImGui initialized");
 }
 
 ID3D12DescriptorHeap *
@@ -317,7 +398,10 @@ DirectXCommon::CreateDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
 
   ID3D12DescriptorHeap *heap = nullptr;
   HRESULT hr = device_->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&heap));
-  assert(SUCCEEDED(hr));
+  if (FAILED(hr)) {
+    LOG_ERROR("CreateDescriptorHeap failed type=" + std::to_string((int)type));
+    assert(false);
+  }
 
   return heap;
 }
@@ -343,6 +427,7 @@ void DirectXCommon::WaitForFrame(UINT frameIndex) {
 
   if (fenceValue == 0)
     return;
+
   if (fence_->GetCompletedValue() >= fenceValue)
     return;
 

@@ -1,9 +1,10 @@
 #pragma once
-#include "ILogger.h"
-#include "LogLevel.h"
-#include <format>
+
 #include <memory>
 #include <vector>
+
+#include "ILogger.h"
+#include "LogLevel.h"
 
 class LoggerManager {
 public:

@@ -1,11 +1,21 @@
 #pragma once
+
 #include <cstdint>
+
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <wrl.h>
 
 class DirectXCommon {
 public:
+  /// <summary>
+  /// コンストラクタ
+  /// </summary>
+  /// <param name="hwnd">ウィンドウハンドル</param>
+  /// <param name="width">クライアント領域の横幅</param>
+  /// <param name="height">クライアント領域の縦幅</param>
+  DirectXCommon(HWND hwnd, int width, int height);
+
   /// <summary>
   /// デストラクタ
   /// </summary>
@@ -14,10 +24,7 @@ public:
   /// <summary>
   /// 初期化処理
   /// </summary>
-  /// <param name="hwnd">ウィンドウハンドル</param>
-  /// <param name="width">クライアント領域の横幅</param>
-  /// <param name="height">クライアント領域の縦幅</param>
-  void Initialize(HWND hwnd, int width, int height);
+  void Initialize();
 
   /// <summary>
   /// 描画前処理
@@ -44,6 +51,14 @@ public:
   ID3D12DescriptorHeap *GetSrvHeap() const { return srvHeap_.Get(); }
   UINT GetSrvDescriptorSize() const { return descriptorSizeSRV_; }
   UINT GetBackBufferIndex() const { return currentBackBufferIndex_; }
+  D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentBackBufferRTV() const {
+    return rtvHandles_[currentBackBufferIndex_];
+  }
+  D3D12_CPU_DESCRIPTOR_HANDLE GetDSV() const {
+    return dsvHeap_->GetCPUDescriptorHandleForHeapStart();
+  }
+  const D3D12_VIEWPORT &GetViewport() const { return viewport_; }
+  const D3D12_RECT &GetScissorRect() const { return scissorRect_; }
   D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(ID3D12DescriptorHeap *heap,
                                            UINT index) const;
   D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(ID3D12DescriptorHeap *heap,

@@ -1,1 +1,23 @@
 BasedOnStyle: LLVM
+
+# --------------------------------------
+# Visual Studio XML ドキュコメント保護設定
+# --------------------------------------
+
+# コメント整形をしない
+ReflowComments: false
+
+# /// コメントを整形対象から除外
+CommentPragmas: '^///'
+
+# 末尾コメントの整列禁止
+AlignTrailingComments: false
+
+# 空行を消さない
+KeepEmptyLinesAtTheStartOfBlocks: true
+
+# 末尾コメントの前のスペース
+SpacesBeforeTrailingComments: 1
+
+# include 順序は手動管理
+SortIncludes: false

@@ -156,7 +156,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Core\DirectX\DirectXCommon.cpp">
+    <ClCompile Include="Engine\Graphics\DirectX\DirectXCommon.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
@@ -195,12 +195,15 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
+    <ClCompile Include="Engine\Graphics\Sprite\SpriteManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Graphics\Sprite\Sprite.h" />
     <ClInclude Include="Engine\Utils\CrashHandler\CrashHandler.h" />
+    <ClInclude Include="Engine\Utils\DirectX12\DirectX12Util.h" />
     <ClInclude Include="Engine\Utils\Logger\ConsoleLogger.h" />
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h" />
-    <ClInclude Include="Engine\Core\DirectX\DirectXCommon.h" />
+    <ClInclude Include="Engine\Graphics\DirectX\DirectXCommon.h" />
     <ClInclude Include="Engine\Input\Input.h" />
     <ClInclude Include="Engine\Core\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Utils\Logger\FileLogger.h" />
@@ -222,6 +225,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Engine\Graphics\Sprite\SpriteRenderer.h" />
     <ClInclude Include="Engine\Utils\Time\TimeUtil.h" />
     <ClInclude Include="Engine\Utils\Logger\LoggerManager.h" />
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

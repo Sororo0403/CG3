@@ -1,70 +1,79 @@
 #pragma once
-#include "DirectXTex/DirectXTex.h"
-#include "Texture.h"
 #include <cstdint>
-#include <d3d12.h>
 #include <string>
 #include <unordered_map>
+
+#include <d3d12.h>
 #include <wrl.h>
+
+#include "DirectXTex/DirectXTex.h"
+#include "Texture.h"
 
 class DirectXCommon;
 
+/// <summary>
+/// DirectXTex と DirectX 12 を用いてテクスチャを管理するクラス。
+/// シングルトンを使用せず、DirectXCommon を依存注入（DI）によって受け取る設計。
+/// </summary>
 class TextureManager {
 public:
   /// <summary>
-  /// 唯一のインスタンス取得
+  /// コンストラクタ。
+  /// 使用する DirectXCommon を外部から注入する。
   /// </summary>
-  static TextureManager *GetInstance();
+  /// <param name="dx">DirectXCommon のインスタンス</param>
+  TextureManager(DirectXCommon *dx);
 
   /// <summary>
-  /// デストラクタ
+  /// デストラクタ。
+  /// 管理しているテクスチャリソースを解放する。
   /// </summary>
   ~TextureManager();
 
   /// <summary>
-  /// 初期化処理
+  /// 初期化処理。
+  /// テクスチャ管理用テーブルのリセットなどを行う。
   /// </summary>
-  /// <param name="dx">DirectXCommonのポインタ</param>
-  void Initialize(DirectXCommon *dx);
+  void Initialize();
 
   /// <summary>
-  /// テクスチャをロードして ID を返す（同一パスは再利用）
+  /// テクスチャを読み込み、専用のテクスチャ ID を返す。
+  /// 同じパスの画像は再利用され、重複読み込みは行われない。
   /// </summary>
+  /// <param name="filePath">画像ファイルのパス（UTF-8 文字列）</param>
+  /// <returns>割り当てられたテクスチャ ID</returns>
   uint32_t LoadTexture(const std::string &filePath);
 
   /// <summary>
-  /// テクスチャ情報取得
+  /// 登録済みテクスチャ情報を取得する。
   /// </summary>
+  /// <param name="id">テクスチャ ID</param>
+  /// <returns>テクスチャ情報（GPU ハンドルとリソース）</returns>
   const Texture &GetTexture(uint32_t id) const;
 
 private:
-  // シングルトン
-  TextureManager() = default;
-  TextureManager(const TextureManager &) = delete;
-  TextureManager &operator=(const TextureManager &) = delete;
-
   /// <summary>
-  /// DirectXTex を用いてミップマップ付きの ScratchImage を生成
+  /// DirectXTex により画像ファイルを読み込み、ミップマップ生成を行う。
   /// </summary>
-  /// <param name="filePath">読み込む画像ファイルのパス</param>
-  /// <returns>ミップマップを含む ScratchImage オブジェクト</returns>
+  /// <param name="filePath">画像ファイルのパス</param>
+  /// <returns>ミップレベルを含む ScratchImage</returns>
   DirectX::ScratchImage LoadTextureFromFile(const std::string &filePath);
 
   /// <summary>
-  /// GPU 上にテクスチャ用の ID3D12Resource を生成
+  /// DirectX 12 上にテクスチャリソースを確保する。
   /// </summary>
   /// <param name="device">D3D12 デバイス</param>
-  /// <param name="metadata">DirectXTex が生成したテクスチャのメタ情報</param>
+  /// <param name="metadata">読み込んだ画像のメタデータ</param>
   /// <returns>作成されたテクスチャリソース</returns>
   Microsoft::WRL::ComPtr<ID3D12Resource>
   CreateTextureResource(ID3D12Device *device,
                         const DirectX::TexMetadata &metadata);
 
   /// <summary>
-  /// すべてのミップレベルのピクセルデータを書き込みます
+  /// テクスチャの全ミップレベルに対して GPU へデータをアップロードする。
   /// </summary>
-  /// <param name="texture">書き込み対象の ID3D12Resource（テクスチャ）</param>
-  /// <param name="mipImages">各ミップレベルを含む ScratchImage</param>
+  /// <param name="texture">アップロード先の D3D12 リソース</param>
+  /// <param name="mipImages">ミップレベルを含む ScratchImage</param>
   void UploadTextureData(ID3D12Resource *texture,
                          const DirectX::ScratchImage &mipImages);
 
