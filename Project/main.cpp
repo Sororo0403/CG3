@@ -17,6 +17,7 @@
 #include "Texture/TextureDropQueue.h"
 #include "Texture/TextureEditor.h"
 
+#include "PSO/PSOManager.h"
 #include "Sprite/SpriteRenderer.h"
 #include "Sprite/SpriteManager.h"
 #include "Sprite/SpriteEditor.h"
@@ -94,10 +95,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
         textureManager.get(), textureDropQueue.get());
 
     // ==================================================
+    // PSOManager
+    // ==================================================
+    auto psoManager =
+        std::make_unique<PSOManager>(dx->GetDevice(), shaderCompiler.get());
+    psoManager->Initialize();
+
+    // ==================================================
     // SpriteRenderer
     // ==================================================
     auto spriteRenderer = std::make_unique<SpriteRenderer>(
-        dx.get(), shaderCompiler.get(), textureManager.get());
+        dx.get(), shaderCompiler.get(), textureManager.get(), psoManager.get());
     spriteRenderer->Initialize();
 
     // 正射影
@@ -108,7 +116,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     // ==================================================
     // SpriteManager
     // ==================================================
-    auto spriteManager = std::make_unique<SpriteManager>(spriteRenderer.get());
+    auto spriteManager =
+        std::make_unique<SpriteManager>(spriteRenderer.get());
 
     // ==================================================
     // SpriteEditor (ImGui)

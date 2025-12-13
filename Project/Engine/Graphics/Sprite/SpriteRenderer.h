@@ -10,6 +10,7 @@ struct Sprite;
 class DirectXCommon;
 class TextureManager;
 class ShaderCompiler;
+class PSOManager;
 
 /// <summary>
 /// 2D スプライト描画専用レンダラー。
@@ -19,13 +20,10 @@ class SpriteRenderer {
   public:
     /// <summary>
     /// SpriteRenderer を生成する。
-    /// 描画に必要な DirectX / Shader / Texture 管理を受け取る。
+    /// 描画に必要な DirectX / Shader / Texture / PSO 管理を受け取る。
     /// </summary>
-    /// <param name="dx">DirectX 共通管理クラス</param>
-    /// <param name="shaderCompiler">シェーダコンパイラ</param>
-    /// <param name="textureManager">テクスチャ管理クラス</param>
     SpriteRenderer(DirectXCommon *dx, ShaderCompiler *shaderCompiler,
-                   TextureManager *textureManager);
+                   TextureManager *textureManager, PSOManager *psoManager);
 
     /// <summary>
     /// 初期化処理
@@ -58,8 +56,6 @@ class SpriteRenderer {
 
   private:
     // Create
-    void CreateRootSignature();
-    void CreatePipelineState();
     void CreateGeometry();
     void CreateConstantBuffer();
 
@@ -70,9 +66,7 @@ class SpriteRenderer {
     DirectXCommon *dx_ = nullptr;
     ShaderCompiler *shaderCompiler_ = nullptr;
     TextureManager *textureManager_ = nullptr;
-
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_;
+    PSOManager *psoManager_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer_;
     Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer_;

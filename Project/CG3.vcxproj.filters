@@ -121,6 +121,7 @@
     <ClCompile Include="Engine\Graphics\Texture\TextureDropQueue.cpp">
       <Filter>Engine\Graphics\Texture</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Graphics\PSO\PSOManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -237,6 +238,7 @@
     <ClInclude Include="Engine\Graphics\Texture\TextureDropQueue.h">
       <Filter>Engine\Graphics\Texture</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Graphics\PSO\PSOManager.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">
