@@ -5,6 +5,7 @@
 
 #include "Logger/Logger.h"
 #include "Texture/TextureDropQueue.h"
+#include "String/StringUtil.h"
 
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg,
                                               WPARAM wParam, LPARAM lParam);
@@ -114,7 +115,7 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
             DragQueryFile(hDrop, i, pathW, MAX_PATH);
 
             std::wstring ws(pathW);
-            std::string path(ws.begin(), ws.end());
+            std::string path = StringUtil::UTF16ToUTF8(ws);
 
             app->textureDropQueue_->Push(path);
         }
