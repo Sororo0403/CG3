@@ -57,8 +57,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     constexpr LONG kClientHeight = 720;
     const std::wstring kWindowTitle = L"GE3";
 
-    auto winApp = std::make_unique<WinApp>(kClientWidth, kClientHeight,
-                                           kWindowTitle, textureDropQueue.get());
+    auto winApp = std::make_unique<WinApp>(
+        kClientWidth, kClientHeight, kWindowTitle, textureDropQueue.get());
     winApp->Initialize();
 
     // ==================================================
@@ -113,7 +113,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     // ==================================================
     // SpriteEditor (ImGui)
     // ==================================================
-    auto spriteEditor = std::make_unique<SpriteEditor>(spriteManager.get());
+    auto spriteEditor = std::make_unique<SpriteEditor>(spriteManager.get(),
+                                                       textureEditor.get());
     spriteEditor->Initialize();
 
     // ==================================================
@@ -145,7 +146,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
         textureEditor->Update();
 
         dx->PreDraw(kClearColor);
-   
+
         // ===============================
         // Texture Editor
         // ===============================

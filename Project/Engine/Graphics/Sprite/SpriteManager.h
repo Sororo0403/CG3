@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <cstdint>
+#include "nlohmann/json.hpp"
 
 #include "Sprite.h"
 #include "SpriteRenderState.h"
@@ -36,6 +37,11 @@ class SpriteManager {
     void Destroy(uint32_t id);
 
     /// <summary>
+    /// SPrite を全削除する。
+    /// </summary>
+    void Clear();
+
+    /// <summary>
     /// フレーム開始時に呼ぶ。
     /// </summary>
     void Begin();
@@ -44,6 +50,10 @@ class SpriteManager {
     /// 登録された Sprite をレイヤ順に一括描画する。
     /// </summary>
     void DrawAll();
+
+    // json
+    bool SaveToJson(const std::string &path) const;
+    bool LoadFromJson(const std::string &path);
 
     // Setter
     void SetVisible(uint32_t id, bool visible);
@@ -59,6 +69,11 @@ class SpriteManager {
     // Editor
     template <class Fn> void ForEach(Fn fn) {
         for (auto &[id, entry] : sprites_) {
+            fn(id, entry.sprite, entry.render);
+        }
+    }
+    template <class Fn> void ForEach(Fn fn) const {
+        for (const auto &[id, entry] : sprites_) {
             fn(id, entry.sprite, entry.render);
         }
     }

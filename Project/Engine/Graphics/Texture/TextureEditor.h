@@ -1,7 +1,9 @@
 #pragma once
+
 #include <cstdint>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 class TextureManager;
 class TextureDropQueue;
@@ -16,6 +18,12 @@ class TextureDropQueue;
 /// </summary>
 class TextureEditor {
   public:
+    struct Entry {
+        std::string name;
+        uint32_t textureId;
+    };
+
+  public:
     TextureEditor(TextureManager *textureManager, TextureDropQueue *dropQueue);
 
     /// <summary>
@@ -28,9 +36,15 @@ class TextureEditor {
     /// </summary>
     void DrawImGui();
 
-    uint32_t Get(const std::string &name) const;
-    bool Exists(const std::string &name) const;
+    /// <summary>
+    /// 管理をクリア
+    /// </summary>
     void Clear();
+
+    // Getter
+    uint32_t GetTexture(const std::string &name) const;
+    bool IsExists(const std::string &name) const;
+    void GetEntries(std::vector<Entry> &out) const;
 
   private:
     uint32_t LoadInternal(const std::string &name, const std::string &path);
@@ -39,6 +53,5 @@ class TextureEditor {
     TextureManager *textureManager_ = nullptr;
     TextureDropQueue *dropQueue_ = nullptr;
 
-    // 論理名 → textureId
     std::unordered_map<std::string, uint32_t> nameToId_;
 };

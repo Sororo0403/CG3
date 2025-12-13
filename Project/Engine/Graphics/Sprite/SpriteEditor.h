@@ -3,6 +3,7 @@
 #include <cstdint>
 
 class SpriteManager;
+class TextureEditor;
 
 /// <summary>
 /// スプライト編集用エディタ。
@@ -13,9 +14,9 @@ class SpriteEditor {
   public:
     /// <summary>
     /// SpriteEditor を生成する。
-    /// 編集対象となる SpriteManager を外部から注入する。
+    /// 編集対象となる SpriteManager TextureEditor を外部から注入する。
     /// </summary>
-    SpriteEditor(SpriteManager *spriteManager);
+    SpriteEditor(SpriteManager *spriteManager, TextureEditor *textureEditor);
 
     /// <summary>
     /// 初期化処理。
@@ -31,6 +32,7 @@ class SpriteEditor {
 
   private:
     SpriteManager *spriteManager_ = nullptr;
+    TextureEditor *textureEditor_ = nullptr;
 
     uint32_t selectedId_ = 0;
 };

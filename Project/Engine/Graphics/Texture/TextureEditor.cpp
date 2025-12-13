@@ -93,7 +93,12 @@ void TextureEditor::DrawImGui() {
     ImGui::End();
 }
 
-uint32_t TextureEditor::Get(const std::string &name) const {
+
+void TextureEditor::Clear() {
+    nameToId_.clear();
+}
+
+uint32_t TextureEditor::GetTexture(const std::string &name) const {
     auto it = nameToId_.find(name);
     if (it == nameToId_.end()) {
         return 0;
@@ -101,10 +106,15 @@ uint32_t TextureEditor::Get(const std::string &name) const {
     return it->second;
 }
 
-bool TextureEditor::Exists(const std::string &name) const {
+bool TextureEditor::IsExists(const std::string &name) const {
     return nameToId_.contains(name);
 }
 
-void TextureEditor::Clear() {
-    nameToId_.clear();
+void TextureEditor::GetEntries(std::vector<Entry> &out) const {
+    out.clear();
+    out.reserve(nameToId_.size());
+
+    for (const auto &[name, id] : nameToId_) {
+        out.push_back(Entry{name, id});
+    }
 }

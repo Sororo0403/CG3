@@ -6,14 +6,19 @@
 #include "SpriteLayer.h"
 #include "SpriteLayerUtil.h"
 
+#include "Texture/TextureEditor.h"
+
 #include "imgui/imgui.h"
 
 #include <string>
 #include <cassert>
+#include <vector>
 
-SpriteEditor::SpriteEditor(SpriteManager *spriteManager)
-    : spriteManager_(spriteManager) {
+SpriteEditor::SpriteEditor(SpriteManager *spriteManager,
+                           TextureEditor *textureEditor)
+    : spriteManager_(spriteManager), textureEditor_(textureEditor) {
     assert(spriteManager_);
+    assert(textureEditor_);
 }
 
 void SpriteEditor::Initialize() {
@@ -36,6 +41,15 @@ void SpriteEditor::DrawImGui() {
     // Hierarchy
     // ==================================
     ImGui::TextUnformatted("Hierarchy");
+ 
+    if (ImGui::Button("Save")) {
+        spriteManager_->SaveToJson("sprites.json");
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load")) {
+        spriteManager_->LoadFromJson("sprites.json");
+    }
+
     ImGui::Separator();
 
     if (ImGui::Button("+ Create")) {
@@ -105,6 +119,40 @@ void SpriteEditor::DrawImGui() {
     ImGui::DragFloat2("Size", &sprite->size.x, 1.0f, 0.0f, 10000.0f);
     ImGui::ColorEdit4("Color", &sprite->color.x);
     ImGui::DragFloat4("UV Rect", &sprite->uvRect.x, 0.001f, 0.0f, 1.0f);
+
+    // Texture
+    ImGui::SeparatorText("Texture");
+
+    std::vector<TextureEditor::Entry> textures;
+    textureEditor_->GetEntries(textures);
+
+    if (textures.empty()) {
+        ImGui::TextDisabled("No textures available.");
+    } else {
+        // 現在の textureId を SpriteManager 経由で取得
+        uint32_t currentTexId = spriteManager_->GetTexture(selectedId_);
+
+        int currentIndex = 0;
+        for (size_t i = 0; i < textures.size(); ++i) {
+            if (textures[i].textureId == currentTexId) {
+                currentIndex = static_cast<int>(i);
+                break;
+            }
+        }
+
+        // Combo 用ラベル配列
+        std::vector<const char *> labels;
+        labels.reserve(textures.size());
+        for (auto &e : textures) {
+            labels.push_back(e.name.c_str());
+        }
+
+        if (ImGui::Combo("Texture", &currentIndex, labels.data(),
+                         static_cast<int>(labels.size()))) {
+            spriteManager_->SetTexture(selectedId_,
+                                       textures[currentIndex].textureId);
+        }
+    }
 
     // Delete
     ImGui::Separator();

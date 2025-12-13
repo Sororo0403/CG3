@@ -203,8 +203,14 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\Texture\TextureEditor.cpp" />
-    <ClCompile Include="Engine\Graphics\Texture\TextureDropQueue.cpp" />
+    <ClCompile Include="Engine\Graphics\Texture\TextureEditor.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
+      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Texture\TextureDropQueue.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
+      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Graphics\Sprite\Sprite.h" />

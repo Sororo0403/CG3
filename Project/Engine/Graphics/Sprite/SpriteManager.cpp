@@ -3,9 +3,13 @@
 #include <algorithm>
 #include <cassert>
 #include <vector>
+#include <fstream>
 
 #include "SpriteRenderer.h"
+#include "SpriteLayerUtil.h"
 #include "Logger/Logger.h"
+
+using json = nlohmann::json;
 
 SpriteManager::SpriteManager(SpriteRenderer *renderer) : renderer_(renderer) {
     assert(renderer_);
@@ -42,6 +46,11 @@ void SpriteManager::Destroy(uint32_t id) {
     sprites_.erase(it);
 }
 
+void SpriteManager::Clear() {
+    sprites_.clear();
+    nextId_ = 1;
+}
+
 void SpriteManager::Begin() {
     renderer_->Begin();
 }
@@ -70,6 +79,95 @@ void SpriteManager::DrawAll() {
         }
         renderer_->Draw(entry->sprite);
     }
+}
+
+bool SpriteManager::SaveToJson(const std::string &path) const {
+    json root;
+    root["sprites"] = json::array();
+
+    ForEach([&](uint32_t id, const Sprite &sprite,
+                const SpriteRenderState &render) {
+        json j;
+
+        j["id"] = id;
+        j["visible"] = render.visible;
+        j["layer"] = SpriteLayerUtil::SpriteLayerToString(render.layer);
+        j["textureId"] = sprite.textureId;
+
+        const auto &t = sprite.transform;
+        j["transform"] = {{"position", {t.position.x, t.position.y}},
+                          {"z", t.z},
+                          {"scale", {t.scale.x, t.scale.y}},
+                          {"rotation", t.rotation},
+                          {"pivot", {t.pivot.x, t.pivot.y}}};
+
+        j["sprite"] = {
+            {"size", {sprite.size.x, sprite.size.y}},
+            {"color",
+             {sprite.color.x, sprite.color.y, sprite.color.z, sprite.color.w}},
+            {"uvRect",
+             {sprite.uvRect.x, sprite.uvRect.y, sprite.uvRect.z,
+              sprite.uvRect.w}}};
+
+        root["sprites"].push_back(j);
+    });
+
+    std::ofstream ofs(path);
+    if (!ofs) {
+        return false;
+    }
+
+    ofs << root.dump(4); // インデント付き
+    return true;
+}
+
+bool SpriteManager::LoadFromJson(const std::string &path) {
+    std::ifstream ifs(path);
+    if (!ifs) {
+        return false;
+    }
+
+    json root;
+    ifs >> root;
+
+    Clear(); // 既存 Sprite を全削除（重要）
+
+    for (auto &j : root["sprites"]) {
+        uint32_t id = Create(1, SpriteLayerUtil::StringToSpriteLayer(
+                                    j["layer"].get<std::string>()));
+
+        SetVisible(id, j["visible"].get<bool>());
+        SetTexture(id, j["textureId"].get<uint32_t>());
+
+        Sprite *sprite = GetSprite(id);
+        auto &t = sprite->transform;
+
+        auto &jt = j["transform"];
+        t.position.x = jt["position"][0];
+        t.position.y = jt["position"][1];
+        t.z = jt["z"];
+        t.scale.x = jt["scale"][0];
+        t.scale.y = jt["scale"][1];
+        t.rotation = jt["rotation"];
+        t.pivot.x = jt["pivot"][0];
+        t.pivot.y = jt["pivot"][1];
+
+        auto &js = j["sprite"];
+        sprite->size.x = js["size"][0];
+        sprite->size.y = js["size"][1];
+
+        sprite->color.x = js["color"][0];
+        sprite->color.y = js["color"][1];
+        sprite->color.z = js["color"][2];
+        sprite->color.w = js["color"][3];
+
+        sprite->uvRect.x = js["uvRect"][0];
+        sprite->uvRect.y = js["uvRect"][1];
+        sprite->uvRect.z = js["uvRect"][2];
+        sprite->uvRect.w = js["uvRect"][3];
+    }
+
+    return true;
 }
 
 void SpriteManager::SetVisible(uint32_t id, bool visible) {
