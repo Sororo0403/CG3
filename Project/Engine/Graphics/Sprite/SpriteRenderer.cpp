@@ -5,7 +5,7 @@
 #include "Texture/TextureManager.h"
 #include "Sprite.h"
 #include "Logger/Logger.h"
-#include "DirectX12/DirectX12Util.h"
+#include "DirectX/DirectXUtil.h"
 
 #include <directx/d3dx12.h>
 #include <cassert>
@@ -49,34 +49,27 @@ void SpriteRenderer::Begin() {
 void SpriteRenderer::Draw(const Sprite &sprite) {
   auto *cmd = dx_->GetCommandList();
 
-  // -----------------------------
-  // 行列計算（Sprite は struct なので Renderer が計算）
-  // 仕様：sprite.x,y は「左上」、pivot は 0..1（左上=0,0 中心=0.5,0.5）
-  // -----------------------------
-  const float w = sprite.width;
-  const float h = sprite.height;
+  const auto &t = sprite.transform;
+
+  const float w = sprite.size.x;
+  const float h = sprite.size.y;
 
   // ピボットのワールド座標（左上基準）
-  const float pivotWorldX = sprite.x + w * sprite.pivotX;
-  const float pivotWorldY = sprite.y + h * sprite.pivotY;
+  const float pivotWorldX = t.position.x + w * t.pivot.x;
+  const float pivotWorldY = t.position.y + h * t.pivot.y;
 
-  // ジオメトリは中心原点(-0.5..0.5)なので、pivot を原点に合わせるためのオフセット
-  // pivot=0.5 -> 0, pivot=0 -> +0.5w, pivot=1 -> -0.5w
-  const float localOffsetX = (0.5f - sprite.pivotX) * w;
-  const float localOffsetY = (0.5f - sprite.pivotY) * h;
+  // pivot を原点に合わせるためのオフセット
+  const float localOffsetX = (0.5f - t.pivot.x) * w;
+  const float localOffsetY = (0.5f - t.pivot.y) * h;
 
-  XMMATRIX S = XMMatrixScaling(w, h, 1.0f);
+  XMMATRIX S = XMMatrixScaling(w * t.scale.x, h * t.scale.y, 1.0f);
   XMMATRIX Toffset = XMMatrixTranslation(localOffsetX, localOffsetY, 0.0f);
-  XMMATRIX R = XMMatrixRotationZ(sprite.rotation);
-  XMMATRIX T = XMMatrixTranslation(pivotWorldX, pivotWorldY, sprite.z);
+  XMMATRIX R = XMMatrixRotationZ(t.rotation);
+  XMMATRIX T = XMMatrixTranslation(pivotWorldX, pivotWorldY, t.z);
 
-  // Row-vector 前提の並び（一般的な DXMath の書き方）
   XMMATRIX world = S * Toffset * R * T;
   XMMATRIX mvp = world * projection_;
 
-  // -----------------------------
-  // CBリングに書き込む
-  // -----------------------------
   if (cbCursor_ + cbStride_ > cbCapacity_) {
     LOG_ERROR("SpriteRenderer: CB ring overflow. Increase max sprites.");
     return;
@@ -84,26 +77,22 @@ void SpriteRenderer::Draw(const Sprite &sprite) {
 
   SpriteCB cb{};
   XMStoreFloat4x4(&cb.mvp, XMMatrixTranspose(mvp));
-  cb.color = XMFLOAT4(sprite.color[0], sprite.color[1], sprite.color[2],
-                      sprite.color[3]);
-  cb.uvRect = XMFLOAT4(sprite.uvRect[0], sprite.uvRect[1], sprite.uvRect[2],
-                       sprite.uvRect[3]);
+
+  cb.color =
+      XMFLOAT4(sprite.color.x, sprite.color.y, sprite.color.z, sprite.color.w);
+  cb.uvRect = XMFLOAT4(sprite.uvRect.x, sprite.uvRect.y, sprite.uvRect.z,
+                       sprite.uvRect.w);
 
   std::memcpy(mappedCB_ + cbCursor_, &cb, sizeof(cb));
 
   D3D12_GPU_VIRTUAL_ADDRESS cbGpu =
       constantBuffer_->GetGPUVirtualAddress() + cbCursor_;
-
   cbCursor_ += cbStride_;
 
-  // -----------------------------
-  // テクスチャ + 描画
-  // -----------------------------
   const auto &tex = textureManager_->GetTexture(sprite.textureId);
 
   cmd->SetGraphicsRootConstantBufferView(0, cbGpu);
   cmd->SetGraphicsRootDescriptorTable(1, tex.gpuHandle);
-
   cmd->DrawIndexedInstanced(6, 1, 0, 0, 0);
 }
 
@@ -285,7 +274,7 @@ void SpriteRenderer::CreateConstantBuffer() {
   // 1フレームに描く最大数（足りなければ増やす）
   constexpr uint32_t kMaxSpritesPerFrame = 1024;
 
-  cbStride_ = DirectX12Util::Align256((uint32_t)sizeof(SpriteCB));
+  cbStride_ = DirectXUtil::Align256((uint32_t)sizeof(SpriteCB));
   cbCapacity_ = cbStride_ * kMaxSpritesPerFrame;
 
   auto heap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);

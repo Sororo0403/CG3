@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "Sprite.h"
+#include "SpriteRenderState.h"
 
 class SpriteRenderer;
 
@@ -12,19 +13,6 @@ class SpriteRenderer;
 /// Sprite はこのクラスが所有する。
 /// </summary>
 class SpriteManager {
-public:
-  /// <summary>
-  /// 描画レイヤ。
-  /// 値が小さいほど先に描画される。
-  /// </summary>
-  enum class Layer : uint32_t {
-    BACKGROUND = 0,
-    WORLD,
-    UI,
-    FADE,
-    DEBUG,
-  };
-
 public:
   /// <summary>
   /// コンストラクタ。
@@ -40,7 +28,7 @@ public:
   /// <summary>
   /// Sprite を生成して登録する。
   /// </summary>
-  uint32_t Create(uint32_t textureId, Layer layer);
+  uint32_t Create(uint32_t textureId, SpriteLayer layer);
 
   /// <summary>
   /// Sprite を削除する。
@@ -57,15 +45,26 @@ public:
   /// </summary>
   void DrawAll();
 
-  /// <summary>
-  /// Sprite を取得する（存在しなければ nullptr）。
-  /// </summary>
-  Sprite *Get(uint32_t id);
+  // Setter
+  void SetVisible(uint32_t id, bool visible);
+  void SetLayer(uint32_t id, SpriteLayer layer);
+
+  // Getter
+  Sprite *GetSprite(uint32_t id);
+  SpriteLayer GetLayer(uint32_t id) const;
+  bool IsVisible(uint32_t id) const;
+
+  // Editor
+  template <class Fn> void ForEach(Fn fn) {
+    for (auto &[id, entry] : sprites_) {
+      fn(id, entry.sprite, entry.render);
+    }
+  }
 
 private:
   struct Entry {
     Sprite sprite;
-    Layer layer = Layer::UI;
+    SpriteRenderState render;
   };
 
 private:

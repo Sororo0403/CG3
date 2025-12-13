@@ -6,29 +6,23 @@
 #include "CrashHandler/CrashHandler.h"
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
+
 #include "Logger/ConsoleLogger.h"
 #include "Logger/FileLogger.h"
 #include "Logger/ILogger.h"
 #include "Logger/LoggerManager.h"
+
 #include "Shader/ShaderCompiler.h"
+#include "Texture/TextureManager.h"
+
 #include "Sprite/SpriteRenderer.h"
 #include "Sprite/SpriteManager.h"
-#include "Texture/TextureManager.h"
+#include "Sprite/SpriteEditor.h"
+#include "Sprite/SpriteLayer.h"
+
 #include "WinApp/WinApp.h"
 
 using namespace DirectX;
-
-// ===============================
-// ImGui 用デバッグ変数
-// ===============================
-static float spritePos[2] = {100.0f, 100.0f};
-static float spriteSize[2] = {256.0f, 256.0f};
-static float spriteColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-
-static float spriteRotDeg = 0.0f;
-static float spriteZ = 0.0f;
-static float spritePivot[2] = {0.5f, 0.5f};
-static float spriteUV[4] = {0.0f, 0.0f, 1.0f, 1.0f};
 
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -40,7 +34,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // ==================================================
   // Logger
   // ==================================================
-  LoggerManager *loggerManager = LoggerManager::GetInstance();
+  auto *loggerManager = LoggerManager::GetInstance();
   loggerManager->AddLogger(std::make_unique<ConsoleLogger>());
   loggerManager->AddLogger(std::make_unique<FileLogger>());
 
@@ -53,8 +47,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // ==================================================
   // WinApp
   // ==================================================
-  const LONG kClientWidth = 1280;
-  const LONG kClientHeight = 720;
+  constexpr LONG kClientWidth = 1280;
+  constexpr LONG kClientHeight = 720;
   const std::wstring kWindowTitle = L"GE3";
 
   auto winApp = std::make_unique<WinApp>();
@@ -71,7 +65,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   // ==================================================
   auto dx = std::make_unique<DirectXCommon>(
       winApp->GetHwnd(), winApp->GetWidth(), winApp->GetHeight());
-
   dx->Initialize();
 
   // ==================================================
@@ -94,7 +87,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
       dx.get(), shaderCompiler.get(), textureManager.get());
   spriteRenderer->Initialize();
 
-  // 正射影行列は Renderer に一度だけ渡す
+  // 正射影（左上原点・UI向け）
   spriteRenderer->SetProjection(XMMatrixOrthographicOffCenterLH(
       0.0f, static_cast<float>(winApp->GetWidth()),
       static_cast<float>(winApp->GetHeight()), 0.0f, 0.0f, 1.0f));
@@ -105,12 +98,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
   auto spriteManager = std::make_unique<SpriteManager>(spriteRenderer.get());
 
   // ==================================================
-  // Sprite 作成（純データ）
+  // SpriteEditor (ImGui)
+  // ==================================================
+  auto spriteEditor = std::make_unique<SpriteEditor>(spriteManager.get());
+  spriteEditor->Initialize();
+
+  // ==================================================
+  // Sprite 作成（テスト用）
   // ==================================================
   uint32_t texId =
       textureManager->LoadTexture("Resources/Textures/uvChecker.png");
 
-  spriteManager->Create(texId, SpriteManager::Layer::UI);
+  spriteManager->Create(texId, SpriteLayer::UI);
 
   // ==================================================
   // Clear Color
@@ -130,9 +129,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     dx->PreDraw(kClearColor);
 
     // ===============================
-    // Sprite 描画
+    // Sprite Editor
     // ===============================
-    spriteRenderer->Begin();
+    spriteEditor->DrawImGui();
+
+    // ===============================
+    // Sprite Draw
+    // ===============================
     spriteManager->Begin();
     spriteManager->DrawAll();
 

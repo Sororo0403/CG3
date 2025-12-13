@@ -58,6 +58,9 @@
     <Filter Include="Engine\Graphics\PSO">
       <UniqueIdentifier>{343ed606-9b9b-4e20-8d45-9e664ae39895}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Math">
+      <UniqueIdentifier>{12bac756-014f-4a0c-b2d5-3e33ce289cd0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -110,6 +113,9 @@
       <Filter>Engine\Utils\Logger</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Sprite\SpriteManager.cpp">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Sprite\SpriteEditor.cpp">
       <Filter>Engine\Graphics\Sprite</Filter>
     </ClCompile>
   </ItemGroup>
@@ -195,7 +201,33 @@
     <ClInclude Include="Engine\Graphics\Sprite\SpriteManager.h">
       <Filter>Engine\Graphics\Sprite</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Utils\DirectX12\DirectX12Util.h" />
+    <ClInclude Include="Engine\Math\Transform2D.h">
+      <Filter>Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Math\Vector2.h">
+      <Filter>Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Math\Vector3.h">
+      <Filter>Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Math\Vector4.h">
+      <Filter>Engine\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteEditor.h">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteLayer.h">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\DirectX\DirectXUtil.h">
+      <Filter>Engine\Core\DirectX</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteRenderState.h">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Sprite\SpriteLayerUtil.h">
+      <Filter>Engine\Graphics\Sprite</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">

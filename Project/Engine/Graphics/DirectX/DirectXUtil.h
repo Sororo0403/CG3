@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-namespace DirectX12Util {
+namespace DirectXUtil {
 
 constexpr uint32_t kConstantBufferAlignment = 256;
 
@@ -14,4 +14,4 @@ inline uint32_t Align256(uint32_t size) {
          ~(kConstantBufferAlignment - 1);
 }
 
-} // namespace DirectX12Util
+} // namespace DirectXUtil
