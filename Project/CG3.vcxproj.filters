@@ -58,6 +58,9 @@
     <Filter Include="Engine\Math">
       <UniqueIdentifier>{12bac756-014f-4a0c-b2d5-3e33ce289cd0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Graphics\PSO">
+      <UniqueIdentifier>{2e6d6b62-40fb-4789-9e20-1bcbdad04a3c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -121,7 +124,9 @@
     <ClCompile Include="Engine\Graphics\Texture\TextureDropQueue.cpp">
       <Filter>Engine\Graphics\Texture</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\PSO\PSOManager.cpp" />
+    <ClCompile Include="Engine\Graphics\PSO\PSOManager.cpp">
+      <Filter>Engine\Graphics\PSO</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -238,7 +243,9 @@
     <ClInclude Include="Engine\Graphics\Texture\TextureDropQueue.h">
       <Filter>Engine\Graphics\Texture</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\PSO\PSOManager.h" />
+    <ClInclude Include="Engine\Graphics\PSO\PSOManager.h">
+      <Filter>Engine\Graphics\PSO</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">
