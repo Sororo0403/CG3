@@ -103,23 +103,39 @@ LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
 
     switch (msg) {
 
-    case WM_DROPFILES: {
+case WM_DROPFILES: {
         if (!app || !app->textureDropQueue_) {
-            break;
+            DragFinish(reinterpret_cast<HDROP>(wparam));
+            return 0;
         }
 
         HDROP hDrop = reinterpret_cast<HDROP>(wparam);
-        UINT count = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
-
-        wchar_t pathW[MAX_PATH]{};
+        const UINT count = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
 
         for (UINT i = 0; i < count; ++i) {
-            DragQueryFile(hDrop, i, pathW, MAX_PATH);
+            // 長さ取得（終端含まない）
+            const UINT len = DragQueryFileW(hDrop, i, nullptr, 0);
+            if (len == 0) {
+                continue;
+            }
 
-            std::wstring ws(pathW);
-            std::string path = StringUtil::UTF16ToUTF8(ws);
+            // len + 1 分確保（終端用）
+            std::wstring wpath;
+            wpath.resize(len + 1);
 
-            app->textureDropQueue_->Push(path);
+            // 実データ取得
+            const UINT written = DragQueryFileW(
+                hDrop, i, wpath.data(), static_cast<UINT>(wpath.size()));
+
+            if (written == 0) {
+                continue;
+            }
+
+            // 終端を落とす
+            wpath.resize(written);
+
+            // UTF-8 へ変換してキューへ
+            app->textureDropQueue_->Push(StringUtil::UTF16ToUTF8(wpath));
         }
 
         DragFinish(hDrop);

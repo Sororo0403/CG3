@@ -39,9 +39,9 @@ class EditorScene : public Scene {
     WinApp *winApp_ = nullptr;
     DirectXCommon *dx_ = nullptr;
     Input *input_ = nullptr;
+    TextureDropQueue *textureDropQueue_ = nullptr;
 
     // === resources / systems ===
-    std::unique_ptr<TextureDropQueue> textureDropQueue_;
     std::unique_ptr<ShaderCompiler> shaderCompiler_;
     std::unique_ptr<TextureManager> textureManager_;
     std::unique_ptr<TextureEditor> textureEditor_;

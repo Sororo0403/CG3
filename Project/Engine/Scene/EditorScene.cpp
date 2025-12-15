@@ -2,7 +2,7 @@
 
 #include <cassert>
 
-#include "WinApp/WinApp.h"
+#include "WinApp.h"
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
 
@@ -46,7 +46,7 @@ void EditorScene::Initialize() {
     textureManager_->Initialize();
 
     textureEditor_ = std::make_unique<TextureEditor>(textureManager_.get(),
-                                                     textureDropQueue_.get());
+                                                     textureDropQueue_);
 
     psoManager_ =
         std::make_unique<PSOManager>(dx_->GetDevice(), shaderCompiler_.get());
