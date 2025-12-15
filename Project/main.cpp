@@ -12,28 +12,12 @@
 #include "Logger/ILogger.h"
 #include "Logger/LoggerManager.h"
 
-#include "Shader/ShaderCompiler.h"
-#include "Texture/TextureManager.h"
 #include "Texture/TextureDropQueue.h"
-#include "Texture/TextureEditor.h"
-
-#include "Mesh/MeshManager.h"
-#include "Model/ModelManager.h"
-#include "Model/ModelRenderer.h"
-#include "Model/ModelEditor.h"
-
-#include "OBJ/OBJLoader.h"
-#include "OBJ/OBJManager.h"
-
-#include "Camera/Camera.h"
-
-#include "PSO/PSOManager.h"
-#include "Sprite/SpriteRenderer.h"
-#include "Sprite/SpriteManager.h"
-#include "Sprite/SpriteEditor.h"
-#include "Sprite/SpriteLayer.h"
-
 #include "WinApp/WinApp.h"
+
+// Scene
+#include "SceneManager.h"
+#include "EditorScene.h"
 
 using namespace DirectX;
 
@@ -56,6 +40,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #else
     loggerManager->SetMinLevel(LogLevel::INFO);
 #endif
+
     // ==================================================
     // TextureDropQueue
     // ==================================================
@@ -86,109 +71,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     dx->Initialize();
 
     // ==================================================
-    // ShaderCompiler
+    // SceneManager
     // ==================================================
-    auto shaderCompiler = std::make_unique<ShaderCompiler>();
-    shaderCompiler->Initialize();
-    shaderCompiler->SetShaderRoot("Resources/Shaders");
+    SceneManager sceneManager;
 
-    // ==================================================
-    // TextureManager
-    // ==================================================
-    auto textureManager = std::make_unique<TextureManager>(dx.get());
-    textureManager->Initialize();
-
-    // ==================================================
-    // textureEditor (ImGui)
-    // ==================================================
-    auto textureEditor = std::make_unique<TextureEditor>(
-        textureManager.get(), textureDropQueue.get());
-
-    // ==================================================
-    // PSOManager
-    // ==================================================
-    auto psoManager =
-        std::make_unique<PSOManager>(dx->GetDevice(), shaderCompiler.get());
-    psoManager->Initialize();
-
-    // ==================================================
-    // SpriteRenderer
-    // ==================================================
-    auto spriteRenderer = std::make_unique<SpriteRenderer>(
-        dx.get(), shaderCompiler.get(), textureManager.get(), psoManager.get(),
-        static_cast<float>(winApp->GetWidth()),
-        static_cast<float>(winApp->GetHeight()));
-    spriteRenderer->Initialize();
-
-    // ==================================================
-    // SpriteManager
-    // ==================================================
-    auto spriteManager = std::make_unique<SpriteManager>(spriteRenderer.get());
-
-    // ==================================================
-    // SpriteEditor (ImGui)
-    // ==================================================
-    auto spriteEditor = std::make_unique<SpriteEditor>(spriteManager.get(),
-                                                       textureEditor.get());
-    spriteEditor->Initialize();
-
-    // ==================================================
-    // OBJLoader
-    // ==================================================
-    auto objLoder = std::make_unique<OBJLoader>();
-
-    // ==================================================
-    // MeshManager
-    // ==================================================
-    auto meshManager =
-        std::make_unique<MeshManager>(dx->GetDevice(), objLoder.get());
-
-    // ==================================================
-    // ModelRenderer
-    // ==================================================
-    auto modelRenderer = std::make_unique<ModelRenderer>(
-        dx.get(), psoManager.get(), meshManager.get());
-    modelRenderer->Initialize();
-
-    // ==================================================
-    // ModelManager
-    // ==================================================
-    auto modelManager =
-        std::make_unique<ModelManager>(modelRenderer.get(), meshManager.get());
-
-    // ==================================================
-    // OBJManager
-    // ==================================================
-    auto objManager =
-        std::make_unique<OBJManager>(meshManager.get(), modelManager.get());
-
-    // ==================================================
-    // ModelEditor (ImGui)
-    // ==================================================
-    auto modelEditor = std::make_unique<ModelEditor>(
-        meshManager.get(), modelManager.get(), objManager.get());
-
-    // ==================================================
-    // Sprite 作成（テスト用）
-    // ==================================================
-    uint32_t texId =
-        textureManager->LoadTexture("Resources/Textures/uvChecker.png");
-
-    spriteManager->Create(texId, SpriteLayer::UI);
-
-    // ==================================================
-    // Camera
-    // ==================================================
-    Camera camera;
-    camera.SetPosition({0.0f, 0.0f, -5.0f});
-    camera.SetPerspective(DirectX::XM_PIDIV4,
-                          float(winApp->GetWidth()) / winApp->GetHeight(), 0.1f,
-                          1000.0f);
-
-    // ==================================================
-    // Clear Color
-    // ==================================================
-    const float kClearColor[4] = {0.1f, 0.1f, 0.2f, 1.0f};
+    sceneManager.ChangeScene(
+        std::make_unique<EditorScene>(winApp.get(), dx.get(), input.get()));
 
     // ==================================================
     // Main Loop
@@ -198,43 +86,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
             break;
         }
 
-        input->Update();
-
-        // ===============================
-        // Texture Editor
-        // ===============================
-        textureEditor->Update();
-
-        dx->PreDraw(kClearColor);
-
-        // ===============================
-        // Texture Editor
-        // ===============================
-        textureEditor->DrawImGui();
-
-        // ===============================
-        // Sprite Editor
-        // ===============================
-        spriteEditor->DrawImGui();
-
-        // ===============================
-        // Model Editor
-        // ===============================
-        modelEditor->DrawImGui();
-
-        // ===============================
-        // Model Draw
-        // ===============================
-        modelManager->Begin();
-        modelManager->DrawAll(&camera);
-
-        // ===============================
-        // Sprite Draw
-        // ===============================
-        spriteManager->Begin();
-        spriteManager->DrawAll();
-
-        dx->PostDraw();
+        sceneManager.Update();
+        sceneManager.Draw();
     }
 
     return 0;
