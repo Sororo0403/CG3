@@ -28,7 +28,8 @@ class Camera;
 /// </summary>
 class EditorScene : public Scene {
   public:
-    EditorScene(WinApp *winApp, DirectXCommon *dx, Input *input);
+    EditorScene(WinApp *winApp, DirectXCommon *dx, Input *input,
+                TextureDropQueue *textureDropQueue);
 
     void Initialize() override;
     void Update() override;

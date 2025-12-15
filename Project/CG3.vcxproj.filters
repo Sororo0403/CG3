@@ -70,6 +70,15 @@
     <Filter Include="Shader\Model">
       <UniqueIdentifier>{658314b5-8dca-4fba-88fe-a0db5aa26c7d}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Scene">
+      <UniqueIdentifier>{f1197bdf-1b8e-496c-be24-299cf2a1cd83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Graphics\OBJ">
+      <UniqueIdentifier>{7910a9f1-a4c9-466e-a27d-36d0886bb0a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Graphics\Camera">
+      <UniqueIdentifier>{b8473382-1d62-41ad-9e3a-d2e1cd07f587}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -108,7 +117,7 @@
     <ClCompile Include="Engine\Graphics\Texture\TextureManager.cpp">
       <Filter>Engine\Graphics\Texture</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Core\WinApp\WinApp.cpp">
+    <ClCompile Include="Engine\WinApp\WinApp.cpp">
       <Filter>Engine\Core\WinApp</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
@@ -145,12 +154,24 @@
     <ClCompile Include="Engine\Graphics\Mesh\MeshManager.cpp">
       <Filter>Engine\Graphics\Mesh</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Graphics\Model\ModelEditor.cpp" />
-    <ClCompile Include="Engine\Graphics\Camera\Camera.cpp" />
-    <ClCompile Include="Engine\Graphics\OBJ\OBJLoader.cpp" />
-    <ClCompile Include="Engine\Graphics\OBJ\OBJManager.cpp" />
-    <ClCompile Include="Engine\Scene\SceneManager.cpp" />
-    <ClCompile Include="Engine\Scene\EditorScene.cpp" />
+    <ClCompile Include="Engine\Graphics\Model\ModelEditor.cpp">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Scene\SceneManager.cpp">
+      <Filter>Engine\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Scene\EditorScene.cpp">
+      <Filter>Engine\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\OBJ\OBJLoader.cpp">
+      <Filter>Engine\Graphics\OBJ</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\OBJ\OBJManager.cpp">
+      <Filter>Engine\Graphics\OBJ</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Graphics\Camera\Camera.cpp">
+      <Filter>Engine\Graphics\Camera</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Externals\imgui\imconfig.h">
@@ -180,7 +201,7 @@
     <ClInclude Include="Engine\Graphics\DirectX\DirectXCommon.h">
       <Filter>Engine\Core\DirectX</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Core\WinApp\WinApp.h">
+    <ClInclude Include="Engine\WinApp\WinApp.h">
       <Filter>Engine\Core\WinApp</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h">
@@ -288,14 +309,30 @@
     <ClInclude Include="Engine\Graphics\Mesh\MeshManager.h">
       <Filter>Engine\Graphics\Mesh</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Graphics\Model\ModelEditor.h" />
-    <ClInclude Include="Engine\Graphics\Model\ModelRenderState.h" />
-    <ClInclude Include="Engine\Graphics\Camera\Camera.h" />
-    <ClInclude Include="Engine\Graphics\OBJ\OBJLoader.h" />
-    <ClInclude Include="Engine\Graphics\OBJ\OBJManager.h" />
-    <ClInclude Include="Engine\Scene\Scene.h" />
-    <ClInclude Include="Engine\Scene\SceneManager.h" />
-    <ClInclude Include="Engine\Scene\EditorScene.h" />
+    <ClInclude Include="Engine\Graphics\Model\ModelRenderState.h">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Model\ModelEditor.h">
+      <Filter>Engine\Graphics\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Scene\SceneManager.h">
+      <Filter>Engine\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Scene\Scene.h">
+      <Filter>Engine\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Scene\EditorScene.h">
+      <Filter>Engine\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\OBJ\OBJLoader.h">
+      <Filter>Engine\Graphics\OBJ</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\OBJ\OBJManager.h">
+      <Filter>Engine\Graphics\OBJ</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Graphics\Camera\Camera.h">
+      <Filter>Engine\Graphics\Camera</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Resources\Shaders\Sprite\Sprite.PS.hlsl">

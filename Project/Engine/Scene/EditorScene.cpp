@@ -1,5 +1,7 @@
 #include "EditorScene.h"
 
+#include <cassert>
+
 #include "WinApp/WinApp.h"
 #include "DirectX/DirectXCommon.h"
 #include "Input.h"
@@ -14,7 +16,6 @@
 #include "Sprite/SpriteRenderer.h"
 #include "Sprite/SpriteManager.h"
 #include "Sprite/SpriteEditor.h"
-#include "Sprite/SpriteLayer.h"
 
 #include "OBJ/OBJLoader.h"
 #include "OBJ/OBJManager.h"
@@ -26,13 +27,17 @@
 
 #include "Camera/Camera.h"
 
-EditorScene::EditorScene(WinApp *winApp, DirectXCommon *dx, Input *input)
-    : winApp_(winApp), dx_(dx), input_(input) {
+EditorScene::EditorScene(WinApp *winApp, DirectXCommon *dx, Input *input,
+                         TextureDropQueue *textureDropQueue)
+    : winApp_(winApp), dx_(dx), input_(input),
+      textureDropQueue_(textureDropQueue) {
+    assert(winApp_);
+    assert(dx_);
+    assert(input_);
+    assert(textureDropQueue_);
 }
 
 void EditorScene::Initialize() {
-    textureDropQueue_ = std::make_unique<TextureDropQueue>();
-
     shaderCompiler_ = std::make_unique<ShaderCompiler>();
     shaderCompiler_->Initialize();
     shaderCompiler_->SetShaderRoot("Resources/Shaders");

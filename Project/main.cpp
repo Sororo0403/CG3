@@ -13,7 +13,7 @@
 #include "Logger/LoggerManager.h"
 
 #include "Texture/TextureDropQueue.h"
-#include "WinApp/WinApp.h"
+#include "WinApp.h"
 
 // Scene
 #include "SceneManager.h"
@@ -75,8 +75,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     // ==================================================
     SceneManager sceneManager;
 
-    sceneManager.ChangeScene(
-        std::make_unique<EditorScene>(winApp.get(), dx.get(), input.get()));
+    sceneManager.ChangeScene(std::make_unique<EditorScene>(
+        winApp.get(), dx.get(), input.get(), textureDropQueue.get()));
 
     // ==================================================
     // Main Loop

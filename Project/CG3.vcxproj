@@ -80,7 +80,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)Engine\Core;$(ProjectDir)Engine\Graphics;$(ProjectDir)Engine\Scene;$(ProjectDir)Engine\Input;$(ProjectDir)Engine\Math;$(ProjectDir)Engine\Utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)Engine\WinApp;$(ProjectDir)Engine\Graphics;$(ProjectDir)Engine\Scene;$(ProjectDir)Engine\Input;$(ProjectDir)Engine\Math;$(ProjectDir)Engine\ImGui;$(ProjectDir)Engine\Utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -106,7 +106,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)Engine\Core;$(ProjectDir)Engine\Graphics;$(ProjectDir)Engine\Scene;$(ProjectDir)Engine\Input;$(ProjectDir)Engine\Math;$(ProjectDir)Engine\Utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)Engine\WinApp;$(ProjectDir)Engine\Graphics;$(ProjectDir)Engine\Scene;$(ProjectDir)Engine\Input;$(ProjectDir)Engine\Math;$(ProjectDir)Engine\ImGui;$(ProjectDir)Engine\Utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -133,7 +133,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <Optimization>Disabled</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
-      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)Engine\Core;$(ProjectDir)Engine\Graphics;$(ProjectDir)Engine\Scene;$(ProjectDir)Engine\Input;$(ProjectDir)Engine\Math;$(ProjectDir)Engine\Utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals;$(ProjectDir)Engine\WinApp;$(ProjectDir)Engine\Graphics;$(ProjectDir)Engine\Scene;$(ProjectDir)Engine\Input;$(ProjectDir)Engine\Math;$(ProjectDir)Engine\ImGui;$(ProjectDir)Engine\Utils;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -179,7 +179,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
-    <ClCompile Include="Engine\Core\WinApp\WinApp.cpp">
+    <ClCompile Include="Engine\WinApp\WinApp.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
     </ClCompile>
@@ -245,7 +245,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Engine\Graphics\Shader\ShaderCompiler.h" />
     <ClInclude Include="Engine\Graphics\DirectX\DirectXCommon.h" />
     <ClInclude Include="Engine\Input\Input.h" />
-    <ClInclude Include="Engine\Core\WinApp\WinApp.h" />
+    <ClInclude Include="Engine\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Utils\Logger\FileLogger.h" />
     <ClInclude Include="Engine\Utils\Logger\ILogger.h" />
     <ClInclude Include="Engine\Utils\Logger\LogFormatter.h" />

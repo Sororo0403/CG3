@@ -14,6 +14,8 @@ WinApp::WinApp(LONG width, LONG height, const std::wstring &title,
                TextureDropQueue *textureDropQueue)
     : width_(width), height_(height), title_(title),
       textureDropQueue_(textureDropQueue) {
+    assert(width_ > 0);
+    assert(height_ > 0);
 }
 
 WinApp::~WinApp() {
