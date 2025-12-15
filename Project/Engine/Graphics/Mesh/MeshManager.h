@@ -3,11 +3,14 @@
 #include <unordered_map>
 #include <memory>
 #include <cstdint>
+#include <string>
 
 #include <d3d12.h>
 #include <wrl.h>
 
 #include "Mesh.h"
+
+class OBJLoader;
 
 /// <summary>
 /// Mesh を管理するクラス
@@ -17,12 +20,17 @@ class MeshManager {
     /// <summary>
     /// コンストラクタ
     /// </summary>
-    MeshManager(ID3D12Device *device);
+    MeshManager(ID3D12Device *device, OBJLoader *objLoader);
 
     /// <summary>
     /// CPU Mesh を登録し、GPU バッファを生成
     /// </summary>
     uint32_t Register(std::unique_ptr<Mesh> mesh);
+
+    /// <summary>
+    /// CPU Mesh を登録し、GPU バッファを生成、OBJ ファイルから読み込み
+    /// </summary>
+    uint32_t RegisterFromOBJ(const std::string &path);
 
     // Getter
     const Mesh *GetMesh(uint32_t id) const;
@@ -35,6 +43,7 @@ class MeshManager {
 
   private:
     ID3D12Device *device_ = nullptr;
+    OBJLoader *objLoader_ = nullptr;
 
     // CPU Mesh
     std::unordered_map<uint32_t, std::unique_ptr<Mesh>> meshes_;

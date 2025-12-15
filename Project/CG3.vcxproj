@@ -149,6 +149,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Engine\Graphics\Camera\Camera.cpp" />
+    <ClCompile Include="Engine\Graphics\OBJ\OBJManager.cpp" />
     <ClCompile Include="Engine\Utils\Logger\ConsoleLogger.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">Full</Optimization>
       <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
@@ -217,12 +218,14 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClCompile Include="Engine\Graphics\Model\ModelRenderer.cpp" />
     <ClCompile Include="Engine\Graphics\Mesh\MeshManager.cpp" />
     <ClCompile Include="Engine\Graphics\Model\ModelEditor.cpp" />
+    <ClCompile Include="Engine\Graphics\OBJ\OBJLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Engine\Graphics\Camera\Camera.h" />
     <ClInclude Include="Engine\Graphics\Mesh\Mesh.h" />
     <ClInclude Include="Engine\Graphics\Model\Model.h" />
     <ClInclude Include="Engine\Graphics\Model\ModelRenderState.h" />
+    <ClInclude Include="Engine\Graphics\OBJ\OBJManager.h" />
     <ClInclude Include="Engine\Graphics\Sprite\Sprite.h" />
     <ClInclude Include="Engine\Graphics\Sprite\SpriteLayer.h" />
     <ClInclude Include="Engine\Graphics\Sprite\SpriteLayerUtil.h" />
@@ -267,6 +270,7 @@ copy /Y "$(WindowsSdkDir)bin\$(TargetPlatformVersion)\$(Platform)\dxil.dll"     
     <ClInclude Include="Engine\Graphics\Model\ModelRenderer.h" />
     <ClInclude Include="Engine\Graphics\Mesh\MeshManager.h" />
     <ClInclude Include="Engine\Graphics\Model\ModelEditor.h" />
+    <ClInclude Include="Engine\Graphics\OBJ\OBJLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="externals\DirectXTex\DirectXTex_Desktop_2022_Win10.vcxproj">

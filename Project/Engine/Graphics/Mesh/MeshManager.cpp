@@ -4,10 +4,14 @@
 #include <cstring>
 #include <directx/d3dx12.h>
 
+#include "OBJ/OBJLoader.h"
+
 using Microsoft::WRL::ComPtr;
 
-MeshManager::MeshManager(ID3D12Device *device) : device_(device) {
+MeshManager::MeshManager(ID3D12Device *device, OBJLoader *objLoader)
+    : device_(device), objLoader_(objLoader) {
     assert(device_);
+    assert(objLoader_);
 }
 
 uint32_t MeshManager::Register(std::unique_ptr<Mesh> mesh) {
@@ -21,6 +25,12 @@ uint32_t MeshManager::Register(std::unique_ptr<Mesh> mesh) {
     CreateGpuBuffers(id, *meshes_[id]);
 
     return id;
+}
+
+uint32_t MeshManager::RegisterFromOBJ(const std::string &path) {
+    auto mesh = objLoader_->Load(path);
+    assert(mesh);
+    return Register(std::move(mesh));
 }
 
 void MeshManager::CreateGpuBuffers(uint32_t id, const Mesh &mesh) {

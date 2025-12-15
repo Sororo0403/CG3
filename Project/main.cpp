@@ -22,6 +22,9 @@
 #include "Model/ModelRenderer.h"
 #include "Model/ModelEditor.h"
 
+#include "OBJ/OBJLoader.h"
+#include "OBJ/OBJManager.h"
+
 #include "Camera/Camera.h"
 
 #include "PSO/PSOManager.h"
@@ -130,9 +133,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
     spriteEditor->Initialize();
 
     // ==================================================
+    // OBJLoader
+    // ==================================================
+    auto objLoder = std::make_unique<OBJLoader>();
+
+    // ==================================================
     // MeshManager
     // ==================================================
-    auto meshManager = std::make_unique<MeshManager>(dx->GetDevice());
+    auto meshManager =
+        std::make_unique<MeshManager>(dx->GetDevice(), objLoder.get());
 
     // ==================================================
     // ModelRenderer
@@ -148,10 +157,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
         std::make_unique<ModelManager>(modelRenderer.get(), meshManager.get());
 
     // ==================================================
+    // OBJManager
+    // ==================================================
+    auto objManager =
+        std::make_unique<OBJManager>(meshManager.get(), modelManager.get());
+
+    // ==================================================
     // ModelEditor (ImGui)
     // ==================================================
-    auto modelEditor =
-        std::make_unique<ModelEditor>(meshManager.get(), modelManager.get());
+    auto modelEditor = std::make_unique<ModelEditor>(
+        meshManager.get(), modelManager.get(), objManager.get());
 
     // ==================================================
     // Sprite 作成（テスト用）
