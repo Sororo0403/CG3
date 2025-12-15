@@ -16,7 +16,6 @@ ModelManager::ModelManager(ModelRenderer *renderer, MeshManager *meshManager)
 }
 
 uint32_t ModelManager::Create(uint32_t meshId) {
-    // Mesh の存在チェック（CPU Mesh）
     assert(meshManager_->GetMesh(meshId));
 
     Entry entry{};

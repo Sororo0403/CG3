@@ -41,7 +41,7 @@ void SpriteEditor::DrawImGui() {
     // Hierarchy
     // ==================================
     ImGui::TextUnformatted("Hierarchy");
- 
+
     if (ImGui::Button("Save")) {
         spriteManager_->SaveToJson("sprites.json");
     }

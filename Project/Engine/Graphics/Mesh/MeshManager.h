@@ -25,6 +25,7 @@ class MeshManager {
     uint32_t Register(std::unique_ptr<Mesh> mesh);
 
     // Getter
+    const Mesh *GetMesh(uint32_t id) const;
     const D3D12_VERTEX_BUFFER_VIEW *GetVBView(uint32_t id) const;
     const D3D12_INDEX_BUFFER_VIEW *GetIBView(uint32_t id) const;
     uint32_t GetIndexCount(uint32_t id) const;

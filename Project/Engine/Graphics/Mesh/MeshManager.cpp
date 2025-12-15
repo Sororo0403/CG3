@@ -79,6 +79,14 @@ void MeshManager::CreateGpuBuffers(uint32_t id, const Mesh &mesh) {
     indexCounts_[id] = static_cast<uint32_t>(mesh.indices.size());
 }
 
+const Mesh *MeshManager::GetMesh(uint32_t id) const {
+    auto it = meshes_.find(id);
+    if (it == meshes_.end()) {
+        return nullptr;
+    }
+    return it->second.get();
+}
+
 const D3D12_VERTEX_BUFFER_VIEW *MeshManager::GetVBView(uint32_t id) const {
     auto it = vbViews_.find(id);
     return (it != vbViews_.end()) ? &it->second : nullptr;
