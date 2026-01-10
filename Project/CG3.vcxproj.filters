@@ -79,6 +79,9 @@
     <Filter Include="Engine\Graphics\Camera">
       <UniqueIdentifier>{b8473382-1d62-41ad-9e3a-d2e1cd07f587}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Sound">
+      <UniqueIdentifier>{b677373e-ee78-4c92-aeb4-cc85d49cc9d1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Externals\imgui\imgui.cpp">
@@ -171,6 +174,12 @@
     </ClCompile>
     <ClCompile Include="Engine\Graphics\Camera\Camera.cpp">
       <Filter>Engine\Graphics\Camera</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Sound\SoundManager.cpp">
+      <Filter>Engine\Sound</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Sound\SoundPlayer.cpp">
+      <Filter>Engine\Sound</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -332,6 +341,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Graphics\Camera\Camera.h">
       <Filter>Engine\Graphics\Camera</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Sound\SoundManager.h">
+      <Filter>Engine\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Sound\SoundPlayer.h">
+      <Filter>Engine\Sound</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

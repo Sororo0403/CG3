@@ -27,6 +27,9 @@
 
 #include "Camera/Camera.h"
 
+#include "SoundManager.h"
+#include "SoundPlayer.h"
+
 EditorScene::EditorScene(WinApp *winApp, DirectXCommon *dx, Input *input,
                          TextureDropQueue *textureDropQueue)
     : winApp_(winApp), dx_(dx), input_(input),
@@ -89,6 +92,11 @@ void EditorScene::Initialize() {
     camera_->SetPerspective(DirectX::XM_PIDIV4,
                             float(winApp_->GetWidth()) / winApp_->GetHeight(),
                             0.1f, 1000.0f);
+
+    SoundManager::Initialize();
+
+    SoundData *bgm = SoundManager::LoadSound(L"Resources/BGM/bgm.mp3");
+    SoundPlayer::Play(bgm, true);
 }
 
 void EditorScene::Update() {
